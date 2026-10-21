@@ -114,6 +114,21 @@
     .beat:not(.hero) .card::before { animation: none; }
     h2.glitch, h2.glitch::before, h2.glitch::after { animation: none; content: none; }
   }
+
+  /* Keep text and 3D apart: text column on the left (desktop) or at the bottom (phone); the camera shifts the scene into the free space */
+  @media (min-width: 900px) {
+    .beat.right { justify-content: flex-start; padding-right: 0; }
+    .beat .card { max-width: min(30rem, 36vw); }
+    .final { max-width: 36vw; margin-inline: 0; }
+    .final .grid { grid-template-columns: 1fr; }
+    .final .card { max-width: none; }
+  }
+  @media (max-width: 899px) {
+    .beat { align-items: flex-end; box-sizing: border-box; padding-block: 52svh 5svh; }
+    .beat.right { justify-content: flex-start; padding-right: 0; }
+    .beat .card { max-width: none; }
+    .final .grid { grid-template-columns: 1fr; }
+  }
 </style>
 
 <canvas id="stage" aria-hidden="true"></canvas>
@@ -516,9 +531,14 @@
     renderer.setSize(w, h, false);
     camera.aspect = w / h;
     camera.fov = w < 640 ? 70 : 55;
+    const wide = w >= 900;
+    camera.zoom = wide ? 0.85 : 0.95;
+    // shift the scene into the area the text does not use
+    if (wide) camera.setViewOffset(w, h, -w * 0.2, 0, w, h);
+    else camera.setViewOffset(w, h, 0, h * 0.2, w, h);
     camera.updateProjectionMatrix();
-    const visW = 2 * 18 * Math.tan((camera.fov * Math.PI) / 360) * camera.aspect;
-    textScale = Math.min(1, (visW * 0.86) / 16);
+    const visW = (2 * 18 * Math.tan((camera.fov * Math.PI) / 360) * camera.aspect) / camera.zoom;
+    textScale = Math.min(1, (visW * (wide ? 0.52 : 0.86)) / 16);
     readScroll();
   }
   window.addEventListener("resize", resize);
