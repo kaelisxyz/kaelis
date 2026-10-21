@@ -88,6 +88,32 @@
     .beat.right { justify-content: flex-start; }
     .card { padding: 18px; }
   }
+
+  /* Holographic glass cards */
+  @property --ang { syntax: "<angle>"; inherits: false; initial-value: 0deg; }
+  .beat:not(.hero) .card { position: relative; border-color: transparent; --mx: 50%; --my: 50%;
+    transform: perspective(900px) rotateX(var(--rx, 0deg)) rotateY(var(--ry, 0deg)); transition: transform .25s ease-out; }
+  .beat:not(.hero) .card::before { content: ""; position: absolute; inset: 0; border-radius: inherit; padding: 1px; pointer-events: none;
+    background: conic-gradient(from var(--ang), #ff8a3d, #8fe3ff, #c9a2ff, #ff8a3d);
+    -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0); -webkit-mask-composite: xor; mask-composite: exclude;
+    opacity: 0.6; animation: holo-spin 7s linear infinite; }
+  .beat:not(.hero) .card::after { content: ""; position: absolute; inset: 0; border-radius: inherit; pointer-events: none;
+    background: radial-gradient(420px circle at var(--mx) var(--my), rgba(143, 227, 255, 0.13), transparent 45%),
+      repeating-linear-gradient(0deg, rgba(255, 255, 255, 0.025) 0 1px, transparent 1px 3px); mix-blend-mode: screen; }
+  @keyframes holo-spin { to { --ang: 360deg; } }
+  h2[data-text] { position: relative; }
+  h2.glitch::before, h2.glitch::after { content: attr(data-text); position: absolute; inset: 0; pointer-events: none; }
+  h2.glitch::before { color: var(--signal); transform: translateX(-3px); mix-blend-mode: screen; animation: glitch-a .45s steps(2, end) both; }
+  h2.glitch::after { color: var(--ember); transform: translateX(3px); mix-blend-mode: screen; animation: glitch-b .45s steps(2, end) both; }
+  h2.glitch { animation: glitch-shake .45s steps(3, end); }
+  @keyframes glitch-a { 0% { clip-path: inset(8% 0 70% 0); } 25% { clip-path: inset(55% 0 20% 0); } 50% { clip-path: inset(82% 0 4% 0); } 75% { clip-path: inset(30% 0 52% 0); } 100% { clip-path: inset(0 0 100% 0); } }
+  @keyframes glitch-b { 0% { clip-path: inset(62% 0 12% 0); } 25% { clip-path: inset(12% 0 66% 0); } 50% { clip-path: inset(40% 0 38% 0); } 75% { clip-path: inset(74% 0 8% 0); } 100% { clip-path: inset(0 0 100% 0); } }
+  @keyframes glitch-shake { 0% { transform: translateX(0); } 33% { transform: translateX(-2px) skewX(-4deg); } 66% { transform: translateX(2px); } 100% { transform: none; } }
+  @media (prefers-reduced-motion: reduce) {
+    .beat:not(.hero) .card { transform: none; transition: none; }
+    .beat:not(.hero) .card::before { animation: none; }
+    h2.glitch, h2.glitch::before, h2.glitch::after { animation: none; content: none; }
+  }
 </style>
 
 <canvas id="stage" aria-hidden="true"></canvas>
@@ -394,6 +420,64 @@
     hammerArm.add(w);
   });
 
+  // Holographic glass panels orbiting Kaelis
+  const HOLO_TEXT = [["$KAEL", "ENERGY", "supply 1,000,000,000"], ["SCAN", "RISK 88/100", "honeypot detected"], ["BUILD", "+22 COMMITS", "0xbima · verified"]];
+  const holoVert = `
+    uniform float uTime; uniform float uGlitch;
+    varying vec2 vUv; varying vec3 vN; varying vec3 vV;
+    float h(float n) { return fract(sin(n) * 43758.5453); }
+    void main() {
+      vUv = uv;
+      vec3 p = position;
+      float band = floor(uv.y * 18.0 + floor(uTime * 12.0));
+      p.x += uGlitch * (h(band) - 0.5) * 0.6;
+      vec4 mv = modelViewMatrix * vec4(p, 1.0);
+      vN = normalize(normalMatrix * normal); vV = -mv.xyz;
+      gl_Position = projectionMatrix * mv;
+    }`;
+  const holoFrag = `
+    uniform float uTime; uniform float uGlitch; uniform float uFade; uniform sampler2D uMap;
+    varying vec2 vUv; varying vec3 vN; varying vec3 vV;
+    void main() {
+      float fres = pow(1.0 - abs(dot(normalize(vN), normalize(vV))), 2.0);
+      vec3 irid = 0.5 + 0.5 * cos(6.2831 * (vec3(0.0, 0.33, 0.67) + fres * 0.8 + vUv.y * 0.6 + uTime * 0.08));
+      float off = 0.004 + uGlitch * 0.03;
+      float tr = texture2D(uMap, vUv + vec2(off, 0.0)).r;
+      float tg = texture2D(uMap, vUv).g;
+      float tb = texture2D(uMap, vUv - vec2(off, 0.0)).b;
+      vec3 txt = vec3(tr, tg, tb);
+      float scan = 0.8 + 0.2 * sin(vUv.y * 420.0 - uTime * 6.0);
+      vec2 e = min(vUv, 1.0 - vUv);
+      float edge = 1.0 - smoothstep(0.0, 0.02, min(e.x, e.y));
+      vec3 col = mix(vec3(0.56, 0.89, 1.0), irid, 0.55) * (0.12 + fres * 0.7) * scan + txt * 1.1 + irid * edge * 0.9;
+      float a = (0.16 + fres * 0.45 + edge * 0.7 + max(max(txt.r, txt.g), txt.b) * 0.9) * uFade;
+      gl_FragColor = vec4(col * uFade, a);
+    }`;
+  function holoTexture(lines) {
+    const c = document.createElement("canvas");
+    c.width = 384; c.height = 512;
+    const g = c.getContext("2d");
+    g.fillStyle = "#000"; g.fillRect(0, 0, 384, 512);
+    g.strokeStyle = "rgba(143,227,255,0.35)"; g.lineWidth = 2;
+    for (let y = 300; y < 480; y += 30) { g.beginPath(); g.moveTo(32, y); g.lineTo(32 + Math.random() * 300, y); g.stroke(); }
+    g.fillStyle = "#ffd7b8"; g.font = '700 84px "Chakra Petch", sans-serif'; g.fillText(lines[0], 30, 130);
+    g.fillStyle = "#8fe3ff"; g.font = '500 30px "IBM Plex Mono", monospace'; g.fillText(lines[1], 32, 190);
+    g.fillStyle = "#9a93a3"; g.font = '400 22px "IBM Plex Mono", monospace'; g.fillText(lines[2], 32, 240);
+    return new THREE.CanvasTexture(c);
+  }
+  const holos = HOLO_TEXT.map((lines, i) => {
+    const mat = new THREE.ShaderMaterial({
+      uniforms: { uTime: { value: 0 }, uGlitch: { value: 0 }, uFade: { value: 0 }, uMap: { value: holoTexture(lines) } },
+      vertexShader: holoVert, fragmentShader: holoFrag, transparent: true, depthWrite: false, side: THREE.DoubleSide, blending: THREE.AdditiveBlending
+    });
+    const mesh = new THREE.Mesh(new THREE.PlaneGeometry(3, 4, 1, 36), mat);
+    mesh.userData = { a: (i / 3) * Math.PI * 2, glitchUntil: 0 };
+    mesh.visible = false;
+    scene.add(mesh);
+    return mesh;
+  });
+  if (document.fonts && document.fonts.ready) document.fonts.ready.then(() => holos.forEach((m, i) => { m.material.uniforms.uMap.value = holoTexture(HOLO_TEXT[i]); }));
+
   // Camera keyframes per beat
   const camKeys = [
     { p: [0, 1, 18], t: [0, 0, 0] },
@@ -553,6 +637,22 @@
     head2.rotation.y += ((mouse.x * 0.9) - head2.rotation.y) * 0.08;
     head2.rotation.x += ((-mouse.y * 0.6) - head2.rotation.x) * 0.08;
 
+    // holo panels: appear with Kaelis, orbit it, glitch in short bursts
+    const holoFade = smooth(3.6, 4.2, s);
+    holos.forEach((m, i) => {
+      const u = m.material.uniforms;
+      u.uTime.value = time;
+      u.uFade.value = holoFade;
+      m.visible = holoFade > 0.01;
+      if (!m.visible) return;
+      const a = m.userData.a + time * (reduce ? 0 : 0.22);
+      const r = lerp(3.5, 5.2, holoFade);
+      m.position.set(kaelis.position.x + Math.cos(a) * r, kaelis.position.y + Math.sin(time * 0.9 + i * 2) * 0.4 * (reduce ? 0 : 1), kaelis.position.z + Math.sin(a) * r);
+      m.lookAt(camera.position);
+      if (!reduce && time > m.userData.glitchUntil + 1.5 && Math.random() < 0.006) m.userData.glitchUntil = time + 0.18 + Math.random() * 0.2;
+      u.uGlitch.value = time < m.userData.glitchUntil ? 1 : 0;
+    });
+
     // agents
     const swarm = smooth(4.1, 4.9, s);
     aMat.opacity = swarm * 0.85;
@@ -602,3 +702,40 @@
   });
 })();
 </script>
+
+<script>
+(function () {
+  const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  const cards = Array.from(document.querySelectorAll(".beat:not(.hero) .card"));
+  const heads = Array.from(document.querySelectorAll(".beat h2"));
+  heads.forEach((h) => h.setAttribute("data-text", h.textContent));
+  function glitch(h) {
+    if (reduce || !h) return;
+    h.classList.remove("glitch");
+    void h.offsetWidth;
+    h.classList.add("glitch");
+    setTimeout(() => h.classList.remove("glitch"), 480);
+  }
+  cards.forEach((c) => {
+    const h = c.querySelector("h2");
+    c.addEventListener("pointerenter", () => glitch(h));
+    c.addEventListener("pointermove", (e) => {
+      const r = c.getBoundingClientRect();
+      const x = (e.clientX - r.left) / r.width, y = (e.clientY - r.top) / r.height;
+      c.style.setProperty("--mx", x * 100 + "%");
+      c.style.setProperty("--my", y * 100 + "%");
+      if (!reduce && e.pointerType === "mouse") { c.style.setProperty("--ry", (x - 0.5) * 10 + "deg"); c.style.setProperty("--rx", (0.5 - y) * 8 + "deg"); }
+    });
+    c.addEventListener("pointerleave", () => { c.style.setProperty("--rx", "0deg"); c.style.setProperty("--ry", "0deg"); });
+  });
+  if ("IntersectionObserver" in window) {
+    const io = new IntersectionObserver((entries) => entries.forEach((en) => { if (en.isIntersecting) glitch(en.target.querySelector("h2")); }), { threshold: 0.6 });
+    cards.forEach((c) => io.observe(c));
+  }
+  setInterval(() => {
+    const vis = heads.filter((h) => { const r = h.getBoundingClientRect(); return r.top > 0 && r.bottom < window.innerHeight; });
+    if (vis.length) glitch(vis[Math.floor(Math.random() * vis.length)]);
+  }, 4200);
+})();
+</script>
+
