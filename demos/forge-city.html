@@ -1,0 +1,556 @@
+<title>Kaelis Forge City</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@500;700&family=IBM+Plex+Sans:wght@400;500&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+  /* Layout: full-screen 3D city, HUD in the corners (stats top, scan bottom-left), detail panel slides in from the right (bottom sheet on phones). Single dark look by choice. */
+  :root {
+    --void: #08070c;
+    --ink: #ece6dc;
+    --dim: #9a93a3;
+    --ember: #ff8a3d;
+    --signal: #8fe3ff;
+    --warn: #ffc24a;
+    --danger: #ff4d5e;
+    --panel: rgba(14, 12, 20, 0.86);
+    --line: rgba(236, 230, 220, 0.14);
+    --f-display: "Chakra Petch", "Arial Narrow", system-ui, sans-serif;
+    --f-body: "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+    --f-mono: "IBM Plex Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
+    color-scheme: dark;
+  }
+  html, body { height: 100%; background: var(--void); color: var(--ink); overflow: hidden; }
+  body { font-family: var(--f-body); font-size: 14px; line-height: 1.5; }
+  #city { position: fixed; inset: 0; width: 100%; height: 100%; display: block; touch-action: none; }
+
+  .hud { position: fixed; z-index: 2; pointer-events: none; }
+  .hud > * { pointer-events: auto; }
+  .top { top: calc(14px + env(safe-area-inset-top, 0px)); left: max(16px, env(safe-area-inset-left, 0px)); right: max(16px, env(safe-area-inset-right, 0px));
+    display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; flex-wrap: wrap; }
+  .brand { display: grid; gap: 2px; }
+  .brand h1 { margin: 0; font-family: var(--f-display); font-size: 26px; line-height: 1; letter-spacing: 0.02em; }
+  .brand h1 span { color: var(--ember); }
+  .tag { font-family: var(--f-mono); font-size: 11px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--dim); }
+  .stats { display: flex; gap: 8px; flex-wrap: wrap; }
+  .stat { background: var(--panel); border: 1px solid var(--line); border-radius: 4px; padding: 8px 12px; display: grid; gap: 0; min-width: 96px; }
+  .stat b { font-family: var(--f-display); font-size: 20px; font-variant-numeric: tabular-nums; }
+  .stat.e b { color: var(--ember); } .stat.s b { color: var(--signal); } .stat.d b { color: var(--danger); }
+
+  .scan { left: max(16px, env(safe-area-inset-left, 0px)); bottom: calc(16px + env(safe-area-inset-bottom, 0px));
+    width: min(380px, calc(100% - 32px)); background: var(--panel); border: 1px solid var(--line); border-radius: 4px; padding: 14px; display: grid; gap: 10px;
+    backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); }
+  .scan form { display: flex; gap: 8px; }
+  .scan input { flex: 1; min-width: 0; background: rgba(255,255,255,0.04); border: 1px solid var(--line); border-radius: 3px; color: var(--ink);
+    font-family: var(--f-mono); font-size: 13px; padding: 10px; }
+  .scan input:focus { outline: 1px solid var(--signal); border-color: var(--signal); }
+  .btn { font-family: var(--f-display); font-weight: 700; font-size: 14px; letter-spacing: 0.06em; text-transform: uppercase; cursor: pointer;
+    padding: 10px 14px; border-radius: 3px; border: 1px solid var(--ember); background: var(--ember); color: var(--void); white-space: nowrap; }
+  .btn.ghost { background: transparent; color: var(--ink); border-color: var(--line); }
+  .btn.sig { background: var(--signal); border-color: var(--signal); }
+  .btn.bad { background: transparent; color: var(--danger); border-color: var(--danger); }
+  .btn:disabled { opacity: 0.5; cursor: progress; }
+  .btn:focus-visible, .x:focus-visible { outline: 2px solid var(--signal); outline-offset: 2px; }
+  .log { font-family: var(--f-mono); font-size: 12px; color: var(--dim); min-height: 1.5em; }
+  .chips { display: flex; gap: 6px; flex-wrap: wrap; }
+  .chip { font-family: var(--f-mono); font-size: 11px; padding: 3px 8px; border-radius: 99px; border: 1px solid var(--line); color: var(--dim); background: transparent; cursor: pointer; }
+  .chip:hover { color: var(--ink); border-color: var(--dim); }
+
+  .legend { right: max(16px, env(safe-area-inset-right, 0px)); bottom: calc(16px + env(safe-area-inset-bottom, 0px));
+    background: var(--panel); border: 1px solid var(--line); border-radius: 4px; padding: 10px 12px; display: grid; gap: 4px; font-size: 12px; color: var(--dim); }
+  .legend i { display: inline-block; width: 9px; height: 9px; margin-right: 8px; transform: rotate(45deg); }
+
+  .panel { position: fixed; z-index: 3; top: calc(90px + env(safe-area-inset-top, 0px)); right: max(16px, env(safe-area-inset-right, 0px));
+    width: min(340px, calc(100% - 32px)); max-height: calc(100% - 210px); overflow: auto;
+    background: var(--panel); border: 1px solid var(--line); border-radius: 4px; padding: 18px; display: grid; gap: 12px;
+    backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); }
+  .panel h2 { margin: 0; font-family: var(--f-display); font-size: 24px; line-height: 1.1; overflow-wrap: anywhere; }
+  .panel p { margin: 0; color: var(--dim); }
+  .x { position: absolute; top: 10px; right: 10px; background: none; border: 0; color: var(--dim); font-size: 20px; cursor: pointer; line-height: 1; padding: 4px; }
+  .kv { display: grid; grid-template-columns: 1fr auto; gap: 6px 12px; font-family: var(--f-mono); font-size: 12px; font-variant-numeric: tabular-nums; }
+  .kv span:nth-child(odd) { color: var(--dim); }
+  .score { display: grid; gap: 6px; }
+  .score .bar { height: 6px; background: var(--line); border-radius: 3px; overflow: hidden; }
+  .score .bar i { display: block; height: 100%; }
+  .flags { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
+  .flags li { display: grid; grid-template-columns: 16px 1fr; gap: 6px; font-size: 13px; }
+  .flags li.on { color: var(--ink); } .flags li.off { color: var(--dim); }
+  .flags li.on::before { content: "✕"; color: var(--danger); }
+  .flags li.off::before { content: "✓"; color: var(--signal); }
+  .quote { border-left: 2px solid var(--signal); padding-left: 10px; color: var(--ink) !important; font-style: italic; }
+
+  .tip { position: fixed; z-index: 4; pointer-events: none; font-family: var(--f-mono); font-size: 12px; background: var(--panel); border: 1px solid var(--line);
+    padding: 4px 8px; border-radius: 3px; transform: translate(12px, 12px); white-space: nowrap; }
+  .dl { position: fixed; z-index: 1; pointer-events: none; font-family: var(--f-mono); font-size: 11px; letter-spacing: 0.16em; text-transform: uppercase;
+    color: var(--dim); transform: translate(-50%, -50%); white-space: nowrap; text-shadow: 0 0 8px var(--void); }
+  .demo { font-family: var(--f-mono); font-size: 11px; color: var(--warn); }
+
+  @media (max-width: 720px) {
+    .stats .stat { min-width: 0; padding: 6px 10px; }
+    .stat b { font-size: 16px; }
+    .legend { display: none; }
+    .panel { top: auto; bottom: calc(16px + env(safe-area-inset-bottom, 0px)); max-height: 55%; }
+  }
+</style>
+
+<canvas id="city" aria-label="3D city of Kaelis builders, scanned tokens and holders"></canvas>
+<div id="labels"></div>
+
+<div class="hud top">
+  <div class="brand">
+    <h1>KAELIS <span>FORGE CITY</span></h1>
+    <span class="tag">Drag to orbit · scroll to zoom · click a building</span>
+    <span class="demo">Demo with example data</span>
+  </div>
+  <div class="stats">
+    <div class="stat e"><span class="tag">Builders</span><b id="sBuilders">0</b></div>
+    <div class="stat s"><span class="tag">Holders lit</span><b id="sHolders">0</b></div>
+    <div class="stat"><span class="tag">Tokens scanned</span><b id="sScanned">0</b></div>
+    <div class="stat d"><span class="tag">Rugs caught</span><b id="sRugs">0</b></div>
+    <button class="btn sig" id="holdBtn" type="button">Hold $KAEL</button>
+  </div>
+</div>
+
+<div class="hud scan">
+  <span class="tag">Ask Kaelis to scan a token</span>
+  <form id="scanForm">
+    <input id="scanInput" type="text" placeholder="Token address or ticker" autocomplete="off" aria-label="Token address or ticker">
+    <button class="btn" id="scanBtn" type="submit">Scan</button>
+  </form>
+  <div class="chips">
+    <button class="chip" type="button" data-q="$NEKO">$NEKO</button>
+    <button class="chip" type="button" data-q="$RUGME">$RUGME</button>
+    <button class="chip" type="button" data-q="7xQk...pump">7xQk...pump</button>
+  </div>
+  <div class="log" id="scanLog" role="status"></div>
+</div>
+
+<div class="hud legend" aria-label="Legend">
+  <span><i style="background:var(--ember)"></i>Builder tower (active)</span>
+  <span><i style="background:var(--signal)"></i>Token: low risk</span>
+  <span><i style="background:var(--warn)"></i>Token: suspicious</span>
+  <span><i style="background:var(--danger)"></i>Token: dangerous</span>
+</div>
+
+<aside class="panel" id="panel" hidden aria-live="polite">
+  <button class="x" id="closePanel" type="button" aria-label="Close">×</button>
+  <div id="panelBody"></div>
+</aside>
+<div class="tip" id="tip" hidden></div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+<script>
+(function () {
+  const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  const $ = (id) => document.getElementById(id);
+  const fmt = (n) => n.toLocaleString("en-US");
+
+  // ---------- Example data ----------
+  const BUILDERS = [
+    { name: "andi-dev", repo: "solana-whale-alert", commits: 15, floors: 11, kael: 500, active: true },
+    { name: "rara.sol", repo: "anchor-escrow-kit", commits: 9, floors: 8, kael: 320, active: true },
+    { name: "0xbima", repo: "evm-gas-profiler", commits: 22, floors: 14, kael: 740, active: true },
+    { name: "mika-builds", repo: "jupiter-dca-bot", commits: 3, floors: 5, kael: 90, active: true },
+    { name: "fajar.eth", repo: "safe-multisig-ui", commits: 0, floors: 7, kael: 0, active: false },
+    { name: "luna_codes", repo: "nft-royalty-indexer", commits: 12, floors: 9, kael: 410, active: true },
+    { name: "dimas-rs", repo: "rust-rpc-cache", commits: 18, floors: 12, kael: 610, active: true },
+    { name: "tara.dev", repo: "wallet-risk-sdk", commits: 1, floors: 3, kael: 30, active: false },
+    { name: "kenji-onchain", repo: "mempool-visualizer", commits: 7, floors: 6, kael: 240, active: true },
+    { name: "sari-sol", repo: "token-2022-tools", commits: 0, floors: 4, kael: 0, active: false },
+    { name: "rizky.build", repo: "pump-sniper-guard", commits: 11, floors: 10, kael: 380, active: true },
+    { name: "naya-dev", repo: "zk-proof-playground", commits: 5, floors: 6, kael: 160, active: true }
+  ];
+  const FLAGS = [
+    { key: "dev", text: "Developer holds more than 20% of supply", w: 25 },
+    { key: "lp", text: "Liquidity is not locked or burned", w: 25 },
+    { key: "mint", text: "Mint authority is still active", w: 15 },
+    { key: "honey", text: "Sell simulation failed (honeypot)", w: 30 },
+    { key: "hist", text: "Developer wallet launched rugged tokens before", w: 20 },
+    { key: "fake", text: "Many new holders funded from one wallet", w: 15 }
+  ];
+  const START_TOKENS = [
+    { name: "$MOONJELLY", on: [] },
+    { name: "$BONKISH", on: ["mint"] },
+    { name: "$ABC", on: ["dev", "lp", "hist"] },
+    { name: "$SOLCAT", on: ["fake"] },
+    { name: "$GIGAWIF", on: ["dev", "lp"] },
+    { name: "$HONEYPOT", on: ["lp", "honey", "mint"] }
+  ];
+
+  // ---------- Scene ----------
+  const canvas = $("city");
+  const renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+  renderer.setClearColor(0x08070c, 1);
+  const scene = new THREE.Scene();
+  scene.fog = new THREE.FogExp2(0x08070c, 0.012);
+  const camera = new THREE.PerspectiveCamera(50, 1, 0.1, 500);
+  camera.position.set(34, 30, 40);
+
+  const controls = new THREE.OrbitControls(camera, canvas);
+  controls.target.set(0, 5, 0);
+  controls.enableDamping = true;
+  controls.maxPolarAngle = Math.PI * 0.47;
+  controls.minDistance = 14;
+  controls.maxDistance = 110;
+  controls.autoRotate = !reduce;
+  controls.autoRotateSpeed = 0.35;
+
+  scene.add(new THREE.AmbientLight(0x6b5f7a, 0.55));
+  const sun = new THREE.DirectionalLight(0xffd2b0, 0.5);
+  sun.position.set(10, 30, 20);
+  scene.add(sun);
+
+  const C = { ember: 0xff8a3d, signal: 0x8fe3ff, warn: 0xffc24a, danger: 0xff4d5e };
+
+  // ground + grid
+  const ground = new THREE.Mesh(new THREE.PlaneGeometry(200, 200), new THREE.MeshStandardMaterial({ color: 0x0d0b12, roughness: 1 }));
+  ground.rotation.x = -Math.PI / 2;
+  scene.add(ground);
+  const grid = new THREE.GridHelper(80, 40, 0x2a2233, 0x18141f);
+  grid.position.y = 0.01;
+  scene.add(grid);
+
+  function glowTexture(rgba) {
+    const c = document.createElement("canvas");
+    c.width = c.height = 128;
+    const g = c.getContext("2d");
+    const grd = g.createRadialGradient(64, 64, 0, 64, 64, 64);
+    grd.addColorStop(0, rgba);
+    grd.addColorStop(0.3, rgba.replace("1)", "0.35)"));
+    grd.addColorStop(1, "rgba(0,0,0,0)");
+    g.fillStyle = grd;
+    g.fillRect(0, 0, 128, 128);
+    return new THREE.CanvasTexture(c);
+  }
+
+  const boxGeo = new THREE.BoxGeometry(1, 1, 1);
+  boxGeo.translate(0, 0.5, 0); // pivot at the base so scale.y grows upward
+  const edgeGeo = new THREE.EdgesGeometry(boxGeo);
+  const pickables = [];
+
+  function makeBuilding(color, w, h, x, z) {
+    const mat = new THREE.MeshStandardMaterial({ color: 0x15111b, emissive: color, emissiveIntensity: 0.35, roughness: 0.5, metalness: 0.2 });
+    const mesh = new THREE.Mesh(boxGeo, mat);
+    const edges = new THREE.LineSegments(edgeGeo, new THREE.LineBasicMaterial({ color, transparent: true, opacity: 0.85 }));
+    mesh.add(edges);
+    mesh.position.set(x, 0, z);
+    mesh.scale.set(w, 0.001, w);
+    mesh.userData = { targetH: h, w, color, edges, collapse: 0 };
+    scene.add(mesh);
+    pickables.push(mesh);
+    return mesh;
+  }
+
+  // ---------- Kaelis main tower (holders) ----------
+  const TOWER_H = 22, TOWER_W = 4;
+  const tower = makeBuilding(C.signal, TOWER_W, TOWER_H, 0, 0);
+  tower.material.emissiveIntensity = 0.12;
+  tower.userData.kind = "tower";
+  const spire = new THREE.Mesh(new THREE.ConeGeometry(1.2, 5, 4), new THREE.MeshStandardMaterial({ color: 0x0d1a22, emissive: C.signal, emissiveIntensity: 0.6 }));
+  spire.position.y = TOWER_H + 2.5;
+  spire.rotation.y = Math.PI / 4;
+  scene.add(spire);
+
+  const COLS = 7, ROWS = 34, FACES = 4, WIN = COLS * ROWS * FACES;
+  const winMesh = new THREE.InstancedMesh(new THREE.PlaneGeometry(0.32, 0.36), new THREE.MeshBasicMaterial({ color: 0xffffff, side: THREE.DoubleSide }), WIN);
+  const dummy = new THREE.Object3D();
+  let k = 0;
+  for (let f = 0; f < FACES; f++) {
+    for (let r = 0; r < ROWS; r++) {
+      for (let c = 0; c < COLS; c++) {
+        const u = -TOWER_W / 2 + (c + 0.5) * (TOWER_W / COLS);
+        const y = 0.8 + r * ((TOWER_H - 1.4) / ROWS);
+        const off = TOWER_W / 2 + 0.02;
+        const ang = (f * Math.PI) / 2;
+        dummy.position.set(Math.sin(ang) * off + Math.cos(ang) * u, y, Math.cos(ang) * off - Math.sin(ang) * u);
+        dummy.rotation.set(0, ang, 0);
+        dummy.updateMatrix();
+        winMesh.setMatrixAt(k++, dummy.matrix);
+      }
+    }
+  }
+  const order = Array.from({ length: WIN }, (_, i) => i).sort(() => Math.random() - 0.5);
+  const OFF = new THREE.Color(0x1b1622), ON = new THREE.Color(0xffd08a);
+  for (let i = 0; i < WIN; i++) winMesh.setColorAt(i, OFF);
+  scene.add(winMesh);
+  let holders = 0;
+  function lightWindows(n) {
+    const target = Math.min(WIN, holders + n);
+    for (let i = holders; i < target; i++) winMesh.setColorAt(order[i], ON);
+    holders = target;
+    winMesh.instanceColor.needsUpdate = true;
+    $("sHolders").textContent = fmt(holders);
+  }
+  lightWindows(412);
+
+  // ---------- Builders district (west) ----------
+  const builderMeshes = BUILDERS.map((b, i) => {
+    const x = -10 - (i % 4) * 4.2, z = -6.3 + Math.floor(i / 4) * 6.3;
+    const m = makeBuilding(C.ember, 2.4, b.floors * 0.9, x, z);
+    m.userData.kind = "builder";
+    m.userData.data = b;
+    if (!b.active) { m.material.emissiveIntensity = 0.05; m.userData.edges.material.opacity = 0.25; }
+    return m;
+  });
+  $("sBuilders").textContent = BUILDERS.length;
+
+  // ---------- Scan district (east) ----------
+  const SLOTS = [];
+  for (let i = 0; i < 12; i++) SLOTS.push({ x: 10 + (i % 4) * 4.2, z: -6.3 + Math.floor(i / 4) * 6.3, mesh: null });
+  let scanned = 0, rugs = 0, nextSlot = 0;
+
+  function scoreOf(on) { return Math.min(99, on.reduce((s, k) => s + FLAGS.find((f) => f.key === k).w, 0) + 3); }
+  function riskColor(score) { return score >= 70 ? C.danger : score >= 40 ? C.warn : C.signal; }
+  function verdict(t) {
+    if (t.score >= 70) return "Danger. " + (t.on.includes("honey") ? "You may not be able to sell this token at all." : "The developer can pull the money out at any time.");
+    if (t.score >= 40) return "Suspicious. Only buy what you can afford to lose, and watch the developer wallet.";
+    return "Looks clean for now. No major red flags, but keep an eye on it.";
+  }
+
+  function placeToken(t) {
+    const slot = SLOTS[nextSlot % SLOTS.length];
+    nextSlot++;
+    if (slot.mesh) { scene.remove(slot.mesh); pickables.splice(pickables.indexOf(slot.mesh), 1); }
+    t.score = scoreOf(t.on);
+    const h = 3 + (100 - t.score) * 0.11 + Math.random() * 2;
+    const m = makeBuilding(riskColor(t.score), 2.6, h, slot.x, slot.z);
+    m.userData.kind = "token";
+    m.userData.data = t;
+    slot.mesh = m;
+    scanned++;
+    $("sScanned").textContent = scanned;
+    return m;
+  }
+  START_TOKENS.forEach(placeToken);
+
+  // ---------- Scam graveyard (south edge) ----------
+  const grave = [];
+  function addRubble(x, z) {
+    const g = new THREE.Group();
+    for (let i = 0; i < 5; i++) {
+      const s = 0.6 + Math.random() * 1.2;
+      const piece = new THREE.Mesh(boxGeo, new THREE.MeshStandardMaterial({ color: 0x1a0d10, emissive: C.danger, emissiveIntensity: 0.18 }));
+      piece.scale.set(s, s * 0.6, s * 1.4);
+      piece.position.set((Math.random() - 0.5) * 2.4, 0, (Math.random() - 0.5) * 2.4);
+      piece.rotation.set(Math.random() * 0.6, Math.random() * 3, Math.random() * 0.6);
+      g.add(piece);
+    }
+    g.position.set(x, 0, z);
+    scene.add(g);
+    grave.push(g);
+  }
+  function graveSpot() { const i = grave.length; return { x: -14 + (i % 8) * 4, z: 15 + Math.floor(i / 8) * 3.5 }; }
+  ["$SAFU2", "$PEPEX", "$ELONMARS"].forEach(() => { const p = graveSpot(); addRubble(p.x, p.z); rugs++; });
+  $("sRugs").textContent = rugs;
+
+  // ---------- Kaelis ----------
+  const kaelis = new THREE.Group();
+  const core = new THREE.Mesh(new THREE.IcosahedronGeometry(1, 1), new THREE.MeshStandardMaterial({ color: 0x0d1a22, emissive: C.signal, emissiveIntensity: 1.3, flatShading: true }));
+  const shell = new THREE.Mesh(new THREE.IcosahedronGeometry(1.7, 1), new THREE.MeshBasicMaterial({ color: C.signal, wireframe: true, transparent: true, opacity: 0.35 }));
+  const halo = new THREE.Sprite(new THREE.SpriteMaterial({ map: glowTexture("rgba(143,227,255,1)"), transparent: true, blending: THREE.AdditiveBlending, depthWrite: false }));
+  halo.scale.set(9, 9, 1);
+  const beam = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 1.4, 1, 16, 1, true),
+    new THREE.MeshBasicMaterial({ color: C.signal, transparent: true, opacity: 0, side: THREE.DoubleSide, blending: THREE.AdditiveBlending, depthWrite: false }));
+  kaelis.add(core, shell, halo);
+  scene.add(kaelis, beam);
+  const kLight = new THREE.PointLight(C.signal, 2, 26);
+  kaelis.add(kLight);
+  kaelis.userData = { focus: null, until: 0 };
+  core.userData = { kind: "kaelis" };
+  pickables.push(core);
+
+  // ---------- District labels ----------
+  const LABELS = [
+    { text: "Builders district", pos: new THREE.Vector3(-16.3, 0.2, 10) },
+    { text: "Kaelis tower", pos: new THREE.Vector3(0, TOWER_H + 6, 0) },
+    { text: "Scan district", pos: new THREE.Vector3(16.3, 0.2, 10) },
+    { text: "Scam graveyard", pos: new THREE.Vector3(-10, 0.2, 19) }
+  ].map((l) => { const d = document.createElement("div"); d.className = "dl"; d.textContent = l.text; $("labels").appendChild(d); return { ...l, el: d }; });
+
+  // ---------- Panel ----------
+  const panel = $("panel"), body = $("panelBody");
+  let selected = null;
+  function openPanel(mesh) {
+    selected = mesh;
+    const u = mesh.userData;
+    let html = "";
+    if (u.kind === "builder") {
+      const b = u.data;
+      html = `<span class="tag">Builder tower</span><h2>${b.name}</h2>
+        <p>${b.active ? "Active this week. Kaelis verified new commits and raised the tower." : "No verified work for a while, so the lights are dimming."}</p>
+        <div class="kv"><span>Main repo</span><span>${b.repo}</span><span>Commits this week</span><span>${b.commits}</span>
+        <span>Floors</span><span>${b.floors}</span><span>$KAEL earned this week</span><span>${fmt(b.kael)}</span></div>
+        <button class="btn" type="button" id="pushBtn">Simulate a verified commit</button>`;
+    } else if (u.kind === "token") {
+      const t = u.data, col = t.score >= 70 ? "var(--danger)" : t.score >= 40 ? "var(--warn)" : "var(--signal)";
+      html = `<span class="tag">Scanned token</span><h2>${t.name}</h2>
+        <div class="score"><div class="kv"><span>Risk score</span><span style="color:${col}">${t.score} / 100</span></div><div class="bar"><i style="width:${t.score}%;background:${col}"></i></div></div>
+        <ul class="flags">${FLAGS.map((f) => `<li class="${t.on.includes(f.key) ? "on" : "off"}">${f.text}</li>`).join("")}</ul>
+        <p class="quote">Kaelis: "${verdict(t)}"</p>
+        ${t.score >= 70 ? `<button class="btn bad" type="button" id="rugBtn">Simulate the rug pull</button>` : ""}`;
+    } else if (u.kind === "tower") {
+      html = `<span class="tag">Kaelis tower</span><h2>${fmt(holders)} windows lit</h2>
+        <p>Every lit window is one wallet holding $KAEL. Sell everything and your light goes out. The more holders, the brighter the city.</p>
+        <div class="kv"><span>Windows lit</span><span>${fmt(holders)} / ${fmt(WIN)}</span></div>`;
+    } else if (u.kind === "kaelis") {
+      html = `<span class="tag">The guardian</span><h2>Kaelis</h2>
+        <p>The first agent born from the chain. It patrols the city, rewards builders for real work and checks every token you send it.</p>
+        <p class="quote">Kaelis: "Top builder this week: 0xbima, 22 verified commits."</p>`;
+    }
+    body.innerHTML = html;
+    panel.hidden = false;
+    const push = $("pushBtn"), rug = $("rugBtn");
+    if (push) push.onclick = () => verifiedCommit(mesh);
+    if (rug) rug.onclick = () => rugPull(mesh);
+    if (u.kind !== "kaelis") focusKaelis(mesh, 6);
+  }
+  $("closePanel").onclick = () => { panel.hidden = true; selected = null; };
+
+  function focusKaelis(mesh, secs) {
+    kaelis.userData.focus = mesh;
+    kaelis.userData.until = clock.elapsedTime + secs;
+  }
+
+  function verifiedCommit(mesh) {
+    const b = mesh.userData.data;
+    b.commits += 1; b.floors += 1; b.kael += 35; b.active = true;
+    mesh.userData.targetH = b.floors * 0.9;
+    mesh.material.emissiveIntensity = 0.9;
+    mesh.userData.edges.material.opacity = 0.85;
+    setTimeout(() => { mesh.material.emissiveIntensity = 0.35; }, 600);
+    openPanel(mesh);
+  }
+
+  function rugPull(mesh) {
+    mesh.userData.collapse = 0.0001;
+    const t = mesh.userData.data;
+    panel.hidden = true;
+    $("scanLog").textContent = `${t.name} rugged. Kaelis moved it to the scam graveyard.`;
+    setTimeout(() => {
+      scene.remove(mesh);
+      pickables.splice(pickables.indexOf(mesh), 1);
+      const slot = SLOTS.find((s) => s.mesh === mesh); if (slot) slot.mesh = null;
+      const p = graveSpot(); addRubble(p.x, p.z);
+      rugs++; $("sRugs").textContent = rugs;
+    }, 1600);
+  }
+
+  // ---------- Scan flow (simulated with a seeded hash) ----------
+  function hash(str) { let h = 2166136261; for (let i = 0; i < str.length; i++) { h ^= str.charCodeAt(i); h = Math.imul(h, 16777619); } return h >>> 0; }
+  const STEPS = ["Reading holders…", "Checking liquidity pool…", "Simulating a sell…", "Tracing the developer wallet…"];
+  $("scanForm").addEventListener("submit", (e) => {
+    e.preventDefault();
+    const q = $("scanInput").value.trim();
+    if (!q) { $("scanLog").textContent = "Paste a token address or ticker first."; return; }
+    const btn = $("scanBtn"); btn.disabled = true;
+    let i = 0;
+    const tick = () => {
+      if (i < STEPS.length) { $("scanLog").textContent = "Kaelis: " + STEPS[i++]; setTimeout(tick, reduce ? 50 : 380); return; }
+      let h = hash(q.toLowerCase());
+      const on = FLAGS.filter((f, j) => ((h >>> (j * 4)) & 15) < (/rug|scam|honey/i.test(q) ? 13 : 5)).map((f) => f.key);
+      const name = q.startsWith("$") ? q.toUpperCase() : q.length > 12 ? q.slice(0, 4) + "…" + q.slice(-4) : q;
+      const m = placeToken({ name, on });
+      $("scanLog").textContent = `Done. ${name} scored ${m.userData.data.score}/100.`;
+      btn.disabled = false;
+      setTimeout(() => openPanel(m), 300);
+    };
+    tick();
+  });
+  document.querySelectorAll(".chip").forEach((c) => c.addEventListener("click", () => { $("scanInput").value = c.dataset.q; $("scanForm").requestSubmit(); }));
+  $("holdBtn").addEventListener("click", () => { lightWindows(1); focusKaelis(tower, 3); $("scanLog").textContent = "Demo: one new holder. A window in the Kaelis tower lights up."; if (selected === tower) openPanel(tower); });
+
+  // ---------- Picking ----------
+  const ray = new THREE.Raycaster(), ptr = new THREE.Vector2(), tip = $("tip");
+  let downAt = null;
+  function pick(e) {
+    const r = canvas.getBoundingClientRect();
+    ptr.set(((e.clientX - r.left) / r.width) * 2 - 1, -((e.clientY - r.top) / r.height) * 2 + 1);
+    ray.setFromCamera(ptr, camera);
+    const hit = ray.intersectObjects(pickables, false)[0];
+    return hit ? hit.object : null;
+  }
+  function nameOf(m) { const u = m.userData; return u.kind === "builder" ? u.data.name : u.kind === "token" ? `${u.data.name} · risk ${u.data.score}` : u.kind === "tower" ? "Kaelis tower" : "Kaelis"; }
+  canvas.addEventListener("pointerdown", (e) => { downAt = [e.clientX, e.clientY]; });
+  canvas.addEventListener("pointerup", (e) => {
+    if (!downAt || Math.hypot(e.clientX - downAt[0], e.clientY - downAt[1]) > 6) return;
+    const m = pick(e);
+    if (m) { controls.autoRotate = false; openPanel(m); }
+  });
+  canvas.addEventListener("pointermove", (e) => {
+    if (e.pointerType !== "mouse") return;
+    const m = pick(e);
+    canvas.style.cursor = m ? "pointer" : "grab";
+    if (m) { tip.hidden = false; tip.textContent = nameOf(m); tip.style.left = e.clientX + "px"; tip.style.top = e.clientY + "px"; } else tip.hidden = true;
+  });
+
+  function resize() {
+    const w = window.innerWidth, h = window.innerHeight;
+    renderer.setSize(w, h, false);
+    camera.aspect = w / h;
+    camera.fov = w < 720 ? 62 : 50;
+    camera.updateProjectionMatrix();
+  }
+  window.addEventListener("resize", resize);
+  resize();
+
+  // ---------- Loop ----------
+  const clock = new THREE.Clock();
+  const v = new THREE.Vector3(), kTarget = new THREE.Vector3();
+  function frame() {
+    const dt = Math.min(clock.getDelta(), 0.05), t = clock.elapsedTime;
+
+    // grow and flicker buildings
+    pickables.forEach((m) => {
+      const u = m.userData;
+      if (!u.targetH) return;
+      if (u.collapse > 0) {
+        u.collapse = Math.min(1, u.collapse + dt * 0.8);
+        m.scale.y = u.targetH * (1 - u.collapse);
+        m.rotation.z = u.collapse * 0.5;
+        m.material.emissive.setHex(C.danger);
+        m.material.emissiveIntensity = Math.random() * 1.2;
+        return;
+      }
+      m.scale.y += (u.targetH - m.scale.y) * Math.min(1, dt * 2.5);
+      if (u.kind === "token" && u.data.score >= 70) {
+        m.material.emissiveIntensity = reduce ? 0.5 : 0.25 + (Math.sin(t * 9 + m.id) > 0.6 ? 0.8 : 0.1);
+        m.rotation.z = 0.04;
+      }
+      if (u.kind === "builder" && u.data.active) m.material.emissiveIntensity += ((0.35 + Math.sin(t * 1.5 + m.id) * 0.08) - m.material.emissiveIntensity) * 0.05;
+    });
+
+    // Kaelis patrol or focus
+    const k = kaelis.userData;
+    if (k.focus && t < k.until && k.focus.parent) {
+      v.copy(k.focus.position); v.y = k.focus.scale.y + 4;
+      kTarget.copy(v);
+      beam.material.opacity = 0.18;
+    } else {
+      const a = t * (reduce ? 0 : 0.18);
+      kTarget.set(Math.cos(a) * 20, 15 + Math.sin(t * 0.7) * 1.5, Math.sin(a) * 20);
+      beam.material.opacity *= 0.9;
+    }
+    kaelis.position.lerp(kTarget, Math.min(1, dt * 1.6));
+    shell.rotation.y = t * 0.3; shell.rotation.x = t * 0.17;
+    halo.material.opacity = 0.75 + Math.sin(t * 2.4) * 0.15;
+    const bh = Math.max(0.1, kaelis.position.y);
+    beam.scale.set(1, bh, 1);
+    beam.position.set(kaelis.position.x, bh / 2, kaelis.position.z);
+
+    controls.update();
+    renderer.render(scene, camera);
+
+    // labels
+    LABELS.forEach((l) => {
+      v.copy(l.pos).project(camera);
+      const vis = v.z < 1;
+      l.el.style.display = vis ? "block" : "none";
+      if (vis) { l.el.style.left = ((v.x + 1) / 2) * window.innerWidth + "px"; l.el.style.top = ((1 - v.y) / 2) * window.innerHeight + "px"; }
+    });
+    requestAnimationFrame(frame);
+  }
+  requestAnimationFrame(frame);
+})();
+</script>

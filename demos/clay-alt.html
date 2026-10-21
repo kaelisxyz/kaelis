@@ -1,0 +1,307 @@
+<title>Kaelis Clay</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Host+Grotesk:wght@400;500;700&family=JetBrains+Mono:wght@400&display=swap">
+<style>
+  /* Layout: minimal portfolio-style page. Giant wordmark, clay 3D Kaelis in the hero, then (labelled) list sections with hairline rows. */
+  :root {
+    --bg: #efede8;
+    --fg: #141414;
+    --mute: #6f6c66;
+    --rule: rgba(20, 20, 20, 0.14);
+    --ember: #e8743b;
+    --signal: #4bb7d6;
+    --f-display: "Host Grotesk", "Helvetica Neue", Arial, sans-serif;
+    --f-mono: "JetBrains Mono", ui-monospace, Menlo, monospace;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) { --bg: #121211; --fg: #efede8; --mute: #9a968e; --rule: rgba(239, 237, 232, 0.14); color-scheme: dark; }
+  }
+  :root[data-theme="dark"] { --bg: #121211; --fg: #efede8; --mute: #9a968e; --rule: rgba(239, 237, 232, 0.14); color-scheme: dark; }
+
+  html, body { background: var(--bg); color: var(--fg); }
+  body { font-family: var(--f-display); font-size: 16px; line-height: 1.5; -webkit-font-smoothing: antialiased; }
+  .wrap { padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); max-width: 1440px; margin-inline: auto; }
+  @media (min-width: 900px) { .wrap { padding-left: max(32px, env(safe-area-inset-left, 0px)); padding-right: max(32px, env(safe-area-inset-right, 0px)); } }
+
+  .lbl { font-family: var(--f-mono); font-size: 12px; color: var(--mute); letter-spacing: 0.02em; }
+
+  header { position: sticky; top: env(safe-area-inset-top, 0px); z-index: 5; background: var(--bg); }
+  body::before { content: ""; position: fixed; inset: 0 0 auto; height: env(safe-area-inset-top, 0px); z-index: 10; background: var(--bg); }
+  .bar { display: flex; justify-content: space-between; align-items: center; gap: 16px; padding-block: 18px; }
+  .bar b { font-weight: 700; font-size: 18px; letter-spacing: -0.02em; }
+  nav { display: flex; gap: 20px; flex-wrap: wrap; justify-content: flex-end; }
+  nav a { color: var(--fg); text-decoration: none; font-size: 14px; }
+  nav a:hover { color: var(--ember); }
+  nav a:focus-visible, .row:focus-visible, .cta:focus-visible { outline: 2px solid var(--ember); outline-offset: 3px; }
+
+  .hero { display: grid; gap: 8px; padding-top: 8px; }
+  .hero-top { display: flex; justify-content: space-between; flex-wrap: wrap; gap: 8px; }
+  .stage { position: relative; height: clamp(340px, 58vh, 620px); }
+  #clay { position: absolute; inset: 0; width: 100%; height: 100%; display: block; cursor: grab; touch-action: pan-y; }
+  #clay:active { cursor: grabbing; }
+  .stage .lbl { position: absolute; bottom: 8px; right: 0; }
+  .word { font-weight: 700; font-size: clamp(76px, 21.5vw, 330px); line-height: 0.82; letter-spacing: -0.06em; margin: 0; }
+  .tagline { display: flex; justify-content: space-between; gap: 16px; flex-wrap: wrap; padding-block: 18px 0; }
+  .tagline p { margin: 0; font-size: clamp(18px, 2.2vw, 26px); max-width: 32ch; letter-spacing: -0.01em; }
+
+  section { padding-block: 96px 0; }
+  .sec-head { display: flex; justify-content: space-between; align-items: baseline; padding-bottom: 14px; border-bottom: 1px solid var(--rule); }
+
+  .rows { display: grid; }
+  .row { display: grid; grid-template-columns: 56px minmax(0, 1fr) minmax(0, 1.1fr); gap: 16px; align-items: baseline;
+    padding-block: 22px; border-bottom: 1px solid var(--rule); color: var(--fg); text-decoration: none; transition: padding .35s ease, color .25s; }
+  .row h3 { margin: 0; font-size: clamp(28px, 4.4vw, 60px); font-weight: 500; letter-spacing: -0.04em; line-height: 1; }
+  .row p { margin: 0; color: var(--mute); max-width: 48ch; }
+  .row:hover { padding-left: 14px; }
+  .row:hover h3 { color: var(--ember); }
+  .row.sig:hover h3 { color: var(--signal); }
+  @media (max-width: 700px) { .row { grid-template-columns: 40px minmax(0, 1fr); } .row p { grid-column: 2; } }
+
+  .marquee { overflow: hidden; border-block: 1px solid var(--rule); margin-top: 96px; }
+  .track { display: flex; gap: 48px; width: max-content; padding-block: 22px; animation: slide 28s linear infinite; }
+  .track span { font-size: clamp(36px, 6vw, 84px); font-weight: 500; letter-spacing: -0.04em; white-space: nowrap; }
+  .track span:nth-child(3n+2) { color: var(--ember); }
+  .track span:nth-child(3n) { color: var(--mute); }
+  @keyframes slide { to { transform: translateX(-50%); } }
+
+  .split { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 48px; padding-top: 24px; }
+  .alloc { display: grid; gap: 14px; font-variant-numeric: tabular-nums; }
+  .alloc div { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 6px 12px; }
+  .alloc i { grid-column: 1 / -1; height: 10px; border-radius: 6px; background: var(--rule); position: relative; overflow: hidden; }
+  .alloc i::after { content: ""; position: absolute; inset: 0 auto 0 0; width: var(--w); border-radius: 6px; background: var(--c, var(--ember)); }
+  .uses { list-style: none; margin: 0; padding: 0; display: grid; }
+  .uses li { padding-block: 14px; border-bottom: 1px solid var(--rule); font-size: 18px; letter-spacing: -0.01em; }
+
+  footer { padding-block: 120px 40px; display: grid; gap: 40px; }
+  .cta { display: inline-flex; align-items: baseline; gap: 0.3em; color: var(--fg); text-decoration: none; font-weight: 700;
+    font-size: clamp(48px, 11vw, 170px); letter-spacing: -0.06em; line-height: 0.9; background: none; border: 0; padding: 0; cursor: pointer; text-align: left; font-family: inherit; }
+  .cta span { color: var(--ember); transition: transform .3s; display: inline-block; }
+  .cta:hover span { transform: translateX(12px); }
+  .foot { display: flex; justify-content: space-between; flex-wrap: wrap; gap: 12px; }
+  #toast { min-height: 1.4em; }
+
+  @media (prefers-reduced-motion: reduce) { .track { animation: none; } .row, .cta span { transition: none; } }
+</style>
+
+<header>
+  <div class="wrap bar">
+    <b>Kaelis</b>
+    <nav aria-label="Main">
+      <a href="#story">(Story)</a>
+      <a href="#token">($KAEL)</a>
+      <a href="#builder">(Builder)</a>
+      <a href="#join">Join →</a>
+    </nav>
+  </div>
+</header>
+
+<main class="wrap">
+  <div class="hero">
+    <div class="hero-top">
+      <span class="lbl">(The first agent born on-chain)</span>
+      <span class="lbl">Block #0 — 2026</span>
+    </div>
+    <div class="stage">
+      <canvas id="clay" aria-label="Clay figure of Kaelis, an AI agent with one eye, surrounded by small blocks"></canvas>
+      <span class="lbl">(Drag to turn it)</span>
+    </div>
+    <h1 class="word">Kaelis</h1>
+    <div class="tagline">
+      <p>Forged by builders. Awakened by the chain.</p>
+      <span class="lbl">$KAEL · AI agent · for developers</span>
+    </div>
+  </div>
+
+  <section id="story">
+    <div class="sec-head"><span class="lbl">(The story)</span><span class="lbl">5 chapters</span></div>
+    <div class="rows">
+      <a class="row" href="#story"><span class="lbl">01</span><h3>Chaos</h3><p>Before the chain there was only noise: loose data drifting with nothing to hold it.</p></a>
+      <a class="row" href="#story"><span class="lbl">02</span><h3>The first block</h3><p>A Forger strikes with a hammer of light. Block #0 is sealed and the noise starts to take shape.</p></a>
+      <a class="row" href="#story"><span class="lbl">03</span><h3>The chain</h3><p>Every block points to the one before it. Break a link and everyone sees it.</p></a>
+      <a class="row" href="#story"><span class="lbl">04</span><h3>The city</h3><p>Apps and protocols rise on top of the blocks. The Forgers keep building.</p></a>
+      <a class="row sig" href="#story"><span class="lbl">05</span><h3>The signal</h3><p>Beneath the city, a pattern repeats in the mempool. Kaelis wakes up and starts to watch.</p></a>
+    </div>
+  </section>
+
+  <div class="marquee" aria-hidden="true">
+    <div class="track">
+      <span>gm</span><span>Halo</span><span>Yo</span><span>Bonjour</span><span>Hola</span><span>Ciao</span><span>こんにちは</span><span>wagmi</span>
+      <span>gm</span><span>Halo</span><span>Yo</span><span>Bonjour</span><span>Hola</span><span>Ciao</span><span>こんにちは</span><span>wagmi</span>
+    </div>
+  </div>
+
+  <section id="token">
+    <div class="sec-head"><span class="lbl">($KAEL)</span><span class="lbl">Example numbers, not final</span></div>
+    <div class="split">
+      <ul class="uses">
+        <li>Pay Kaelis to watch wallets and contracts</li>
+        <li>Unlock mempool feeds and transaction decoding</li>
+        <li>Automate on-chain tasks for your app</li>
+        <li>Vote on what Kaelis learns next</li>
+      </ul>
+      <div class="alloc">
+        <div><span>Community &amp; liquidity</span><span>60%</span><i style="--w:60%"></i></div>
+        <div><span>Builder grants</span><span>20%</span><i style="--w:20%; --c: var(--signal)"></i></div>
+        <div><span>Builder, vested 24 months</span><span>10%</span><i style="--w:10%"></i></div>
+        <div><span>Treasury</span><span>10%</span><i style="--w:10%; --c: var(--signal)"></i></div>
+      </div>
+    </div>
+  </section>
+
+  <section id="builder">
+    <div class="sec-head"><span class="lbl">(Builder)</span><span class="lbl">Solo, in public</span></div>
+    <div class="split">
+      <p style="margin:0; font-size: clamp(22px, 2.6vw, 34px); letter-spacing: -0.02em; max-width: 26ch;">One Forger, building Kaelis in the open. Every commit is on GitHub.</p>
+      <ul class="uses">
+        <li>Contract address: announced at launch</li>
+        <li>Liquidity: locked at launch</li>
+        <li>Builder tokens: vested over 24 months</li>
+      </ul>
+    </div>
+  </section>
+
+  <footer id="join">
+    <span class="lbl">(Let's build)</span>
+    <button class="cta" id="joinBtn" type="button">Join the Forge <span>→</span></button>
+    <div class="foot">
+      <span class="lbl" id="toast" role="status"></span>
+      <span class="lbl">X · Discord · Telegram · GitHub</span>
+    </div>
+  </footer>
+</main>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+(function () {
+  document.getElementById("joinBtn").addEventListener("click", function () {
+    document.getElementById("toast").textContent = "Demo only: your community links go here.";
+  });
+  if (!window.THREE) return;
+
+  const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  const canvas = document.getElementById("clay");
+  const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true });
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+  renderer.shadowMap.enabled = true;
+  renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+  renderer.outputEncoding = THREE.sRGBEncoding;
+
+  const scene = new THREE.Scene();
+  const camera = new THREE.PerspectiveCamera(32, 1, 0.1, 100);
+  camera.position.set(0, 1.2, 11);
+
+  scene.add(new THREE.HemisphereLight(0xfff6ec, 0x8a8178, 0.75));
+  const key = new THREE.DirectionalLight(0xffffff, 0.95);
+  key.position.set(4, 7, 6);
+  key.castShadow = true;
+  key.shadow.mapSize.set(1024, 1024);
+  key.shadow.radius = 6;
+  key.shadow.camera.left = -6; key.shadow.camera.right = 6; key.shadow.camera.top = 6; key.shadow.camera.bottom = -6;
+  scene.add(key);
+  const rim = new THREE.DirectionalLight(0xbfe6ff, 0.35);
+  rim.position.set(-6, 2, -4);
+  scene.add(rim);
+
+  const clay = (c) => new THREE.MeshStandardMaterial({ color: c, roughness: 0.92, metalness: 0 });
+
+  const world = new THREE.Group();
+  scene.add(world);
+
+  // Kaelis: a soft clay body with one big eye
+  const kaelis = new THREE.Group();
+  const body = new THREE.Mesh(new THREE.SphereGeometry(1.45, 64, 64), clay(0xd6cec2));
+  body.scale.set(1, 0.94, 1);
+  body.castShadow = true;
+  kaelis.add(body);
+
+  const eyeRig = new THREE.Group();
+  kaelis.add(eyeRig);
+  const sclera = new THREE.Mesh(new THREE.SphereGeometry(0.62, 48, 48), clay(0xfafafa));
+  sclera.position.z = 1.05;
+  sclera.scale.z = 0.7;
+  const iris = new THREE.Mesh(new THREE.SphereGeometry(0.34, 40, 40), clay(0x4bb7d6));
+  iris.position.z = 1.42;
+  iris.scale.z = 0.5;
+  const pupil = new THREE.Mesh(new THREE.SphereGeometry(0.17, 32, 32), clay(0x141414));
+  pupil.position.z = 1.56;
+  pupil.scale.z = 0.5;
+  eyeRig.add(sclera, iris, pupil);
+
+  const antenna = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.07, 0.7, 16), clay(0x141414));
+  antenna.position.set(0.35, 1.55, 0);
+  antenna.rotation.z = -0.25;
+  const bulb = new THREE.Mesh(new THREE.SphereGeometry(0.17, 32, 32), clay(0xe8743b));
+  bulb.position.set(0.45, 1.93, 0);
+  kaelis.add(antenna, bulb);
+  kaelis.position.y = 0.2;
+  world.add(kaelis);
+
+  // Little clay blocks orbiting: the chain Kaelis was born from
+  const palette = [0xe8743b, 0x4bb7d6, 0xd9d2c6, 0x141414, 0xf2b38d, 0xa7dbe9];
+  const blocks = [];
+  const boxGeo = new THREE.BoxGeometry(1, 1, 1);
+  for (let i = 0; i < 9; i++) {
+    const m = new THREE.Mesh(boxGeo, clay(palette[i % palette.length]));
+    const s = 0.28 + (i % 3) * 0.1;
+    m.scale.setScalar(s);
+    m.castShadow = true;
+    blocks.push({ m, a: (i / 9) * Math.PI * 2, r: 2.6 + (i % 2) * 0.5, y: Math.sin(i * 1.7) * 0.9, sp: 0.25 + (i % 3) * 0.06 });
+    world.add(m);
+  }
+
+  const ground = new THREE.Mesh(new THREE.PlaneGeometry(30, 30), new THREE.ShadowMaterial({ opacity: 0.16 }));
+  ground.rotation.x = -Math.PI / 2;
+  ground.position.y = -1.9;
+  ground.receiveShadow = true;
+  scene.add(ground);
+
+  // Input: cursor moves the eye, drag turns the figure
+  const look = { x: 0, y: 0 };
+  let dragging = false, lastX = 0, spin = 0, spinVel = 0;
+  window.addEventListener("pointermove", (e) => {
+    look.x = (e.clientX / window.innerWidth) * 2 - 1;
+    look.y = -((e.clientY / window.innerHeight) * 2 - 1);
+    if (dragging) { spinVel = (e.clientX - lastX) * 0.01; spin += spinVel; lastX = e.clientX; }
+  }, { passive: true });
+  canvas.addEventListener("pointerdown", (e) => { dragging = true; lastX = e.clientX; });
+  window.addEventListener("pointerup", () => { dragging = false; });
+
+  function resize() {
+    const r = canvas.getBoundingClientRect();
+    renderer.setSize(r.width, r.height, false);
+    camera.aspect = r.width / Math.max(1, r.height);
+    camera.position.z = camera.aspect < 0.9 ? 15 : 11;
+    camera.updateProjectionMatrix();
+  }
+  window.addEventListener("resize", resize);
+  resize();
+
+  const clock = new THREE.Clock();
+  function frame() {
+    const t = clock.getElapsedTime();
+    const m = reduce ? 0 : 1;
+    if (!dragging) { spinVel *= 0.94; spin += spinVel; }
+    world.rotation.y = spin + Math.sin(t * 0.3) * 0.15 * m;
+    kaelis.position.y = 0.2 + Math.sin(t * 1.4) * 0.12 * m;
+    body.scale.y = 0.94 + Math.sin(t * 2.8) * 0.012 * m;
+
+    eyeRig.rotation.y += (look.x * 0.55 - world.rotation.y * 0 - eyeRig.rotation.y) * 0.12;
+    eyeRig.rotation.x += (-look.y * 0.4 - eyeRig.rotation.x) * 0.12;
+    const blink = m && (t % 4.2) < 0.12 ? 0.1 : 1;
+    sclera.scale.y += (blink - sclera.scale.y) * 0.5;
+    iris.scale.y = pupil.scale.y = sclera.scale.y;
+
+    blocks.forEach((b, i) => {
+      const a = b.a + t * b.sp * m;
+      b.m.position.set(Math.cos(a) * b.r, b.y + Math.sin(t + i) * 0.15 * m, Math.sin(a) * b.r);
+      b.m.rotation.set(t * 0.4 * m + i, t * 0.3 * m + i, 0);
+    });
+
+    renderer.render(scene, camera);
+    requestAnimationFrame(frame);
+  }
+  requestAnimationFrame(frame);
+})();
+</script>

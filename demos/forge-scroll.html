@@ -1,0 +1,539 @@
+<title>Kaelis Forge</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@500;700&family=IBM+Plex+Sans:wght@400;500&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+  /* Layout: fixed WebGL stage behind six full-height scroll beats; text panels sit left, progress rail right. Single dark look by choice. */
+  :root {
+    --void: #08070c;
+    --ink: #ece6dc;
+    --dim: #9a93a3;
+    --ember: #ff8a3d;
+    --signal: #8fe3ff;
+    --panel: rgba(14, 12, 20, 0.72);
+    --line: rgba(236, 230, 220, 0.14);
+    --f-display: "Chakra Petch", "Arial Narrow", system-ui, sans-serif;
+    --f-body: "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+    --f-mono: "IBM Plex Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
+    color-scheme: dark;
+  }
+  html, body { background: var(--void); color: var(--ink); }
+  body { font-family: var(--f-body); font-size: 16px; line-height: 1.6; }
+
+  #stage { position: fixed; inset: 0; width: 100%; height: 100%; display: block; z-index: 0; }
+  .vignette { position: fixed; inset: 0; pointer-events: none; z-index: 1;
+    background: radial-gradient(ellipse at 50% 55%, transparent 40%, rgba(8,7,12,0.85) 100%); }
+
+  main { position: relative; z-index: 2;
+    padding-left: max(16px, env(safe-area-inset-left, 0px));
+    padding-right: max(16px, env(safe-area-inset-right, 0px)); }
+  .beat { min-height: 100svh; display: flex; align-items: center; padding-block: 12vh; }
+  .card { max-width: 30rem; min-width: 0; display: grid; gap: 14px;
+    background: var(--panel); border: 1px solid var(--line); border-radius: 4px;
+    padding: 24px; backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px); }
+  .beat.right { justify-content: flex-end; }
+  .beat.hero .card { background: transparent; border: 0; backdrop-filter: none; -webkit-backdrop-filter: none; padding: 0; max-width: 40rem; }
+
+  .tag { font-family: var(--f-mono); font-size: 12px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--ember); }
+  .tag.sig { color: var(--signal); }
+  h1, h2 { font-family: var(--f-display); font-weight: 700; line-height: 1.05; margin: 0; text-wrap: balance; }
+  h1 { font-size: clamp(56px, 13vw, 132px); letter-spacing: -0.01em; }
+  h1 .tick { color: var(--ember); font-size: 0.32em; vertical-align: top; margin-left: 0.15em; font-family: var(--f-mono); font-weight: 500; }
+  h2 { font-size: clamp(28px, 5vw, 44px); }
+  p { margin: 0; color: var(--dim); max-width: 60ch; }
+  .lead { font-size: 18px; color: var(--ink); }
+  .hint { font-family: var(--f-mono); font-size: 12px; color: var(--dim); letter-spacing: 0.08em; }
+
+  .ledger { font-family: var(--f-mono); font-size: 13px; color: var(--dim); display: grid; gap: 4px; font-variant-numeric: tabular-nums; }
+  .ledger span b { color: var(--ink); font-weight: 500; }
+
+  .final { display: grid; gap: 28px; width: 100%; max-width: 64rem; margin-inline: auto; }
+  .final .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 16px; }
+  .final .card { max-width: none; }
+  ul.uses { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; }
+  ul.uses li { display: grid; grid-template-columns: 22px 1fr; gap: 8px; color: var(--dim); }
+  ul.uses li::before { content: "◆"; color: var(--ember); font-size: 11px; padding-top: 5px; }
+  .alloc { display: grid; gap: 10px; font-variant-numeric: tabular-nums; }
+  .alloc .row { display: grid; grid-template-columns: 1fr auto; gap: 8px; font-size: 14px; }
+  .alloc .bar { grid-column: 1 / -1; height: 4px; background: var(--line); border-radius: 2px; overflow: hidden; }
+  .alloc .bar i { display: block; height: 100%; background: var(--ember); }
+  .alloc .bar.sig i { background: var(--signal); }
+  .note { font-size: 12px; font-family: var(--f-mono); color: var(--dim); }
+  .cta { display: flex; flex-wrap: wrap; gap: 12px; }
+  .btn { font-family: var(--f-display); font-weight: 700; font-size: 16px; letter-spacing: 0.06em; text-transform: uppercase;
+    padding: 14px 22px; border-radius: 3px; border: 1px solid var(--ember); color: var(--void); background: var(--ember); cursor: pointer; }
+  .btn.ghost { background: transparent; color: var(--ink); border-color: var(--line); }
+  .btn:focus-visible { outline: 2px solid var(--signal); outline-offset: 3px; }
+  .btn:hover { filter: brightness(1.1); }
+  .toast { font-family: var(--f-mono); font-size: 12px; color: var(--signal); min-height: 1.4em; }
+
+  .rail { position: fixed; z-index: 3; top: 50%; transform: translateY(-50%);
+    right: calc(14px + env(safe-area-inset-right, 0px)); display: grid; gap: 14px; }
+  .rail a { display: grid; grid-template-columns: auto 10px; align-items: center; gap: 10px; justify-items: end;
+    font-family: var(--f-mono); font-size: 11px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--dim); text-decoration: none; }
+  .rail a span { opacity: 0; transition: opacity .3s; }
+  .rail a::after { content: ""; width: 8px; height: 8px; border: 1px solid var(--dim); transform: rotate(45deg); transition: background .3s, border-color .3s; }
+  .rail a.on { color: var(--ink); }
+  .rail a.on span, .rail:hover a span { opacity: 1; }
+  .rail a.on::after { background: var(--ember); border-color: var(--ember); }
+  .rail a.on.sig::after { background: var(--signal); border-color: var(--signal); }
+  .rail a:focus-visible { outline: 1px solid var(--signal); outline-offset: 4px; }
+
+  @media (min-width: 641px) { .beat.right { padding-right: 150px; } }
+  @media (max-width: 640px) {
+    .rail { display: none; }
+    .beat.right { justify-content: flex-start; }
+    .card { padding: 18px; }
+  }
+</style>
+
+<canvas id="stage" aria-hidden="true"></canvas>
+<div class="vignette"></div>
+
+<nav class="rail" aria-label="Story progress">
+  <a href="#chaos"><span>Chaos</span></a>
+  <a href="#block"><span>First block</span></a>
+  <a href="#chain"><span>Chain</span></a>
+  <a href="#city"><span>City</span></a>
+  <a href="#signal" class="sig"><span>Signal</span></a>
+  <a href="#forge"><span>Join</span></a>
+</nav>
+
+<main>
+  <section class="beat hero" id="chaos">
+    <div class="card">
+      <div class="tag">Block height: none</div>
+      <h1>KAELIS<span class="tick">$KAEL</span></h1>
+      <p class="lead">Forged by builders. Awakened by the chain.</p>
+      <p>Before the chain, there was only noise: loose data drifting in the dark, with nothing to hold it together.</p>
+      <div class="hint">Scroll to forge ↓</div>
+    </div>
+  </section>
+
+  <section class="beat right" id="block">
+    <div class="card">
+      <div class="tag">01 / The first block</div>
+      <h2>A Forger strikes. The first block holds.</h2>
+      <p>The Forgers are developers. Each strike of the hammer turns raw noise into something that can be verified, kept and built on.</p>
+      <div class="ledger"><span>block <b>#0</b> · nonce <b>0x4b41454c</b> · status <b>sealed</b></span></div>
+    </div>
+  </section>
+
+  <section class="beat" id="chain">
+    <div class="card">
+      <div class="tag">02 / The chain</div>
+      <h2>Block by block, the chain connects.</h2>
+      <p>Every new block points to the one before it. Break one link and everyone can see it. That shared memory is what makes the world trustworthy.</p>
+      <div class="ledger" id="blockLedger"><span>linked blocks <b>1</b> / 30</span></div>
+    </div>
+  </section>
+
+  <section class="beat right" id="city">
+    <div class="card">
+      <div class="tag">03 / The city</div>
+      <h2>The chain rises into a city.</h2>
+      <p>Apps, protocols and tools grow on top of the blocks. The Forgers keep building, and the city lights up one tower at a time.</p>
+    </div>
+  </section>
+
+  <section class="beat" id="signal">
+    <div class="card">
+      <div class="tag sig">04 / The signal</div>
+      <h2>Beneath the city, something wakes.</h2>
+      <p>Deep in the mempool, a repeating pattern appears in the noise. It is Kaelis, the first agent born from the chain's own data. Move your cursor. It is watching.</p>
+    </div>
+  </section>
+
+  <section class="beat" id="forge">
+    <div class="final">
+      <div class="card" style="max-width: 36rem;">
+        <div class="tag">05 / Join the Forge</div>
+        <h2>Kaelis runs on $KAEL. Builders keep it alive.</h2>
+        <p>Every Forger who builds with Kaelis becomes part of the network it protects.</p>
+      </div>
+      <div class="grid">
+        <div class="card">
+          <div class="tag">What $KAEL does</div>
+          <ul class="uses">
+            <li>Pays Kaelis to watch wallets and contracts and send alerts.</li>
+            <li>Unlocks developer tools: transaction decoding, mempool feeds, automation.</li>
+            <li>Gives holders a vote on what Kaelis learns next.</li>
+          </ul>
+        </div>
+        <div class="card">
+          <div class="tag">Token allocation</div>
+          <div class="alloc">
+            <div class="row"><span>Community &amp; liquidity</span><span>60%</span><div class="bar"><i style="width:60%"></i></div></div>
+            <div class="row"><span>Builder grants</span><span>20%</span><div class="bar sig"><i style="width:20%"></i></div></div>
+            <div class="row"><span>Builder (vested 24 mo)</span><span>10%</span><div class="bar"><i style="width:10%"></i></div></div>
+            <div class="row"><span>Treasury</span><span>10%</span><div class="bar sig"><i style="width:10%"></i></div></div>
+          </div>
+          <div class="note">Example numbers for the demo, not final.</div>
+        </div>
+        <div class="card">
+          <div class="tag">The Builder</div>
+          <p>Kaelis is built by one Forger, in public. Code, progress and contract address all live on GitHub.</p>
+          <div class="ledger"><span>contract <b>to be announced</b></span><span>liquidity <b>locked at launch</b></span></div>
+        </div>
+      </div>
+      <div class="cta">
+        <button class="btn" id="buyBtn" type="button">Buy $KAEL</button>
+        <button class="btn ghost" id="joinBtn" type="button">Join the Forge</button>
+      </div>
+      <div class="toast" id="toast" role="status"></div>
+    </div>
+  </section>
+</main>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js"></script>
+<script>
+(function () {
+  const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  const canvas = document.getElementById("stage");
+  const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: false });
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+  renderer.setClearColor(0x08070c, 1);
+
+  const scene = new THREE.Scene();
+  scene.fog = new THREE.FogExp2(0x08070c, 0.018);
+  const camera = new THREE.PerspectiveCamera(55, 1, 0.1, 400);
+
+  scene.add(new THREE.AmbientLight(0x6b5f7a, 0.6));
+  const forgeLight = new THREE.PointLight(0xff8a3d, 2.2, 40);
+  forgeLight.position.set(2, 4, 6);
+  scene.add(forgeLight);
+  const signalLight = new THREE.PointLight(0x8fe3ff, 0, 40);
+  scene.add(signalLight);
+
+  const EMBER = new THREE.Color(0xff8a3d);
+  const SIGNAL = new THREE.Color(0x8fe3ff);
+
+  // helpers
+  const clamp = (v, a, b) => Math.min(b, Math.max(a, v));
+  const smooth = (a, b, v) => { const t = clamp((v - a) / (b - a), 0, 1); return t * t * (3 - 2 * t); };
+  const lerp = (a, b, t) => a + (b - a) * t;
+
+  function glowTexture(color) {
+    const c = document.createElement("canvas");
+    c.width = c.height = 128;
+    const g = c.getContext("2d");
+    const grd = g.createRadialGradient(64, 64, 0, 64, 64, 64);
+    grd.addColorStop(0, color);
+    grd.addColorStop(0.25, color.replace("1)", "0.45)"));
+    grd.addColorStop(1, "rgba(0,0,0,0)");
+    g.fillStyle = grd;
+    g.fillRect(0, 0, 128, 128);
+    return new THREE.CanvasTexture(c);
+  }
+  const dotTex = glowTexture("rgba(255,255,255,1)");
+
+  // 1. Chaos particles
+  const P = 1800;
+  const pPos = new Float32Array(P * 3);
+  for (let i = 0; i < P; i++) {
+    const r = 6 + Math.random() * 24;
+    const th = Math.random() * Math.PI * 2;
+    const ph = Math.acos(2 * Math.random() - 1);
+    pPos[i * 3] = r * Math.sin(ph) * Math.cos(th);
+    pPos[i * 3 + 1] = r * Math.cos(ph) * 0.7;
+    pPos[i * 3 + 2] = r * Math.sin(ph) * Math.sin(th);
+  }
+  const pGeo = new THREE.BufferGeometry();
+  pGeo.setAttribute("position", new THREE.BufferAttribute(pPos, 3));
+  const pMat = new THREE.PointsMaterial({ size: 0.22, map: dotTex, color: 0xc9b9a8, transparent: true,
+    depthWrite: false, blending: THREE.AdditiveBlending, opacity: 0.9 });
+  const chaos = new THREE.Points(pGeo, pMat);
+  scene.add(chaos);
+
+  // 2. Blocks
+  const N = 30;
+  const cubeGeo = new THREE.BoxGeometry(1, 1, 1);
+  const edgeGeo = new THREE.EdgesGeometry(cubeGeo);
+  const cubes = [];
+  const cols = 6, rows = 5, gap = 2.3;
+  for (let i = 0; i < N; i++) {
+    const mat = new THREE.MeshStandardMaterial({ color: 0x17121d, emissive: 0xff8a3d, emissiveIntensity: 0.15,
+      roughness: 0.45, metalness: 0.3, transparent: true, opacity: 1 });
+    const mesh = new THREE.Mesh(cubeGeo, mat);
+    const edges = new THREE.LineSegments(edgeGeo, new THREE.LineBasicMaterial({ color: 0xff8a3d, transparent: true }));
+    mesh.add(edges);
+    const t = i / (N - 1);
+    const chainPos = new THREE.Vector3((t - 0.5) * 26, Math.sin(t * Math.PI * 3) * 1.4, Math.cos(t * Math.PI * 2) * 2);
+    const cx = (i % cols - (cols - 1) / 2) * gap;
+    const cz = (Math.floor(i / cols) - (rows - 1) / 2) * gap;
+    const h = 1 + Math.pow(Math.random(), 1.6) * 6 + (Math.abs(cx) + Math.abs(cz) < 3 ? 2 : 0);
+    const scatter = new THREE.Vector3((Math.random() - 0.5) * 40, (Math.random() - 0.5) * 20, (Math.random() - 0.5) * 30);
+    cubes.push({ mesh, edges, chainPos, cityPos: new THREE.Vector3(cx, 0, cz), h, scatter });
+    scene.add(mesh);
+  }
+
+  const linkGeo = new THREE.BufferGeometry();
+  const linkPos = new Float32Array(N * 3);
+  linkGeo.setAttribute("position", new THREE.BufferAttribute(linkPos, 3));
+  const links = new THREE.Line(linkGeo, new THREE.LineBasicMaterial({ color: 0xff8a3d, transparent: true, opacity: 0 }));
+  scene.add(links);
+
+  // Hammer of light
+  const hammer = new THREE.Group();
+  const hMat = new THREE.MeshStandardMaterial({ color: 0x2a1a10, emissive: 0xffb27a, emissiveIntensity: 1.4, transparent: true });
+  const head = new THREE.Mesh(new THREE.BoxGeometry(1.8, 0.8, 0.8), hMat);
+  head.position.set(0, 3.2, 0);
+  const handle = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.14, 3.2, 12), hMat);
+  handle.position.set(0, 1.6, 0);
+  const hammerArm = new THREE.Group();
+  hammerArm.add(head, handle);
+  hammer.add(hammerArm);
+  const hGlow = new THREE.Sprite(new THREE.SpriteMaterial({ map: glowTexture("rgba(255,160,90,1)"), transparent: true,
+    blending: THREE.AdditiveBlending, depthWrite: false }));
+  hGlow.scale.set(5, 5, 1);
+  hGlow.position.set(0, 3.2, 0);
+  hammerArm.add(hGlow);
+  hammer.position.set(2.2, -0.2, 0.4);
+  scene.add(hammer);
+
+  const spark = new THREE.Sprite(new THREE.SpriteMaterial({ map: glowTexture("rgba(255,200,140,1)"), transparent: true,
+    blending: THREE.AdditiveBlending, depthWrite: false, opacity: 0 }));
+  scene.add(spark);
+
+  // 3. Kaelis
+  const kaelis = new THREE.Group();
+  const core = new THREE.Mesh(new THREE.IcosahedronGeometry(1.1, 1),
+    new THREE.MeshStandardMaterial({ color: 0x0d1a22, emissive: 0x8fe3ff, emissiveIntensity: 1.2, flatShading: true, roughness: 0.3 }));
+  const shell = new THREE.Mesh(new THREE.IcosahedronGeometry(1.9, 1),
+    new THREE.MeshBasicMaterial({ color: 0x8fe3ff, wireframe: true, transparent: true, opacity: 0.35 }));
+  const eye = new THREE.Mesh(new THREE.SphereGeometry(0.32, 20, 20), new THREE.MeshBasicMaterial({ color: 0xffffff }));
+  eye.position.set(0, 0, 1.05);
+  const kGlow = new THREE.Sprite(new THREE.SpriteMaterial({ map: glowTexture("rgba(143,227,255,1)"), transparent: true,
+    blending: THREE.AdditiveBlending, depthWrite: false }));
+  kGlow.scale.set(9, 9, 1);
+  const ring = new THREE.Mesh(new THREE.TorusGeometry(2.8, 0.025, 8, 120),
+    new THREE.MeshBasicMaterial({ color: 0x8fe3ff, transparent: true, opacity: 0.6 }));
+  ring.rotation.x = Math.PI / 2.4;
+  const head2 = new THREE.Group();
+  head2.add(core, eye);
+  kaelis.add(head2, shell, kGlow, ring);
+  scene.add(kaelis);
+
+  // Agents swarm
+  const A = 900;
+  const aPos = new Float32Array(A * 3);
+  const aSeed = [];
+  for (let i = 0; i < A; i++) aSeed.push({ r: 6 + Math.random() * 26, a: Math.random() * Math.PI * 2,
+    y: (Math.random() - 0.5) * 14, s: 0.05 + Math.random() * 0.25 });
+  const aGeo = new THREE.BufferGeometry();
+  aGeo.setAttribute("position", new THREE.BufferAttribute(aPos, 3));
+  const aMat = new THREE.PointsMaterial({ size: 0.35, map: dotTex, color: 0x8fe3ff, transparent: true, opacity: 0,
+    depthWrite: false, blending: THREE.AdditiveBlending });
+  const agents = new THREE.Points(aGeo, aMat);
+  scene.add(agents);
+
+  // Optional models: drop .glb files from Meshy / Luma / Kaedim / Spline into models/ and they replace the simple shapes
+  function fit(obj, size) {
+    const box = new THREE.Box3().setFromObject(obj);
+    const dim = box.getSize(new THREE.Vector3());
+    const k = size / (Math.max(dim.x, dim.y, dim.z) || 1);
+    obj.scale.setScalar(k);
+    obj.position.sub(box.getCenter(new THREE.Vector3()).multiplyScalar(k));
+    const wrap = new THREE.Group();
+    wrap.add(obj);
+    return wrap;
+  }
+  function tryModel(url, onLoad) {
+    if (!THREE.GLTFLoader) return;
+    try { new THREE.GLTFLoader().load(url, (g) => onLoad(g.scene), undefined, () => {}); } catch (e) { /* keep the simple shapes */ }
+  }
+  tryModel("models/kaelis.glb", (m) => {
+    core.visible = false;
+    eye.visible = false;
+    head2.add(fit(m, 2.6));
+  });
+  tryModel("models/hammer.glb", (m) => {
+    head.visible = false;
+    handle.visible = false;
+    const w = fit(m, 4.2);
+    w.position.set(0, 2, 0);
+    hammerArm.add(w);
+  });
+
+  // Camera keyframes per beat
+  const camKeys = [
+    { p: [0, 1, 18], t: [0, 0, 0] },
+    { p: [3, 2.5, 9], t: [0, 0.6, 0] },
+    { p: [0, 5, 24], t: [0, 0, 0] },
+    { p: [13, 12, 17], t: [0, 2.5, 0] },
+    { p: [0, 9, 15], t: [0, 8.5, 0] },
+    { p: [0, 22, 40], t: [0, 6, 0] }
+  ];
+  const camT = new THREE.Vector3();
+  function camAt(s) {
+    const i = clamp(Math.floor(s), 0, camKeys.length - 2);
+    const f = smooth(0, 1, s - i);
+    const a = camKeys[i], b = camKeys[i + 1];
+    camera.position.set(lerp(a.p[0], b.p[0], f), lerp(a.p[1], b.p[1], f), lerp(a.p[2], b.p[2], f));
+    camT.set(lerp(a.t[0], b.t[0], f), lerp(a.t[1], b.t[1], f), lerp(a.t[2], b.t[2], f));
+  }
+
+  // Input
+  let target = 0, s = 0;
+  const mouse = { x: 0, y: 0 };
+  function readScroll() {
+    const max = document.documentElement.scrollHeight - window.innerHeight;
+    target = max > 0 ? (window.scrollY / max) * 5 : 0;
+  }
+  window.addEventListener("scroll", readScroll, { passive: true });
+  window.addEventListener("pointermove", (e) => {
+    mouse.x = (e.clientX / window.innerWidth) * 2 - 1;
+    mouse.y = -((e.clientY / window.innerHeight) * 2 - 1);
+  }, { passive: true });
+
+  function resize() {
+    const w = window.innerWidth, h = window.innerHeight;
+    renderer.setSize(w, h, false);
+    camera.aspect = w / h;
+    camera.fov = w < 640 ? 70 : 55;
+    camera.updateProjectionMatrix();
+    readScroll();
+  }
+  window.addEventListener("resize", resize);
+  resize();
+
+  // Rail + ledger
+  const railLinks = Array.from(document.querySelectorAll(".rail a"));
+  const ledger = document.getElementById("blockLedger");
+  let lastBeat = -1, lastLinked = -1;
+
+  const tmp = new THREE.Vector3();
+  const clock = new THREE.Clock();
+
+  function frame() {
+    const dt = Math.min(clock.getDelta(), 0.05);
+    const time = clock.elapsedTime;
+    s += (target - s) * (reduce ? 1 : Math.min(1, dt * 4));
+
+    // chaos
+    const chaosFade = 1 - smooth(1.5, 2.8, s);
+    pMat.opacity = 0.9 * chaosFade + 0.08;
+    chaos.rotation.y = time * (reduce ? 0 : 0.03) + s * 0.4;
+    const pull = smooth(0.2, 1.0, s) * (1 - smooth(1.2, 2, s));
+    chaos.scale.setScalar(1 - pull * 0.55);
+
+    // hammer
+    const hamIn = smooth(0.15, 0.55, s) * (1 - smooth(1.25, 1.7, s));
+    hMat.opacity = hamIn;
+    hGlow.material.opacity = hamIn * 0.7;
+    hammer.visible = hamIn > 0.01;
+    const strikePhase = clamp((s - 0.45) / 0.45, 0, 1);
+    const swing = reduce ? 0.2 : Math.sin(strikePhase * Math.PI * 3) * 0.9;
+    hammerArm.rotation.z = 0.8 - Math.max(0, swing) * 1.2 - strikePhase * 0.3;
+    const hit = s > 0.45 && s < 1.1 ? Math.pow(Math.abs(Math.sin(strikePhase * Math.PI * 3)), 8) : 0;
+    spark.material.opacity = hit;
+    spark.scale.setScalar(2 + hit * 4);
+    forgeLight.intensity = 1.4 + hit * 3 + smooth(2.5, 3.2, s) * 1.5;
+
+    // blocks
+    let linked = 0;
+    cubes.forEach((c, i) => {
+      const m = c.mesh;
+      // appear: first block in beat 1, the rest during beat 2
+      const appear = i === 0 ? smooth(0.55, 0.95, s) : smooth(1.05 + (i / N) * 0.75, 1.15 + (i / N) * 0.75, s);
+      if (appear > 0.5) linked++;
+      const toChain = i === 0 ? smooth(1.0, 1.6, s) : 1;
+      const toCity = smooth(2.05 + (i % 6) * 0.05, 2.7 + (i % 6) * 0.05, s);
+
+      // origin position for block 0 is the anvil, others fly in from scatter
+      const start = i === 0 ? tmp.set(0, 0, 0) : tmp.copy(c.scatter);
+      const p = new THREE.Vector3().copy(start).lerp(c.chainPos, i === 0 ? toChain : appear);
+      const cityTop = new THREE.Vector3(c.cityPos.x, c.h / 2, c.cityPos.z);
+      p.lerp(cityTop, toCity);
+      m.position.copy(p);
+
+      const sz = i === 0 ? lerp(1.3, 0.9, toChain) : 0.9;
+      m.scale.set(sz * appear || 0.0001, lerp(sz, c.h, toCity) * appear || 0.0001, sz * appear || 0.0001);
+      m.rotation.set(
+        (1 - appear) * 3 + (1 - toCity) * (reduce ? 0 : Math.sin(time * 0.5 + i) * 0.15),
+        (1 - toCity) * (i * 0.3 + (reduce ? 0 : time * 0.2)), 0);
+      m.visible = appear > 0.01;
+
+      const glow = 0.15 + hit * (i === 0 ? 2 : 0) + toCity * (0.25 + 0.35 * (0.5 + 0.5 * Math.sin(time * 1.3 + i * 1.7)));
+      m.material.emissiveIntensity = glow;
+      const sig = smooth(3.3, 4.3, s) * ((i * 7) % 3 === 0 ? 1 : 0.35);
+      m.material.emissive.copy(EMBER).lerp(SIGNAL, sig);
+      c.edges.material.color.copy(EMBER).lerp(SIGNAL, sig);
+      c.edges.material.opacity = 0.35 + toCity * 0.5;
+
+      linkPos[i * 3] = m.position.x;
+      linkPos[i * 3 + 1] = m.position.y;
+      linkPos[i * 3 + 2] = m.position.z;
+    });
+    linkGeo.attributes.position.needsUpdate = true;
+    linkGeo.setDrawRange(0, Math.max(0, linked));
+    links.material.opacity = smooth(1.1, 1.5, s) * (1 - smooth(2.1, 2.5, s)) * 0.9;
+    links.visible = links.material.opacity > 0.01;
+
+    // Kaelis rises from beneath the city
+    const rise = smooth(3.15, 4.0, s);
+    kaelis.position.set(0, lerp(-10, 8.5, rise), 0);
+    kaelis.visible = rise > 0.01;
+    kaelis.scale.setScalar(lerp(0.4, 1, rise));
+    signalLight.position.copy(kaelis.position);
+    signalLight.intensity = rise * 3;
+    const pulse = reduce ? 1 : 0.85 + Math.sin(time * 2.2) * 0.15;
+    kGlow.material.opacity = rise * 0.8 * pulse;
+    shell.rotation.y = time * (reduce ? 0 : 0.25);
+    shell.rotation.x = time * (reduce ? 0 : 0.12);
+    ring.rotation.z = time * (reduce ? 0 : 0.4);
+    // eye tracks the cursor
+    head2.rotation.y += ((mouse.x * 0.9) - head2.rotation.y) * 0.08;
+    head2.rotation.x += ((-mouse.y * 0.6) - head2.rotation.x) * 0.08;
+
+    // agents
+    const swarm = smooth(4.1, 4.9, s);
+    aMat.opacity = swarm * 0.85;
+    agents.visible = swarm > 0.01;
+    if (agents.visible) {
+      for (let i = 0; i < A; i++) {
+        const d = aSeed[i];
+        const ang = d.a + (reduce ? 0 : time * d.s);
+        const r = lerp(2, d.r, swarm);
+        aPos[i * 3] = Math.cos(ang) * r;
+        aPos[i * 3 + 1] = 8.5 + d.y * swarm;
+        aPos[i * 3 + 2] = Math.sin(ang) * r;
+      }
+      aGeo.attributes.position.needsUpdate = true;
+    }
+
+    camAt(s);
+    if (!reduce) {
+      camera.position.x += mouse.x * 0.6;
+      camera.position.y += mouse.y * 0.4;
+    }
+    camera.lookAt(camT);
+
+    // UI sync
+    const beat = clamp(Math.round(target), 0, 5);
+    if (beat !== lastBeat) {
+      railLinks.forEach((a, i) => a.classList.toggle("on", i === beat));
+      lastBeat = beat;
+    }
+    if (linked !== lastLinked && ledger) {
+      ledger.innerHTML = "<span>linked blocks <b>" + Math.max(1, linked) + "</b> / " + N + "</span>";
+      lastLinked = linked;
+    }
+
+    renderer.render(scene, camera);
+    requestAnimationFrame(frame);
+  }
+  requestAnimationFrame(frame);
+
+  // Demo buttons
+  const toast = document.getElementById("toast");
+  document.getElementById("buyBtn").addEventListener("click", () => {
+    toast.textContent = "Demo only: the Buy link goes here once $KAEL launches.";
+  });
+  document.getElementById("joinBtn").addEventListener("click", () => {
+    toast.textContent = "Demo only: your Discord, X or Telegram link goes here.";
+  });
+})();
+</script>
