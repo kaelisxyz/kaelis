@@ -91,28 +91,28 @@
 
   /* Holographic glass cards */
   @property --ang { syntax: "<angle>"; inherits: false; initial-value: 0deg; }
-  .beat:not(.hero) .card { position: relative; border-color: transparent; --mx: 50%; --my: 50%;
+  :is(.beat:not(.hero), .info) .card { position: relative; border-color: transparent; --mx: 50%; --my: 50%;
     transform: perspective(900px) rotateX(var(--rx, 0deg)) rotateY(var(--ry, 0deg)); transition: transform .25s ease-out; }
-  .beat:not(.hero) .card::before { content: ""; position: absolute; inset: 0; border-radius: inherit; padding: 1px; pointer-events: none;
+  :is(.beat:not(.hero), .info) .card::before { content: ""; position: absolute; inset: 0; border-radius: inherit; padding: 1px; pointer-events: none;
     background: conic-gradient(from var(--ang), #ff8a3d, #8fe3ff, #c9a2ff, #ff8a3d);
     -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0); -webkit-mask-composite: xor; mask-composite: exclude;
     opacity: 0.6; animation: holo-spin 7s linear infinite; }
-  .beat:not(.hero) .card::after { content: ""; position: absolute; inset: 0; border-radius: inherit; pointer-events: none;
+  :is(.beat:not(.hero), .info) .card::after { content: ""; position: absolute; inset: 0; border-radius: inherit; pointer-events: none;
     background: radial-gradient(420px circle at var(--mx) var(--my), rgba(143, 227, 255, 0.13), transparent 45%),
       repeating-linear-gradient(0deg, rgba(255, 255, 255, 0.025) 0 1px, transparent 1px 3px); mix-blend-mode: screen; }
   @keyframes holo-spin { to { --ang: 360deg; } }
-  h2[data-text] { position: relative; }
-  h2.glitch::before, h2.glitch::after { content: attr(data-text); position: absolute; inset: 0; pointer-events: none; }
-  h2.glitch::before { color: var(--signal); transform: translateX(-3px); mix-blend-mode: screen; animation: glitch-a .45s steps(2, end) both; }
-  h2.glitch::after { color: var(--ember); transform: translateX(3px); mix-blend-mode: screen; animation: glitch-b .45s steps(2, end) both; }
-  h2.glitch { animation: glitch-shake .45s steps(3, end); }
+  :is(h2, h3)[data-text] { position: relative; }
+  :is(h2, h3).glitch::before, :is(h2, h3).glitch::after { content: attr(data-text); position: absolute; inset: 0; pointer-events: none; }
+  :is(h2, h3).glitch::before { color: var(--signal); transform: translateX(-3px); mix-blend-mode: screen; animation: glitch-a .45s steps(2, end) both; }
+  :is(h2, h3).glitch::after { color: var(--ember); transform: translateX(3px); mix-blend-mode: screen; animation: glitch-b .45s steps(2, end) both; }
+  :is(h2, h3).glitch { animation: glitch-shake .45s steps(3, end); }
   @keyframes glitch-a { 0% { clip-path: inset(8% 0 70% 0); } 25% { clip-path: inset(55% 0 20% 0); } 50% { clip-path: inset(82% 0 4% 0); } 75% { clip-path: inset(30% 0 52% 0); } 100% { clip-path: inset(0 0 100% 0); } }
   @keyframes glitch-b { 0% { clip-path: inset(62% 0 12% 0); } 25% { clip-path: inset(12% 0 66% 0); } 50% { clip-path: inset(40% 0 38% 0); } 75% { clip-path: inset(74% 0 8% 0); } 100% { clip-path: inset(0 0 100% 0); } }
   @keyframes glitch-shake { 0% { transform: translateX(0); } 33% { transform: translateX(-2px) skewX(-4deg); } 66% { transform: translateX(2px); } 100% { transform: none; } }
   @media (prefers-reduced-motion: reduce) {
-    .beat:not(.hero) .card { transform: none; transition: none; }
-    .beat:not(.hero) .card::before { animation: none; }
-    h2.glitch, h2.glitch::before, h2.glitch::after { animation: none; content: none; }
+    :is(.beat:not(.hero), .info) .card { transform: none; transition: none; }
+    :is(.beat:not(.hero), .info) .card::before { animation: none; }
+    h2.glitch, :is(h2, h3).glitch::before, :is(h2, h3).glitch::after { animation: none; content: none; }
   }
 
   /* Keep text and 3D apart: text column on the left (desktop) or at the bottom (phone); the camera shifts the scene into the free space */
@@ -129,10 +129,57 @@
     .beat .card { max-width: none; }
     .final .grid { grid-template-columns: 1fr; }
   }
+
+  /* Header, info section, footer */
+  .topbar { position: fixed; z-index: 5; top: 0; left: 0; right: 0; display: flex; justify-content: space-between; align-items: center; gap: 12px;
+    padding: calc(12px + env(safe-area-inset-top, 0px)) max(16px, env(safe-area-inset-right, 0px)) 12px max(16px, env(safe-area-inset-left, 0px));
+    background: linear-gradient(to bottom, rgba(8, 7, 12, 0.9), rgba(8, 7, 12, 0)); }
+  .logo { font-family: var(--f-display); font-weight: 700; font-size: 20px; letter-spacing: 0.04em; color: var(--ink); text-decoration: none; display: flex; align-items: baseline; gap: 8px; }
+  .logo span { font-family: var(--f-mono); font-size: 11px; color: var(--ember); letter-spacing: 0.1em; }
+  .topbar nav { display: flex; align-items: center; gap: 18px; }
+  .topbar nav a { color: var(--ink); text-decoration: none; font-size: 14px; }
+  .topbar nav a:not(.btn):hover { color: var(--signal); }
+  .topbar nav a:focus-visible, .logo:focus-visible, .band .big:focus-visible { outline: 2px solid var(--signal); outline-offset: 3px; }
+  a.btn { display: inline-block; text-decoration: none; }
+  .btn.sm { padding: 8px 14px; font-size: 13px; color: var(--void) !important; }
+  .topbar { transition: background .3s, border-color .3s; border-bottom: 1px solid transparent; }
+  .topbar.solid { background: rgba(8, 7, 12, 0.92); border-bottom-color: var(--line); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); }
+  .rail { transition: opacity .3s; }
+  .rail.off { opacity: 0; pointer-events: none; }
+  .beat .cta { display: flex; flex-wrap: wrap; gap: 10px; }
+
+  .info { position: relative; z-index: 2; background: linear-gradient(to bottom, rgba(8, 7, 12, 0), var(--void) 22vh); padding-top: 22vh; }
+  .info-in { max-width: 72rem; margin-inline: auto; display: grid; gap: 20px; padding-block: 0 40px;
+    padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
+  .info-head { display: grid; gap: 10px; padding-bottom: 8px; }
+  .info-head h2 { font-size: clamp(30px, 4.6vw, 54px); max-width: 18ch; }
+  .info h3 { margin: 0; font-family: var(--f-display); font-size: 26px; line-height: 1.1; }
+  .trio { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 16px; }
+  .duo { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 16px; }
+  .info .card { max-width: none; }
+  .band { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: flex-end; gap: 16px; padding: 28px; border: 1px solid var(--line); border-radius: 4px; margin-top: 12px;
+    background: radial-gradient(600px 220px at 15% 100%, rgba(255, 138, 61, 0.18), transparent 70%), radial-gradient(500px 200px at 90% 0%, rgba(143, 227, 255, 0.12), transparent 70%), var(--panel); }
+  .band > div:first-child { display: grid; gap: 8px; }
+  .band .big { font-family: var(--f-display); font-weight: 700; font-size: clamp(32px, 6vw, 72px); line-height: 1; color: var(--ink); text-decoration: none; }
+  .band .big span { color: var(--ember); display: inline-block; transition: transform .3s; }
+  .band .big:hover span { transform: translateX(10px); }
+  .band .toast { flex-basis: 100%; }
+  .foot { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 8px; font-family: var(--f-mono); font-size: 12px; color: var(--dim); border-top: 1px solid var(--line); padding-top: 16px; margin-top: 20px; }
+  @media (max-width: 899px) { .topbar .hide-sm { display: none; } }
 </style>
 
 <canvas id="stage" aria-hidden="true"></canvas>
 <div class="vignette"></div>
+
+<header class="topbar">
+  <a class="logo" href="#chaos">KAELIS<span>$KAEL</span></a>
+  <nav aria-label="Main">
+    <a class="hide-sm" href="#block">Story</a>
+    <a class="hide-sm" href="#token">Token</a>
+    <a href="city.html">Forge City</a>
+    <a class="btn sm" href="#forge">Buy</a>
+  </nav>
+</header>
 
 <nav class="rail" aria-label="Story progress">
   <a href="#chaos"><span>Chaos</span></a>
@@ -189,45 +236,76 @@
   </section>
 
   <section class="beat" id="forge">
-    <div class="final">
-      <div class="card" style="max-width: 36rem;">
-        <div class="tag">05 / Join the Forge</div>
-        <h2>Kaelis runs on $KAEL. Builders keep it alive.</h2>
-        <p>Every Forger who builds with Kaelis becomes part of the network it protects.</p>
-      </div>
-      <div class="grid">
-        <div class="card">
-          <div class="tag">What $KAEL does</div>
-          <ul class="uses">
-            <li>Pays Kaelis to watch wallets and contracts and send alerts.</li>
-            <li>Unlocks developer tools: transaction decoding, mempool feeds, automation.</li>
-            <li>Gives holders a vote on what Kaelis learns next.</li>
-          </ul>
-        </div>
-        <div class="card">
-          <div class="tag">Token allocation</div>
-          <div class="alloc">
-            <div class="row"><span>Community &amp; liquidity</span><span>60%</span><div class="bar"><i style="width:60%"></i></div></div>
-            <div class="row"><span>Builder grants</span><span>20%</span><div class="bar sig"><i style="width:20%"></i></div></div>
-            <div class="row"><span>Builder (vested 24 mo)</span><span>10%</span><div class="bar"><i style="width:10%"></i></div></div>
-            <div class="row"><span>Treasury</span><span>10%</span><div class="bar sig"><i style="width:10%"></i></div></div>
-          </div>
-          <div class="note">Example numbers for the demo, not final.</div>
-        </div>
-        <div class="card">
-          <div class="tag">The Builder</div>
-          <p>Kaelis is built by one Forger, in public. Code, progress and contract address all live on GitHub.</p>
-          <div class="ledger"><span>contract <b>to be announced</b></span><span>liquidity <b>locked at launch</b></span></div>
-        </div>
-      </div>
+    <div class="card">
+      <div class="tag sig">05 / Join the Forge</div>
+      <h2>Kaelis runs on $KAEL. Builders keep it alive.</h2>
+      <p>Kaelis now patrols a whole city. Builders raise towers with real work, every token you send it gets scanned, and every holder lights a window.</p>
       <div class="cta">
-        <button class="btn" id="buyBtn" type="button">Buy $KAEL</button>
-        <button class="btn ghost" id="joinBtn" type="button">Join the Forge</button>
+        <a class="btn" href="city.html">Enter Forge City →</a>
+        <button class="btn ghost" id="buyBtn" type="button">Buy $KAEL</button>
       </div>
       <div class="toast" id="toast" role="status"></div>
     </div>
   </section>
 </main>
+
+<section class="info" id="token">
+  <div class="info-in">
+    <div class="info-head">
+      <span class="tag">Inside Forge City</span>
+      <h2>Three ways $KAEL keeps the city alive</h2>
+    </div>
+    <div class="trio">
+      <div class="card">
+        <div class="tag">01 · Build</div>
+        <h3>Proof-of-Build</h3>
+        <p>Connect GitHub and a wallet. Kaelis verifies your real commits, your tower grows a floor and you earn $KAEL.</p>
+      </div>
+      <div class="card">
+        <div class="tag sig">02 · Scan</div>
+        <h3>Scam scanner</h3>
+        <p>Paste any token. Kaelis checks holders, liquidity, mint authority and the developer's history, then gives a risk score from 0 to 100.</p>
+      </div>
+      <div class="card">
+        <div class="tag">03 · Hold</div>
+        <h3>A light in the tower</h3>
+        <p>Every wallet holding $KAEL lights one window in the Kaelis tower. Sell everything and your light goes out.</p>
+      </div>
+    </div>
+    <div class="duo">
+      <div class="card">
+        <div class="tag">Token allocation</div>
+        <div class="alloc">
+          <div class="row"><span>Community &amp; liquidity</span><span>60%</span><div class="bar"><i style="width:60%"></i></div></div>
+          <div class="row"><span>Proof-of-Build rewards</span><span>20%</span><div class="bar sig"><i style="width:20%"></i></div></div>
+          <div class="row"><span>Builder (vested 24 mo)</span><span>10%</span><div class="bar"><i style="width:10%"></i></div></div>
+          <div class="row"><span>Treasury</span><span>10%</span><div class="bar sig"><i style="width:10%"></i></div></div>
+        </div>
+        <div class="note">Example numbers for the demo, not final.</div>
+      </div>
+      <div class="card">
+        <div class="tag">The Builder</div>
+        <p>Kaelis is built by one Forger, in public. Code, progress and the contract address all live on GitHub.</p>
+        <div class="ledger"><span>contract <b>to be announced</b></span><span>liquidity <b>locked at launch</b></span><span>builder tokens <b>vested 24 months</b></span></div>
+      </div>
+    </div>
+    <div class="band">
+      <div>
+        <div class="tag sig">The city is open</div>
+        <a class="big" href="city.html">Enter Forge City <span>→</span></a>
+      </div>
+      <div class="cta">
+        <button class="btn ghost" id="joinBtn" type="button">Join the community</button>
+      </div>
+      <div class="toast" id="toast2" role="status"></div>
+    </div>
+    <footer class="foot">
+      <span>KAELIS · $KAEL · 2026</span>
+      <span>Demo with example data</span>
+      <span>X · Discord · Telegram · GitHub</span>
+    </footer>
+  </div>
+</section>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js"></script>
@@ -500,7 +578,7 @@
     { p: [0, 5, 24], t: [0, 0, 0] },
     { p: [13, 12, 17], t: [0, 2.5, 0] },
     { p: [0, 9, 15], t: [0, 8.5, 0] },
-    { p: [0, 22, 40], t: [0, 6, 0] }
+    { p: [0, 15, 29], t: [0, 6.5, 0] }
   ];
   const camT = new THREE.Vector3();
   function camAt(s) {
@@ -515,9 +593,20 @@
   let target = 0, s = 0;
   const mouse = { x: 0, y: 0 };
   let mouseMoved = false;
+  const beats = Array.from(document.querySelectorAll(".beat"));
+  const railEl = document.querySelector(".rail");
+  const topEl = document.querySelector(".topbar");
   function readScroll() {
-    const max = document.documentElement.scrollHeight - window.innerHeight;
-    target = max > 0 ? (window.scrollY / max) * 5 : 0;
+    const y = window.scrollY;
+    let v = 0;
+    for (let i = 0; i < beats.length - 1; i++) {
+      const a = beats[i].offsetTop, b = beats[i + 1].offsetTop;
+      if (y >= a) v = i + Math.min(1, (y - a) / Math.max(1, b - a));
+    }
+    target = clamp(v, 0, 5);
+    const last = beats[beats.length - 1];
+    railEl.classList.toggle("off", y > last.offsetTop + last.offsetHeight * 0.6);
+    topEl.classList.toggle("solid", y > last.offsetTop + last.offsetHeight * 0.6);
   }
   window.addEventListener("scroll", readScroll, { passive: true });
   window.addEventListener("pointermove", (e) => {
@@ -718,7 +807,7 @@
     toast.textContent = "Demo only: the Buy link goes here once $KAEL launches.";
   });
   document.getElementById("joinBtn").addEventListener("click", () => {
-    toast.textContent = "Demo only: your Discord, X or Telegram link goes here.";
+    document.getElementById("toast2").textContent = "Demo only: your Discord, X or Telegram link goes here.";
   });
 })();
 </script>
@@ -726,8 +815,8 @@
 <script>
 (function () {
   const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-  const cards = Array.from(document.querySelectorAll(".beat:not(.hero) .card"));
-  const heads = Array.from(document.querySelectorAll(".beat h2"));
+  const cards = Array.from(document.querySelectorAll(":is(.beat:not(.hero), .info) .card"));
+  const heads = Array.from(document.querySelectorAll(".beat h2, .info h2, .info h3"));
   heads.forEach((h) => h.setAttribute("data-text", h.textContent));
   function glitch(h) {
     if (reduce || !h) return;
@@ -737,7 +826,7 @@
     setTimeout(() => h.classList.remove("glitch"), 480);
   }
   cards.forEach((c) => {
-    const h = c.querySelector("h2");
+    const h = c.querySelector("h2, h3");
     c.addEventListener("pointerenter", () => glitch(h));
     c.addEventListener("pointermove", (e) => {
       const r = c.getBoundingClientRect();

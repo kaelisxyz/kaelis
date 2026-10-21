@@ -8,10 +8,10 @@ Kaelis is an AI agent born from the blockchain. Developers ("Forgers") build a n
 
 | Path | What it is |
 | --- | --- |
-| `demos/forge-scroll.html` | Main 3D scroll-story website (6 scenes: chaos → first block → chain → city → Kaelis → join) |
-| `demos/forge-city.html` | Interactive 3D "Forge City" product demo: builder towers, token scam scanner, holders' tower |
-| `demos/clay-alt.html` | Alternative minimal clay-style design (not chosen) |
-| `demos/models/` | Drop `kaelis.glb` / `hammer.glb` here to replace the simple shapes in `forge-scroll.html` |
+| `site/index.html` | Home page: 3D scroll story (particle KAELIS logo → first block → chain → city → Kaelis with hologram panels → join), then token info |
+| `site/city.html` | Forge City app: builder towers, token scam scanner, holders' tower. Linked from the home page |
+| `site/clay-alt.html` | Alternative minimal clay-style design (not chosen) |
+| `site/models/` | Drop `kaelis.glb` / `hammer.glb` here to replace the simple shapes on the home page |
 | `docs/brief.md` | Project brief: name, lore, product concept (Forge City), decisions |
 | `docs/asset-prompts.md` | Prompts for Scenario, Meshy, Luma, Kaedim and Spline |
 
@@ -19,13 +19,17 @@ All demo data is example data. Nothing is connected to a real blockchain or GitH
 
 ## Run locally
 
-Open any file in `demos/` in a browser, or serve the folder so `.glb` models can load:
+Serve the `site/` folder (needed for `.glb` models and the links between pages):
 
 ```bash
-cd demos
+cd site
 python3 -m http.server 8000
-# then open http://localhost:8000/forge-scroll.html
+# then open http://localhost:8000/
 ```
+
+## Put it online
+
+`site/` is a plain static site. Deploy it with GitHub Pages, Vercel or Netlify by pointing them at the `site` folder.
 
 ## Work from any device
 

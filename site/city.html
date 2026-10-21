@@ -84,6 +84,9 @@
   .dl { position: fixed; z-index: 1; pointer-events: none; font-family: var(--f-mono); font-size: 11px; letter-spacing: 0.16em; text-transform: uppercase;
     color: var(--dim); transform: translate(-50%, -50%); white-space: nowrap; text-shadow: 0 0 8px var(--void); }
   .demo { font-family: var(--f-mono); font-size: 11px; color: var(--warn); }
+  .back { font-family: var(--f-mono); font-size: 12px; color: var(--signal); text-decoration: none; margin-top: 4px; }
+  .back:hover { text-decoration: underline; }
+  .back:focus-visible { outline: 2px solid var(--signal); outline-offset: 2px; }
 
   @media (max-width: 720px) {
     .stats .stat { min-width: 0; padding: 6px 10px; }
@@ -101,6 +104,7 @@
     <h1>KAELIS <span>FORGE CITY</span></h1>
     <span class="tag">Drag to orbit · scroll to zoom · click a building</span>
     <span class="demo">Demo with example data</span>
+    <a class="back" href="index.html">← Back to the Kaelis story</a>
   </div>
   <div class="stats">
     <div class="stat e"><span class="tag">Builders</span><b id="sBuilders">0</b></div>
