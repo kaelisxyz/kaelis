@@ -89,6 +89,9 @@
   .cine.danger .cine-box { border-color: rgba(255,77,94,0.8); animation: cineFlash 0.25s steps(2) 4; }
   .cine.danger .cine-k, .cine.danger .cine-bar b { color: #ff4d5e; background: #ff4d5e; }
   .cine.danger .cine-k { background: none; }
+  .cine.ok .cine-box { border-color: rgba(255,138,61,0.8); }
+  .cine.ok .cine-k { color: #ff8a3d; }
+  .cine.ok .cine-bar b { background: #ff8a3d; }
   @keyframes cineFlash { 50% { background: rgba(255,77,94,0.35); } }
   .tip { position: fixed; z-index: 4; pointer-events: none; font-family: var(--f-mono); font-size: 12px; background: var(--panel); border: 1px solid var(--line);
     padding: 4px 8px; border-radius: 3px; transform: translate(12px, 12px); white-space: nowrap; }
@@ -848,7 +851,7 @@
       const age = t - b.t0, rise = Math.min(1, age / 3.2);
       // floors come up in steps, not a smooth stretch
       const wantH = b.startH + (u.targetH - b.startH) * rise, floor = Math.floor(wantH / FLOOR_H);
-      m.scale.y = Math.min(u.targetH, floor * FLOOR_H + (wantH - floor * FLOOR_H) * 0.25 + b.startH % FLOOR_H);
+      m.scale.y = Math.max(b.startH, Math.min(u.targetH, floor * FLOOR_H + (wantH - floor * FLOOR_H) * 0.25));
       if (floor > b.lastFloor) { b.lastFloor = floor; emit(m.position.x, m.scale.y, m.position.z, 40, 0xffc060, 3.5, 2.2, 0.8, u.w); }
       if (Math.random() < 0.5) emit(m.position.x + (Math.random() - 0.5) * u.w, m.scale.y, m.position.z + (Math.random() - 0.5) * u.d, 3, 0xffd890, 2, 1.5, 0.5, 0.2);
       const sh = Math.max(0.01, m.scale.y + 0.6);
@@ -965,7 +968,7 @@
     u.dress = dressFacade(u.base, u.w, u.d, u.targetH, 0, 0, 0, mulberry32(Math.floor(Math.random() * 1e9)), 0.6, front < 0 ? 1 : 0);
     u.dress.update(mesh.scale.y, true);
   }
-  function verifiedCommit(mesh) {
+  function applyCommit(mesh) {
     const b = mesh.userData.data;
     b.commits += 1; b.floors += 1; b.kael += 35; b.active = true;
     mesh.userData.targetH = b.floors * 0.9;
@@ -974,7 +977,21 @@
     mesh.userData.fm.emissive.setHex(C.ember); mesh.userData.fm.emissiveIntensity = 0.5;
     mesh.userData.crown.material.emissiveIntensity = 3;
     setTimeout(() => { mesh.userData.fm.emissiveIntensity = 0; mesh.userData.crown.material.emissiveIntensity = 1.6; }, 600);
-    openPanel(mesh);
+  }
+  function verifiedCommit(mesh) {
+    if (reduce || cine) { applyCommit(mesh); openPanel(mesh); return; }
+    const u = mesh.userData, b = u.data;
+    panel.hidden = true; selected = null;
+    camHome.pos.copy(camera.position); camHome.target.copy(controls.target);
+    cine = { kind: "build", mesh, phase: "verify", t0: clock.elapsedTime, built: false };
+    const foot = Math.max(u.w, u.d);
+    setCamKey(mesh, foot * 2.2 + (u.targetH + FLOOR_H) * 0.9 + 6, 0.85, 0.5, 1.6);
+    focusKaelis(mesh, 30);
+    scanRing.material.color.setHex(C.ember); scanSheet.material.color.setHex(C.ember);
+    scanRing.scale.set(foot * 0.95, foot * 0.95, 1); scanRing.position.set(mesh.position.x, 0.1, mesh.position.z); scanRing.material.opacity = 0;
+    scanSheet.scale.set(foot * 1.3, 1, 1); scanSheet.material.opacity = 0;
+    hud("VERIFYING", `${b.name} · commit #${b.commits + 1} · checking signature`, false, true); cineBar.style.width = "0%";
+    $("scanLog").textContent = `Kaelis is verifying a commit from ${b.name}...`;
   }
 
   function retireBuilding(mesh) {
@@ -1011,7 +1028,9 @@
   const ease = (x) => x < 0.5 ? 4 * x * x * x : 1 - Math.pow(-2 * x + 2, 3) / 2;
   function shot(mesh, dist, heightK, lookK, out) {
     const u = mesh.userData, h = u.targetH;
+    // look from outside the city inward, biased toward where the camera already is, so the Kaelis tower never blocks the shot
     cv1.copy(camera.position).sub(mesh.position); cv1.y = 0; if (cv1.lengthSq() < 0.01) cv1.set(1, 0, 1); cv1.normalize();
+    cv2.copy(mesh.position); cv2.y = 0; if (cv2.lengthSq() > 1) { cv2.normalize(); cv1.multiplyScalar(0.35).addScaledVector(cv2, 0.65).normalize(); }
     out.pos.copy(mesh.position).addScaledVector(cv1, dist); out.pos.y = h * heightK + 2;
     out.target.copy(mesh.position); out.target.y = h * lookK;
   }
@@ -1020,7 +1039,7 @@
     shot(mesh, dist, heightK, lookK, camTo);
     cine.camT0 = clock.elapsedTime; cine.camDur = dur;
   }
-  function hud(k, text, danger) { cineEl.hidden = false; cineK.textContent = k; cineText.textContent = text; cineEl.classList.toggle("danger", !!danger); }
+  function hud(k, text, danger, ok) { cineEl.hidden = false; cineK.textContent = k; cineText.textContent = text; cineEl.classList.toggle("danger", !!danger); cineEl.classList.toggle("ok", !!ok); }
   function rugPull(mesh) {
     if (cine) return;
     const u = mesh.userData, t = u.data;
@@ -1031,7 +1050,8 @@
       setTimeout(() => retireBuilding(mesh), 2600); return;
     }
     camHome.pos.copy(camera.position); camHome.target.copy(controls.target);
-    cine = { mesh, phase: "scan", t0: clock.elapsedTime, impact: 0, removed: false, shake: 0 };
+    cine = { kind: "rug", mesh, phase: "scan", t0: clock.elapsedTime, impact: 0, removed: false, shake: 0 };
+    scanRing.material.color.setHex(C.signal); scanSheet.material.color.setHex(C.signal);
     const foot = Math.max(u.w, u.d);
     setCamKey(mesh, foot * 2.2 + u.targetH * 0.9 + 6, 0.8, 0.5, 1.6);
     focusKaelis(mesh, 30);
@@ -1100,8 +1120,31 @@
         c.camT0 = t; c.camDur = 1.6; hud("KAELIS", "back on patrol", false);
         kaelis.userData.until = 0;
       }
+    } else if (c.phase === "verify") {
+      const p = Math.min(1, age / 2.2);
+      cineBar.style.width = Math.round(p * 100) + "%";
+      const sweep = (Math.sin(age * 2.8 - Math.PI / 2) + 1) / 2;
+      scanRing.position.y = 0.1 + sweep * top; scanRing.material.opacity = 0.55;
+      scanSheet.position.set(m.position.x, 0.1 + sweep * top, m.position.z); scanSheet.scale.set(foot * 1.3, 1, foot * 1.3); scanSheet.lookAt(camera.position.x, scanSheet.position.y, camera.position.z); scanSheet.material.opacity = 0.35;
+      beam.material.opacity = 0.3;
+      if (age > 1.3 && !c.flagged) { c.flagged = true; hud("COMMIT VERIFIED", `${u.data.name} · +1 floor · +35 KAEL`, false, true); u.crown.material.emissiveIntensity = 3; emit(m.position.x, top + 0.3, m.position.z, 60, C.ember, 4, 3, 1.6, u.w); }
+      if (age > 2.2) { c.phase = "zoomb"; c.t0 = t; scanRing.material.opacity = 0; scanSheet.material.opacity = 0; setCamKey(m, foot * 4 + 9, 1.4, 0.75, 1.1); } // high enough to look over the neighbouring towers
+    } else if (c.phase === "zoomb") {
+      if (age > 1.1) { c.phase = "build"; c.t0 = t; applyCommit(m); hud("BUILDING", `${u.data.name} · floor ${u.data.floors} going up`, false, true); cineBar.style.width = "0%"; }
+    } else if (c.phase === "build") {
+      cineBar.style.width = Math.round(Math.min(1, (m.scale.y - (u.targetH - FLOOR_H)) / FLOOR_H) * 100) + "%";
+      if (!c.built && m.scale.y >= u.targetH - 0.02) {
+        c.built = true; hud("ONLINE", `${u.data.name} · ${u.data.floors} floors · ${u.data.commits} commits`, false, true); cineBar.style.width = "100%";
+        emit(m.position.x, u.targetH + 0.4, m.position.z, 140, C.ember, 6, 5, 2.2, u.w * 1.2); emit(m.position.x, u.targetH + 0.4, m.position.z, 60, 0xffe0a0, 5, 4, 2.0, u.w);
+        u.crown.material.emissiveIntensity = 4; if (u.dress) u.dress.setAllLit(0.85);
+      }
+      if (age > 5.6) {
+        c.phase = "return"; c.t0 = t;
+        camFrom.pos.copy(camera.position); camFrom.target.copy(controls.target); camTo.pos.copy(camHome.pos); camTo.target.copy(camHome.target);
+        c.camT0 = t; c.camDur = 1.6; hud("KAELIS", "back on patrol", false, true); kaelis.userData.until = 0;
+      }
     } else if (c.phase === "return") {
-      if (age > 1.6) { if (!c.removed) retireBuilding(m); cineEl.hidden = true; cine = null; controls.update(); }
+      if (age > 1.6) { if (c.kind === "rug" && !c.removed) retireBuilding(m); cineEl.hidden = true; const done = c; cine = null; controls.update(); if (done.kind === "build") openPanel(m); }
     }
   }
 
