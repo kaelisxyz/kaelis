@@ -79,7 +79,17 @@
   .flags li.off::before { content: "✓"; color: var(--signal); }
   .quote { border-left: 2px solid var(--signal); padding-left: 10px; color: var(--ink) !important; font-style: italic; }
 
-  .panel[hidden], .tip[hidden] { display: none; }
+  .panel[hidden], .tip[hidden], .cine[hidden] { display: none; }
+  .cine { position: fixed; z-index: 5; left: 50%; top: 14%; transform: translateX(-50%); pointer-events: none; font-family: var(--f-mono); }
+  .cine-box { display: flex; flex-direction: column; gap: 6px; align-items: center; padding: 10px 18px; border: 1px solid rgba(143,227,255,0.5); background: rgba(8,7,12,0.55); backdrop-filter: blur(6px); }
+  .cine-k { font-size: 11px; letter-spacing: 0.3em; color: var(--signal, #8fe3ff); }
+  .cine-t { font-size: 15px; color: #fff; letter-spacing: 0.04em; }
+  .cine-bar { display: block; width: 220px; height: 2px; background: rgba(255,255,255,0.12); }
+  .cine-bar b { display: block; height: 100%; width: 0; background: #8fe3ff; transition: width 0.1s linear; }
+  .cine.danger .cine-box { border-color: rgba(255,77,94,0.8); animation: cineFlash 0.25s steps(2) 4; }
+  .cine.danger .cine-k, .cine.danger .cine-bar b { color: #ff4d5e; background: #ff4d5e; }
+  .cine.danger .cine-k { background: none; }
+  @keyframes cineFlash { 50% { background: rgba(255,77,94,0.35); } }
   .tip { position: fixed; z-index: 4; pointer-events: none; font-family: var(--f-mono); font-size: 12px; background: var(--panel); border: 1px solid var(--line);
     padding: 4px 8px; border-radius: 3px; transform: translate(12px, 12px); white-space: nowrap; }
   .dl { position: fixed; z-index: 1; pointer-events: none; font-family: var(--f-mono); font-size: 11px; letter-spacing: 0.16em; text-transform: uppercase;
@@ -142,6 +152,7 @@
   <div id="panelBody"></div>
 </aside>
 <div class="tip" id="tip" hidden></div>
+<div class="cine" id="cine" hidden aria-live="polite"><div class="cine-box"><span class="cine-k" id="cineK">SCANNING</span><span class="cine-t" id="cineText"></span><i class="cine-bar"><b id="cineBar"></b></i></div></div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
@@ -966,18 +977,132 @@
     openPanel(mesh);
   }
 
+  function retireBuilding(mesh) {
+    if (!mesh.parent) return;
+    scene.remove(mesh); scene.remove(mesh.userData.roof); scene.remove(mesh.userData.base);
+    const i = pickables.indexOf(mesh); if (i >= 0) pickables.splice(i, 1);
+    const slot = SLOTS.find((s) => s.mesh === mesh); if (slot) slot.mesh = null;
+    const p = graveSpot(); addRubble(p.x, p.z);
+    rugs++; $("sRugs").textContent = rugs;
+  }
+
+  // ---------- Rug pull cinematic: scan -> zoom -> bomb -> boom -> collapse -> camera back ----------
+  const cineEl = $("cine"), cineK = $("cineK"), cineText = $("cineText"), cineBar = $("cineBar");
+  const scanRing = new THREE.Mesh(new THREE.RingGeometry(0.85, 1, 48), new THREE.MeshBasicMaterial({ color: C.signal, transparent: true, opacity: 0, side: THREE.DoubleSide, blending: THREE.AdditiveBlending, depthWrite: false }));
+  scanRing.rotation.x = -Math.PI / 2; scene.add(scanRing);
+  const scanSheet = new THREE.Mesh(new THREE.PlaneGeometry(1, 0.08), new THREE.MeshBasicMaterial({ color: C.signal, transparent: true, opacity: 0, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide }));
+  scene.add(scanSheet);
+  const bomb = new THREE.Group();
+  { const body = new THREE.Mesh(new THREE.SphereGeometry(0.42, 14, 10), new THREE.MeshStandardMaterial({ color: 0x1a1a1f, roughness: 0.4, metalness: 0.8 })); body.scale.set(1, 1.5, 1); bomb.add(body);
+    const tail = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.2, 0.5, 8), hvacMat); tail.position.y = 0.75; bomb.add(tail);
+    for (let i = 0; i < 4; i++) { const fin = new THREE.Mesh(roofGeo, new THREE.MeshStandardMaterial({ color: C.danger, roughness: 0.6 })); fin.scale.set(0.05, 0.4, 0.35); fin.position.set(0, 0.6, 0); fin.rotation.y = i * Math.PI / 2; fin.translateZ(0.2); bomb.add(fin); }
+    const blink = new THREE.Mesh(new THREE.SphereGeometry(0.08, 8, 6), new THREE.MeshBasicMaterial({ color: C.danger })); blink.position.y = -0.62; bomb.add(blink); bomb.userData.blink = blink; }
+  bomb.visible = false; scene.add(bomb);
+  const fireball = new THREE.Mesh(new THREE.SphereGeometry(1, 20, 14), new THREE.MeshBasicMaterial({ color: 0xffb060, transparent: true, opacity: 0, blending: THREE.AdditiveBlending, depthWrite: false }));
+  fireball.visible = false; scene.add(fireball);
+  const fireCore = new THREE.Mesh(new THREE.SphereGeometry(1, 16, 12), new THREE.MeshBasicMaterial({ color: 0xfff2d0, transparent: true, opacity: 0, blending: THREE.AdditiveBlending, depthWrite: false }));
+  fireCore.visible = false; scene.add(fireCore);
+  const shock = new THREE.Mesh(new THREE.RingGeometry(0.8, 1, 64), new THREE.MeshBasicMaterial({ color: 0xffc080, transparent: true, opacity: 0, side: THREE.DoubleSide, blending: THREE.AdditiveBlending, depthWrite: false }));
+  shock.rotation.x = -Math.PI / 2; shock.visible = false; scene.add(shock);
+  const boomLight = new THREE.PointLight(0xff8a3d, 0, 40); scene.add(boomLight);
+  let cine = null;
+  const camHome = { pos: new THREE.Vector3(), target: new THREE.Vector3() }, camFrom = { pos: new THREE.Vector3(), target: new THREE.Vector3() }, camTo = { pos: new THREE.Vector3(), target: new THREE.Vector3() };
+  const cv1 = new THREE.Vector3(), cv2 = new THREE.Vector3();
+  const ease = (x) => x < 0.5 ? 4 * x * x * x : 1 - Math.pow(-2 * x + 2, 3) / 2;
+  function shot(mesh, dist, heightK, lookK, out) {
+    const u = mesh.userData, h = u.targetH;
+    cv1.copy(camera.position).sub(mesh.position); cv1.y = 0; if (cv1.lengthSq() < 0.01) cv1.set(1, 0, 1); cv1.normalize();
+    out.pos.copy(mesh.position).addScaledVector(cv1, dist); out.pos.y = h * heightK + 2;
+    out.target.copy(mesh.position); out.target.y = h * lookK;
+  }
+  function setCamKey(mesh, dist, heightK, lookK, dur) {
+    camFrom.pos.copy(camera.position); camFrom.target.copy(controls.target);
+    shot(mesh, dist, heightK, lookK, camTo);
+    cine.camT0 = clock.elapsedTime; cine.camDur = dur;
+  }
+  function hud(k, text, danger) { cineEl.hidden = false; cineK.textContent = k; cineText.textContent = text; cineEl.classList.toggle("danger", !!danger); }
   function rugPull(mesh) {
-    mesh.userData.collapse = 0.0001; mesh.userData.homeX = mesh.position.x; mesh.userData.homeZ = mesh.position.z; mesh.userData.debrisDone = false;
-    const t = mesh.userData.data;
-    panel.hidden = true;
-    $("scanLog").textContent = `${t.name} rugged. Kaelis moved it to the scam graveyard.`;
-    setTimeout(() => {
-      scene.remove(mesh); scene.remove(mesh.userData.roof); scene.remove(mesh.userData.base);
-      pickables.splice(pickables.indexOf(mesh), 1);
-      const slot = SLOTS.find((s) => s.mesh === mesh); if (slot) slot.mesh = null;
-      const p = graveSpot(); addRubble(p.x, p.z);
-      rugs++; $("sRugs").textContent = rugs;
-    }, 3400);
+    if (cine) return;
+    const u = mesh.userData, t = u.data;
+    panel.hidden = true; selected = null;
+    u.homeX = mesh.position.x; u.homeZ = mesh.position.z; u.debrisDone = false;
+    if (reduce) { // reduced motion: no camera ride, straight to the collapse
+      u.collapse = 0.3; $("scanLog").textContent = `${t.name} rugged. Kaelis moved it to the scam graveyard.`;
+      setTimeout(() => retireBuilding(mesh), 2600); return;
+    }
+    camHome.pos.copy(camera.position); camHome.target.copy(controls.target);
+    cine = { mesh, phase: "scan", t0: clock.elapsedTime, impact: 0, removed: false, shake: 0 };
+    const foot = Math.max(u.w, u.d);
+    setCamKey(mesh, foot * 2.2 + u.targetH * 0.9 + 6, 0.8, 0.5, 1.6);
+    focusKaelis(mesh, 30);
+    scanRing.scale.set(foot * 0.95, foot * 0.95, 1); scanRing.position.set(mesh.position.x, 0.1, mesh.position.z); scanRing.material.opacity = 0;
+    scanSheet.scale.set(foot * 1.3, 1, 1); scanSheet.material.opacity = 0;
+    hud("SCANNING", t.name + " · reading contract", false); cineBar.style.width = "0%";
+    $("scanLog").textContent = `Kaelis is scanning ${t.name}...`;
+  }
+  function updateCine(dt, t) {
+    if (!cine) return;
+    const c = cine, m = c.mesh, u = m.userData, age = t - c.t0;
+    // camera ride between keyframes, with an optional shake
+    if (c.camDur) {
+      const k = ease(Math.min(1, (t - c.camT0) / c.camDur));
+      camera.position.lerpVectors(camFrom.pos, camTo.pos, k); controls.target.lerpVectors(camFrom.target, camTo.target, k);
+    }
+    if (c.shake > 0) { camera.position.x += (Math.random() - 0.5) * c.shake; camera.position.y += (Math.random() - 0.5) * c.shake; camera.position.z += (Math.random() - 0.5) * c.shake; c.shake *= 0.9; if (c.shake < 0.01) c.shake = 0; }
+    camera.lookAt(controls.target);
+    const top = m.scale.y, foot = Math.max(u.w, u.d);
+    if (c.phase === "scan") {
+      const p = Math.min(1, age / 2.6);
+      cineBar.style.width = Math.round(p * 100) + "%";
+      // a ring and a horizontal sheet sweep the facade from the ground to the roof and back
+      const sweep = (Math.sin(age * 2.4 - Math.PI / 2) + 1) / 2;
+      scanRing.position.y = 0.1 + sweep * top; scanRing.material.opacity = 0.55;
+      scanSheet.position.set(m.position.x, 0.1 + sweep * top, m.position.z); scanSheet.scale.set(foot * 1.3, 1, foot * 1.3); scanSheet.lookAt(camera.position.x, scanSheet.position.y, camera.position.z); scanSheet.material.opacity = 0.35;
+      beam.material.opacity = 0.3;
+      if (age > 1.4 && !c.flagged) { c.flagged = true; hud("RUG DETECTED", `${u.data.name} · risk ${u.data.score}/100 · liquidity pulled`, true); u.crown.material.emissiveIntensity = 3; }
+      if (age > 2.6) { c.phase = "zoom"; c.t0 = t; scanRing.material.opacity = 0; scanSheet.material.opacity = 0; setCamKey(m, foot * 3.2 + 6, 0.7, 0.55, 1.1); }
+    } else if (c.phase === "zoom") {
+      if (age > 1.1) {
+        c.phase = "bomb"; c.t0 = t;
+        bomb.visible = true; bomb.position.copy(kaelis.position); bomb.position.y -= 1.2; bomb.userData.vy = 0; bomb.rotation.set(0, 0, 0);
+        hud("KAELIS", "dropping the charge", true);
+      }
+    } else if (c.phase === "bomb") {
+      bomb.userData.vy -= 9 * dt; bomb.position.y += bomb.userData.vy * dt;
+      bomb.position.x += (m.position.x - bomb.position.x) * Math.min(1, dt * 3); bomb.position.z += (m.position.z - bomb.position.z) * Math.min(1, dt * 3);
+      bomb.rotation.z = Math.sin(age * 7) * 0.15; bomb.userData.blink.visible = (age * 8) % 1 < 0.5;
+      if (bomb.position.y <= top + 0.3 || age > 3) {
+        c.phase = "boom"; c.t0 = t; c.impact = t; bomb.visible = false;
+        const bx = m.position.x, by = top, bz = m.position.z;
+        fireball.visible = fireCore.visible = shock.visible = true; fireball.position.set(bx, by, bz); fireCore.position.copy(fireball.position); shock.position.set(bx, 0.08, bz);
+        boomLight.position.set(bx, by + 1, bz); boomLight.intensity = 12;
+        emit(bx, by, bz, 160, 0xffb050, 10, 6, 1.6, u.w); emit(bx, by, bz, 120, 0xff5a2a, 7, 3, 2.2, u.w); emit(bx, by * 0.5, bz, 80, 0x6a5a55, 4, 2, 2.6, u.w);
+        c.shake = 0.9;
+        u.collapse = 0.3; // straight into the debris + sink stage of the collapse choreography
+        hud("DETONATED", `${u.data.name} removed from Forge City`, true);
+        $("scanLog").textContent = `${u.data.name} rugged. Kaelis moved it to the scam graveyard.`;
+      }
+    } else if (c.phase === "boom") {
+      const f = Math.min(1, age / 1.1);
+      const r = foot * (0.5 + f * 1.9);
+      fireball.scale.setScalar(r); fireball.material.opacity = 0.7 * (1 - f) * (1 - f); fireball.material.color.setHSL(0.07 - f * 0.05, 1, 0.55 - f * 0.2);
+      fireCore.scale.setScalar(r * 0.55); fireCore.material.opacity = 1 - f;
+      fireball.position.y = top * (1 - u.collapse * 0.5) + f * 2;
+      fireCore.position.copy(fireball.position);
+      shock.scale.setScalar(1 + f * foot * 7); shock.material.opacity = 0.7 * (1 - f);
+      boomLight.intensity = 12 * (1 - f);
+      if (Math.random() < 0.7) emit(m.position.x + (Math.random() - 0.5) * u.w * 1.5, 0.5 + Math.random() * top * 0.6, m.position.z + (Math.random() - 0.5) * u.d * 1.5, 6, 0x4a4040, 2, 1.5, 2.4, 0.8);
+      if (age > 1.1) { fireball.visible = fireCore.visible = shock.visible = false; boomLight.intensity = 0; }
+      if (u.collapse >= 1 && !c.removed) { c.removed = true; retireBuilding(m); }
+      if (age > 2.4) {
+        c.phase = "return"; c.t0 = t;
+        camFrom.pos.copy(camera.position); camFrom.target.copy(controls.target); camTo.pos.copy(camHome.pos); camTo.target.copy(camHome.target);
+        c.camT0 = t; c.camDur = 1.6; hud("KAELIS", "back on patrol", false);
+        kaelis.userData.until = 0;
+      }
+    } else if (c.phase === "return") {
+      if (age > 1.6) { if (!c.removed) retireBuilding(m); cineEl.hidden = true; cine = null; controls.update(); }
+    }
   }
 
   // ---------- Scan flow (simulated with a seeded hash) ----------
@@ -1116,7 +1241,7 @@
     if (k.focus && t < k.until && k.focus.parent) {
       v.copy(k.focus.position); v.y = k.focus.scale.y + 4;
       kTarget.copy(v);
-      beam.material.opacity = 0.18;
+      if (!cine) beam.material.opacity = 0.18;
     } else {
       const a = t * (reduce ? 0 : 0.18);
       kTarget.set(Math.cos(a) * 20, 15 + Math.sin(t * 0.7) * 1.5, Math.sin(a) * 20);
@@ -1133,7 +1258,8 @@
     updateBuilds(dt, t);
     updateDebris(dt);
     updateParticles(dt);
-    controls.update();
+    updateCine(dt, t);
+    if (!cine) controls.update();
     composer.render();
 
     // labels
