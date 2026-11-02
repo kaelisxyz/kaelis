@@ -439,25 +439,6 @@
     pickables.push(mesh);
     return mesh;
   }
-  // distant skyline: a ring of dim towers far out, one shared facade, no interaction
-  (function skyline() {
-    const rnd = mulberry32(4242);
-    const far = facadeTextures();
-    far.map.repeat.set(2, 6); far.lit.repeat.set(2, 6); far.nrm.repeat.set(2, 6);
-    const fm = new THREE.MeshStandardMaterial({ map: far.map, emissive: 0xffffff, emissiveMap: far.lit, emissiveIntensity: 0.55, normalMap: far.nrm, roughness: 0.75, metalness: 0.2, envMapIntensity: 0.3 });
-    const geo = new THREE.BoxGeometry(1, 1, 1); geo.translate(0, 0.5, 0);
-    const N = 160, im = new THREE.InstancedMesh(geo, [fm, fm, topMat, topMat, fm, fm], N), o = new THREE.Object3D();
-    for (let i = 0; i < N; i++) {
-      const a = rnd() * Math.PI * 2, r = 46 + rnd() * 38;
-      const w = 2.5 + rnd() * 4, h = 4 + Math.pow(rnd(), 1.8) * 22;
-      o.position.set(Math.cos(a) * r, 0, Math.sin(a) * r);
-      o.scale.set(w, h, 2.5 + rnd() * 4); o.rotation.y = rnd() * 0.3;
-      o.updateMatrix(); im.setMatrixAt(i, o.matrix);
-    }
-    im.castShadow = false; im.receiveShadow = false;
-    scene.add(im);
-  })();
-
   // every so often one window somewhere switches on or off
   let lastTwinkle = 0;
   function twinkle() {
