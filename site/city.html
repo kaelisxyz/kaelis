@@ -151,6 +151,9 @@
 <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/postprocessing/RenderPass.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/postprocessing/ShaderPass.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/postprocessing/UnrealBloomPass.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/math/SimplexNoise.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/shaders/SSAOShader.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/postprocessing/SSAOPass.js"></script>
 <script>
 (function () {
   const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
@@ -214,9 +217,9 @@
   controls.autoRotate = !reduce;
   controls.autoRotateSpeed = 0.35;
 
-  scene.add(new THREE.HemisphereLight(0x2f5a8a, 0x1a1210, 0.38));
-  const moon = new THREE.DirectionalLight(0x9fc0ff, 0.38);
-  moon.position.set(-28, 42, 18);
+  scene.add(new THREE.HemisphereLight(0x2f5a8a, 0x1a1210, 0.28));
+  const moon = new THREE.DirectionalLight(0xa8c4ff, 0.85);
+  moon.position.set(-34, 30, 26); // low and lateral so every tower has a lit side and a shaded side
   moon.castShadow = true;
   moon.shadow.mapSize.set(2048, 2048);
   moon.shadow.camera.left = -40; moon.shadow.camera.right = 40;
@@ -298,7 +301,7 @@
   const hvacMat = new THREE.MeshStandardMaterial({ color: 0x4a4852, roughness: 0.6, metalness: 0.5 });
   const antennaMat = new THREE.MeshStandardMaterial({ color: 0x55525c, roughness: 0.5, metalness: 0.7 });
   const topMat = new THREE.MeshStandardMaterial({ color: 0x1c1a21, roughness: 0.95 });
-  const ironMat = new THREE.MeshStandardMaterial({ color: 0x3a3740, roughness: 0.5, metalness: 0.7 });
+  const ironMat = new THREE.MeshStandardMaterial({ color: 0x1c1b21, roughness: 0.5, metalness: 0.7 });
 
   // street lamps: a pole, a warm glow sprite, and a pool of light on the asphalt
   const lampGlowTex = (() => { const c = document.createElement("canvas"); c.width = c.height = 64; const g = c.getContext("2d"); const gr = g.createRadialGradient(32, 32, 0, 32, 32, 32); gr.addColorStop(0, "rgba(255,210,140,1)"); gr.addColorStop(0.3, "rgba(255,160,70,0.55)"); gr.addColorStop(1, "rgba(0,0,0,0)"); g.fillStyle = gr; g.fillRect(0, 0, 64, 64); return new THREE.CanvasTexture(c); })();
@@ -393,18 +396,116 @@
     return { map: mk(wall, true), lit: mk(lit, true), nrm: mk(nrm, false), litCtx: l, cells, style };
   }
 
+  // plain wall tile: concrete panels, brick courses or dark curtain-wall mullions. Windows are real geometry now.
+  const wallCache = {};
+  function wallMaterial(style, seed) {
+    const key = style + (seed % 3);
+    if (wallCache[key]) return wallCache[key];
+    const rnd = mulberry32(seed), S = 256, c = document.createElement("canvas"); c.width = c.height = S;
+    const g = c.getContext("2d");
+    const base = style === "concrete" ? "#3b3842" : style === "glass" ? "#1a1f2b" : "#4a342c";
+    g.fillStyle = base; g.fillRect(0, 0, S, S);
+    for (let i = 0; i < 2500; i++) { g.fillStyle = `rgba(${rnd() < 0.5 ? "255,255,255" : "0,0,0"},${rnd() * 0.06})`; g.fillRect(rnd() * S, rnd() * S, 2 + rnd() * 3, 2 + rnd() * 3); }
+    if (style === "brick") { for (let y = 0; y < S; y += 8) { g.fillStyle = "rgba(0,0,0,0.35)"; g.fillRect(0, y, S, 2); for (let x = (y / 8) % 2 ? 0 : 12; x < S; x += 24) g.fillRect(x, y, 2, 8); } }
+    if (style === "concrete") { g.fillStyle = "rgba(0,0,0,0.3)"; for (let y = 0; y < S; y += 64) g.fillRect(0, y, S, 2); for (let x = 0; x < S; x += 64) g.fillRect(x, 0, 2, S); for (let i = 0; i < 6; i++) { g.fillStyle = "rgba(0,0,0,0.18)"; g.fillRect(rnd() * S, rnd() * S, 1, 20 + rnd() * 60); } }
+    if (style === "glass") { g.fillStyle = "rgba(90,110,140,0.35)"; for (let x = 0; x < S; x += 32) g.fillRect(x, 0, 2, S); }
+    const tex = new THREE.CanvasTexture(c); tex.wrapS = tex.wrapT = THREE.RepeatWrapping; tex.encoding = THREE.sRGBEncoding; tex.repeat.set(2, 2);
+    tex.anisotropy = Math.min(8, renderer.capabilities.getMaxAnisotropy());
+    const m = new THREE.MeshStandardMaterial({ map: tex, roughness: style === "glass" ? 0.4 : 0.92, metalness: style === "glass" ? 0.5 : 0.02, envMapIntensity: style === "glass" ? 0.8 : 0.25, emissive: 0x000000 });
+    wallCache[key] = m; return m;
+  }
+  // hollow window frame: an extruded rectangle with a hole, so the glass behind it stays visible
+  const frameGeo = (() => { const sh = new THREE.Shape(); sh.moveTo(-0.26, -0.3); sh.lineTo(0.26, -0.3); sh.lineTo(0.26, 0.3); sh.lineTo(-0.26, 0.3); sh.closePath();
+    const hole = new THREE.Path(); hole.moveTo(-0.21, -0.25); hole.lineTo(0.21, -0.25); hole.lineTo(0.21, 0.25); hole.lineTo(-0.21, 0.25); hole.closePath(); sh.holes.push(hole);
+    const g = new THREE.ExtrudeGeometry(sh, { depth: 0.16, bevelEnabled: false }); g.translate(0, 0, -0.02); return g; })(); // sits almost entirely proud of the wall
+  const paneGeo = new THREE.PlaneGeometry(0.42, 0.5), sillGeo = new THREE.BoxGeometry(0.6, 0.05, 0.22);
+  const frameMat = new THREE.MeshStandardMaterial({ color: 0x2c2a33, roughness: 0.55, metalness: 0.4 });
+  const darkGlassMat = new THREE.MeshStandardMaterial({ color: 0x0a1020, roughness: 0.08, metalness: 1.0, envMapIntensity: 1.8 });
+  const litGlassMat = new THREE.MeshBasicMaterial({ color: 0xffffff }); // tinted per window through instanceColor
+  const ledgeMat = new THREE.MeshStandardMaterial({ color: 0x3c3843, roughness: 0.85 });
+  const zeroM = new THREE.Matrix4().makeScale(0, 0, 0);
+  const dTmp = new THREE.Object3D(), cTmp = new THREE.Color();
+  // dressFacade: windows, sills, pilasters and floor ledges for a w x d x h box whose base is at (ox, oy, oz) inside `parent`.
+  // Returns an object whose update(visibleH) hides everything above a given height so a tower can grow or sink floor by floor.
+  function dressFacade(parent, w, d, h, ox, oy, oz, rnd, litRatio, skipGroundFront) {
+    const floors = Math.floor(h / FLOOR_H + 0.001);
+    const items = []; // one per window: {m: matrix, y, on}
+    const ledges = [];
+    for (let f = 0; f < 4; f++) {
+      const L = f < 2 ? w : d, off = (f < 2 ? d : w) / 2, cols = Math.max(1, Math.round(L / WIN_W)), pitch = L / cols;
+      const ang = f === 0 ? 0 : f === 1 ? Math.PI : f === 2 ? Math.PI / 2 : -Math.PI / 2;
+      const nx = Math.sin(ang), nz = Math.cos(ang); // outward normal
+      for (let r = 0; r < floors; r++) {
+        if (r === 0 && (skipGroundFront === f || Math.random() < 0.0)) continue;
+        if (r === 0) continue; // ground floor is shop / blank wall
+        for (let c = 0; c < cols; c++) {
+          const u = -L / 2 + (c + 0.5) * pitch, y = oy + (r + 0.52) * FLOOR_H;
+          dTmp.position.set(ox + nx * off + nz * u, y, oz + nz * off - nx * u); dTmp.rotation.set(0, ang, 0); dTmp.scale.set(1, 1, 1); dTmp.updateMatrix();
+          const on = rnd() < litRatio, warm = rnd() < 0.7;
+          items.push({ m: dTmp.matrix.clone(), y, on, col: warm ? cTmp.setRGB(1, 0.78 + rnd() * 0.15, 0.5 + rnd() * 0.3).getHex() : cTmp.setRGB(0.7 + rnd() * 0.15, 0.85 + rnd() * 0.1, 1).getHex(), blind: rnd() < 0.25 });
+        }
+      }
+      // pilasters between window columns, a touch lighter than the wall so they catch the key light
+      for (let c = 0; c <= cols; c++) {
+        const u = -L / 2 + c * pitch;
+        const pil = new THREE.Mesh(roofGeo, ledgeMat); pil.scale.set(f < 2 ? 0.14 : 0.1, h, f < 2 ? 0.1 : 0.14);
+        pil.position.set(ox + nx * (off + 0.03) + nz * u, oy, oz + nz * (off + 0.03) - nx * u); pil.castShadow = true; pil.userData.pil = true; parent.add(pil);
+        ledges.push({ mesh: pil, y: oy, full: h, pil: true });
+      }
+    }
+    // floor ledges running round the whole box
+    for (let r = 1; r <= floors; r++) {
+      const y = oy + r * FLOOR_H - 0.04;
+      const ring = new THREE.Group();
+      const a = new THREE.Mesh(roofGeo, ledgeMat); a.scale.set(w + 0.24, 0.07, 0.12); a.position.set(ox, y, oz + d / 2 + 0.06); ring.add(a);
+      const b = new THREE.Mesh(roofGeo, ledgeMat); b.scale.set(w + 0.24, 0.07, 0.12); b.position.set(ox, y, oz - d / 2 - 0.06); ring.add(b);
+      const c2 = new THREE.Mesh(roofGeo, ledgeMat); c2.scale.set(0.12, 0.07, d + 0.24); c2.position.set(ox + w / 2 + 0.06, y, oz); ring.add(c2);
+      const d2 = new THREE.Mesh(roofGeo, ledgeMat); d2.scale.set(0.12, 0.07, d + 0.24); d2.position.set(ox - w / 2 - 0.06, y, oz); ring.add(d2);
+      ring.children.forEach((m) => { m.castShadow = true; });
+      parent.add(ring); ledges.push({ mesh: ring, y });
+    }
+    const N = items.length;
+    const frames = new THREE.InstancedMesh(frameGeo, frameMat, N), dark = new THREE.InstancedMesh(paneGeo, darkGlassMat, N), lit = new THREE.InstancedMesh(paneGeo, litGlassMat, N), sills = new THREE.InstancedMesh(sillGeo, ledgeMat, N);
+    frames.castShadow = true; frames.receiveShadow = true;
+    const pos = new THREE.Vector3(), q = new THREE.Quaternion(), sc = new THREE.Vector3(), fwd = new THREE.Vector3();
+    const paneM = new THREE.Matrix4(), sillM = new THREE.Matrix4(), tr = new THREE.Matrix4();
+    for (let i = 0; i < N; i++) {
+      const it = items[i]; it.m.decompose(pos, q, sc); fwd.set(0, 0, 1).applyQuaternion(q);
+      it.frame = it.m.clone();
+      it.pane = tr.makeTranslation(fwd.x * 0.02, 0, fwd.z * 0.02).clone().multiply(it.m); // glass just outside the wall surface, inside the frame
+      it.paneLit = tr.makeTranslation(fwd.x * 0.035, 0, fwd.z * 0.035).clone().multiply(it.m); // lit pane a hair in front so it never z-fights
+      it.sill = tr.makeTranslation(fwd.x * 0.06, -0.33, fwd.z * 0.06).clone().multiply(it.m);
+      lit.setColorAt(i, cTmp.setHex(it.col).multiplyScalar(it.blind ? 0.35 : 0.75));
+    }
+    parent.add(frames, dark, lit, sills);
+    const state = { items, frames, dark, lit, sills, ledges, lastH: -1,
+      update(visibleH, force) {
+        if (!force && Math.abs(visibleH - this.lastH) < 0.02) return; this.lastH = visibleH;
+        for (let i = 0; i < N; i++) {
+          const it = items[i], vis = it.y + 0.3 < oy + visibleH;
+          frames.setMatrixAt(i, vis ? it.frame : zeroM); dark.setMatrixAt(i, vis ? it.pane : zeroM); sills.setMatrixAt(i, vis ? it.sill : zeroM);
+          lit.setMatrixAt(i, vis && it.on ? it.paneLit : zeroM);
+        }
+        frames.instanceMatrix.needsUpdate = dark.instanceMatrix.needsUpdate = lit.instanceMatrix.needsUpdate = sills.instanceMatrix.needsUpdate = true;
+        for (const l of ledges) { if (l.pil) l.mesh.scale.y = Math.max(0.001, Math.min(l.full, visibleH)); else l.mesh.visible = l.y < oy + visibleH; }
+      },
+      toggle(i) { const it = items[i]; it.on = !it.on; lit.setMatrixAt(i, it.on && it.y + 0.3 < oy + this.lastH ? it.paneLit : zeroM); lit.instanceMatrix.needsUpdate = true; },
+      setAllLit(ratio) { for (const it of items) it.on = Math.random() < ratio; this.update(this.lastH, true); },
+    };
+    state.update(h, true);
+    return state;
+  }
+
   function makeBuilding(color, w, h, x, z, opts) {
     opts = opts || {};
     const rnd = mulberry32(facadeSeed * 7 + 3);
     const d = opts.plain ? w : w * (0.8 + rnd() * 0.45);
-    let fm, fac = null;
+    let fm, fac = null, style = null;
     if (opts.plain) {
       fm = new THREE.MeshStandardMaterial({ color: 0x0f141c, roughness: 0.18, metalness: 0.85, envMapIntensity: 1.2 });
     } else {
-      fac = facadeTextures();
-      fm = new THREE.MeshStandardMaterial({ map: fac.map, emissive: 0xffffff, emissiveMap: fac.lit, emissiveIntensity: 1.0,
-        normalMap: fac.nrm, normalScale: new THREE.Vector2(0.9, 0.9),
-        roughness: fac.style === "glass" ? 0.22 : 0.8, metalness: fac.style === "glass" ? 0.7 : 0.08, envMapIntensity: fac.style === "glass" ? 1.1 : 0.3 });
+      const roll = rnd(); style = roll < 0.4 ? "concrete" : roll < 0.65 ? "glass" : "brick";
+      fm = wallMaterial(style, facadeSeed++).clone(); // clone so each tower can flicker or glow on its own
     }
     const mesh = new THREE.Mesh(boxGeo, [fm, fm, topMat, topMat, fm, fm]);
     mesh.castShadow = true; mesh.receiveShadow = true;
@@ -422,14 +523,11 @@
       for (let i = 0; i < tiers; i++) {
         tw *= 0.62 + rnd() * 0.18; td *= 0.62 + rnd() * 0.18;
         const th = FLOOR_H * (2 + Math.floor(rnd() * 4));
-        const tf = facadeTextures();
-        const tm = new THREE.MeshStandardMaterial({ map: tf.map, emissive: 0xffffff, emissiveMap: tf.lit, emissiveIntensity: 1.0, normalMap: tf.nrm, normalScale: new THREE.Vector2(0.9, 0.9),
-          roughness: tf.style === "glass" ? 0.22 : 0.8, metalness: tf.style === "glass" ? 0.7 : 0.08, envMapIntensity: tf.style === "glass" ? 1.1 : 0.3 });
-        const rx = Math.max(0.25, tw / (WIN_W * TILE)), ry = th / (FLOOR_H * TILE);
-        tf.map.repeat.set(rx, ry); tf.lit.repeat.set(rx, ry); tf.nrm.repeat.set(rx, ry);
+        const tm = wallMaterial(style, facadeSeed++);
         const tier = new THREE.Mesh(roofGeo, [tm, tm, topMat, topMat, tm, tm]);
         tier.scale.set(tw, th, td); tier.position.set((rnd() - 0.5) * (w - tw) * 0.6, topY + 0.2, (rnd() - 0.5) * (d - td) * 0.6);
         tier.castShadow = true; tier.receiveShadow = true; roof.add(tier);
+        dressFacade(roof, tw, td, th + FLOOR_H, tier.position.x, tier.position.y - FLOOR_H, tier.position.z, rnd, 0.45, -1); // ground row skipped, so start one floor lower
         const ledge = new THREE.Mesh(roofGeo, roofMat); ledge.scale.set(tw + 0.12, 0.2, td + 0.12); ledge.position.set(tier.position.x, topY + 0.2 + th, tier.position.z); roof.add(ledge);
         topY += 0.2 + th;
       }
@@ -448,8 +546,11 @@
     scene.add(mesh);
     // ground floor shop + fire escape live in a base group that never stretches with the tower
     const base = new THREE.Group(); base.position.set(x, 0, z);
+    let dress = null;
     if (!opts.plain) {
       const front = z < 0 ? -1 : 1; // every block row faces a road on its outer side
+      dress = dressFacade(base, w, d, h, 0, 0, 0, rnd, opts.dim ? 0.12 : 0.35 + rnd() * 0.3, front < 0 ? 1 : 0);
+      base.userData.dress = dress;
       const shop = SHOPS[(facadeSeed + Math.floor(rnd() * 97)) % SHOPS.length];
       const shopMat = new THREE.MeshStandardMaterial({ color: 0x222222, emissive: shop.c, emissiveIntensity: 2.4, roughness: 0.2 });
       const win = new THREE.Mesh(roofGeo, shopMat); win.scale.set(w * 0.82, 1.05, 0.08); win.position.set(0, 0.12, front * (d / 2 + 0.02)); base.add(win);
@@ -469,9 +570,9 @@
         for (let f = 2; f < floors; f++) {
           const land = new THREE.Mesh(roofGeo, ironMat); land.scale.set(0.42, 0.04, Math.min(d * 0.7, 2.2)); land.position.set(fx, f * FLOOR_H + 0.1, 0); base.add(land);
           const rail = new THREE.Mesh(roofGeo, ironMat); rail.scale.set(0.03, 0.5, Math.min(d * 0.7, 2.2)); rail.position.set(fx + side * 0.26, f * FLOOR_H + 0.15, 0); base.add(rail);
-          const lad = new THREE.Mesh(roofGeo, ironMat); lad.scale.set(0.04, FLOOR_H * 1.15, 0.3); lad.position.set(fx, (f - 1) * FLOOR_H + 0.1, (f % 2 ? 0.4 : -0.4) * Math.min(d * 0.35, 1)); lad.rotation.x = (f % 2 ? 1 : -1) * 0.6; base.add(lad);
+          const lad = new THREE.Mesh(roofGeo, ironMat); lad.scale.set(0.05, FLOOR_H * 1.15, 0.08); lad.position.set(fx, (f - 1) * FLOOR_H + 0.1, (f % 2 ? 0.4 : -0.4) * Math.min(d * 0.35, 1)); lad.rotation.x = (f % 2 ? 1 : -1) * 0.6; base.add(lad);
         }
-        const ladDown = new THREE.Mesh(roofGeo, ironMat); ladDown.scale.set(0.04, FLOOR_H * 0.8, 0.3); ladDown.position.set(fx, 1.2, 0); base.add(ladDown);
+        const ladDown = new THREE.Mesh(roofGeo, ironMat); ladDown.scale.set(0.05, FLOOR_H * 0.8, 0.08); ladDown.position.set(fx, 1.2, 0); base.add(ladDown);
       }
       // cornice band on top of the ground floor and stone trim up the corners
       const trimA = new THREE.Mesh(roofGeo, roofMat); trimA.scale.set(0.12, h, 0.12); trimA.position.set(-w / 2, 0, front * d / 2); base.add(trimA);
@@ -479,19 +580,17 @@
       base.userData.trims = [trimA, trimB];
     }
     scene.add(base);
-    mesh.userData = { targetH: h, w, d, color, collapse: 0, fm, fac, roof, base, crown, edges: crown, phase: rnd() * 6.28 };
+    mesh.userData = { targetH: h, w, d, color, collapse: 0, fm, fac, dress, roof, base, crown, edges: crown, phase: rnd() * 6.28 };
     pickables.push(mesh);
     return mesh;
   }
   // every so often one window somewhere switches on or off
   let lastTwinkle = 0;
   function twinkle() {
-    const cands = pickables.filter((m) => m.userData.fac && m.visible && !m.userData.collapse);
+    const cands = pickables.filter((m) => m.userData.dress && m.visible && !m.userData.collapse);
     if (!cands.length) return;
-    const m = cands[Math.floor(Math.random() * cands.length)], f = m.userData.fac, c = f.cells[Math.floor(Math.random() * f.cells.length)];
-    c.on = !c.on;
-    f.litCtx.fillStyle = c.on ? c.col : "#000"; f.litCtx.fillRect(c.x, c.y, c.w, c.h);
-    f.lit.needsUpdate = true;
+    const m = cands[Math.floor(Math.random() * cands.length)], dr = m.userData.dress;
+    if (dr.items.length) dr.toggle(Math.floor(Math.random() * dr.items.length));
   }
 
   // ---------- Kaelis main tower (holders) ----------
@@ -538,10 +637,10 @@
   // ---------- Builders district (west) ----------
   const builderMeshes = BUILDERS.map((b, i) => {
     const x = -10 - (i % 4) * 4.2, z = -6.3 + Math.floor(i / 4) * 6.3;
-    const m = makeBuilding(C.ember, 2.4, b.floors * 0.9, x, z);
+    const m = makeBuilding(C.ember, 2.4, b.floors * 0.9, x, z, { dim: !b.active });
     m.userData.kind = "builder";
     m.userData.data = b;
-    if (!b.active) { m.userData.fm.emissiveIntensity = 0.12; m.userData.crown.material.emissiveIntensity = 0.25; }
+    if (!b.active) { m.userData.crown.material.emissiveIntensity = 0.25; }
     return m;
   });
   $("sBuilders").textContent = BUILDERS.length;
@@ -568,6 +667,7 @@
     const m = makeBuilding(riskColor(t.score), 2.6, h, slot.x, slot.z);
     m.userData.kind = "token";
     m.userData.data = t;
+    if (t.score >= 70) m.userData.fm.emissive.setHex(C.danger);
     slot.mesh = m;
     if (clock.elapsedTime > 1) startBuild(m);
     scanned++;
@@ -845,14 +945,24 @@
     kaelis.userData.until = clock.elapsedTime + secs;
   }
 
+  // a taller target means more window rows: rebuild the facade geometry for the new height, keeping it hidden above the current roof
+  function redress(mesh) {
+    const u = mesh.userData; if (!u.dress) return;
+    const old = u.dress;
+    [old.frames, old.dark, old.lit, old.sills].forEach((o) => u.base.remove(o)); old.ledges.forEach((l) => u.base.remove(l.mesh));
+    const front = mesh.position.z < 0 ? -1 : 1;
+    u.dress = dressFacade(u.base, u.w, u.d, u.targetH, 0, 0, 0, mulberry32(Math.floor(Math.random() * 1e9)), 0.6, front < 0 ? 1 : 0);
+    u.dress.update(mesh.scale.y, true);
+  }
   function verifiedCommit(mesh) {
     const b = mesh.userData.data;
     b.commits += 1; b.floors += 1; b.kael += 35; b.active = true;
     mesh.userData.targetH = b.floors * 0.9;
+    redress(mesh);
     startBuild(mesh);
-    mesh.userData.fm.emissiveIntensity = 2.2;
+    mesh.userData.fm.emissive.setHex(C.ember); mesh.userData.fm.emissiveIntensity = 0.5;
     mesh.userData.crown.material.emissiveIntensity = 3;
-    setTimeout(() => { mesh.userData.fm.emissiveIntensity = 1.0; mesh.userData.crown.material.emissiveIntensity = 1.6; }, 600);
+    setTimeout(() => { mesh.userData.fm.emissiveIntensity = 0; mesh.userData.crown.material.emissiveIntensity = 1.6; }, 600);
     openPanel(mesh);
   }
 
@@ -920,7 +1030,14 @@
 
   // bloom makes lit windows, lamps and Kaelis glow like a long exposure
   const composer = new THREE.EffectComposer(renderer);
-  composer.addPass(new THREE.RenderPass(scene, camera));
+  // ambient occlusion darkens the creases between ledges, window reveals and the street. Desktop only: phones get the plain render.
+  const useSSAO = window.innerWidth >= 720 && !reduce;
+  let ssao = null;
+  if (useSSAO) {
+    ssao = new THREE.SSAOPass(scene, camera, window.innerWidth, window.innerHeight);
+    ssao.kernelRadius = 1.6; ssao.minDistance = 0.0008; ssao.maxDistance = 0.05;
+    composer.addPass(ssao);
+  } else composer.addPass(new THREE.RenderPass(scene, camera));
   const bloom = new THREE.UnrealBloomPass(new THREE.Vector2(1, 1), 0.45, 0.5, 0.86);
   composer.addPass(bloom);
   // the composer renders off-screen, so tone mapping + sRGB must be applied by hand at the end
@@ -937,6 +1054,7 @@
     const w = window.innerWidth, h = window.innerHeight;
     renderer.setSize(w, h, false);
     composer.setSize(w, h);
+    if (ssao) ssao.setSize(w, h);
     bloom.resolution.set(Math.round(w / 2), Math.round(h / 2));
     camera.aspect = w / h;
     camera.fov = w < 720 ? 62 : 50;
@@ -959,16 +1077,18 @@
         u.collapse = Math.min(1, u.collapse + dt * 0.34);
         const c = u.collapse;
         u.fm.emissive.setHex(C.danger);
-        u.fm.emissiveIntensity = Math.random() * 1.2;
+        u.fm.emissiveIntensity = Math.random() * 0.5;
         if (c < 0.3) {
           // shudder: lights flicker, dust puffs out of the base
           const sh = c * 0.5; m.position.x = u.homeX + (Math.random() - 0.5) * sh; m.position.z = u.homeZ + (Math.random() - 0.5) * sh;
           if (Math.random() < 0.6) emit(m.position.x + (Math.random() - 0.5) * u.w, 0.2, m.position.z + (Math.random() - 0.5) * u.d, 4, 0x8a7a70, 1.2, 0.6, 1.4, 0.6);
           u.roof.position.y = m.scale.y;
         } else {
-          if (!u.debrisDone) { u.debrisDone = true; spawnDebris(m); u.roof.visible = false; if (u.base) u.base.visible = false; }
+          if (!u.debrisDone) { u.debrisDone = true; spawnDebris(m); u.roof.visible = false; }
           const f = (c - 0.3) / 0.7;
           m.scale.y = u.targetH * Math.max(0.001, 1 - f * f);
+          if (u.dress) u.dress.update(m.scale.y); // floors vanish one by one as the tower sinks
+          if (u.base) { u.base.visible = m.scale.y > 1.3; u.base.position.set(m.position.x, 0, m.position.z); u.base.rotation.copy(m.rotation); }
           m.rotation.z = f * 0.35; m.rotation.x = f * 0.12;
           emit(m.position.x + (Math.random() - 0.5) * u.w * 1.6, 0.3 + Math.random() * m.scale.y * 0.3, m.position.z + (Math.random() - 0.5) * u.d * 1.6, 8, 0x9a8a80, 2.5, 1.2, 1.8, 1.0);
         }
@@ -977,13 +1097,14 @@
         if (u.kind === "token" && u.data.score >= 70) {
           const flick = reduce ? 1 : (Math.sin(t * 9 + u.phase) > 0.6 ? 2.4 : 0.6);
           u.crown.material.emissiveIntensity = flick;
-          u.fm.emissiveIntensity = reduce ? 0.8 : 0.5 + flick * 0.25;
+          u.fm.emissiveIntensity = (reduce ? 0.8 : 0.5 + flick * 0.25) * 0.3;
           m.rotation.z = 0.03;
         }
         if (u.kind === "builder" && u.data.active) u.fm.emissiveIntensity += ((1.0 + Math.sin(t * 1.5 + u.phase) * 0.12) - u.fm.emissiveIntensity) * 0.05;
         u.roof.position.y = m.scale.y;
         u.roof.visible = m.visible && m.scale.y > 0.5;
         if (u.base) { u.base.visible = m.visible && m.scale.y > 1.3; if (u.base.userData.trims) u.base.userData.trims.forEach((tr) => { tr.scale.y = m.scale.y; }); }
+        if (u.dress) u.dress.update(m.scale.y);
         if (u.roof.userData.beacon) u.roof.userData.beacon.visible = reduce || ((t * 1.2 + u.phase) % 1) < 0.5;
       }
       // keep windows the same real-world size however tall the tower grows
