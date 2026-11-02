@@ -145,6 +145,12 @@
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/shaders/CopyShader.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/shaders/LuminosityHighPassShader.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/postprocessing/EffectComposer.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/postprocessing/RenderPass.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/postprocessing/ShaderPass.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/postprocessing/UnrealBloomPass.js"></script>
 <script>
 (function () {
   const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
@@ -194,14 +200,14 @@
   renderer.shadowMap.enabled = true;
   renderer.shadowMap.type = THREE.PCFSoftShadowMap;
   const scene = new THREE.Scene();
-  scene.fog = new THREE.FogExp2(0x0a0912, 0.010);
+  scene.fog = new THREE.FogExp2(0x0a0912, 0.013);
   const camera = new THREE.PerspectiveCamera(50, 1, 0.1, 500);
-  camera.position.set(34, 30, 40);
+  camera.position.set(30, 16, 34);
 
   const controls = new THREE.OrbitControls(camera, canvas);
-  controls.target.set(0, 5, 0);
+  controls.target.set(0, 6, 0);
   controls.enableDamping = true;
-  controls.maxPolarAngle = Math.PI * 0.47;
+  controls.maxPolarAngle = Math.PI * 0.485;
   controls.minDistance = 14;
   controls.maxDistance = 110;
   controls.autoRotate = !reduce;
@@ -215,7 +221,7 @@
   moon.shadow.camera.left = -40; moon.shadow.camera.right = 40;
   moon.shadow.camera.top = 40; moon.shadow.camera.bottom = -40;
   moon.shadow.camera.near = 1; moon.shadow.camera.far = 140;
-  moon.shadow.bias = -0.0008;
+  moon.shadow.bias = -0.0015; moon.shadow.normalBias = 0.2;
   moon.shadow.radius = 4;
   scene.add(moon);
   const cityGlow = new THREE.DirectionalLight(0xff9a5c, 0.18);
@@ -277,12 +283,12 @@
   const groundTex = new THREE.CanvasTexture(groundCanvas());
   groundTex.encoding = THREE.sRGBEncoding;
   groundTex.anisotropy = Math.min(8, renderer.capabilities.getMaxAnisotropy());
-  const ground = new THREE.Mesh(new THREE.PlaneGeometry(80, 80), new THREE.MeshStandardMaterial({ map: groundTex, roughness: 0.9, metalness: 0.05 }));
+  const ground = new THREE.Mesh(new THREE.PlaneGeometry(80, 80), new THREE.MeshStandardMaterial({ map: groundTex, roughness: 0.5, metalness: 0.1, envMapIntensity: 0.5 }));
   ground.rotation.x = -Math.PI / 2;
   ground.receiveShadow = true;
   scene.add(ground);
   const outer = new THREE.Mesh(new THREE.PlaneGeometry(400, 400), new THREE.MeshStandardMaterial({ color: 0x15131a, roughness: 1 }));
-  outer.rotation.x = -Math.PI / 2; outer.position.y = -0.02;
+  outer.rotation.x = -Math.PI / 2; outer.position.y = -0.6; // well below the city slab so it never z-fights in the bloom pass
   scene.add(outer);
 
   // street lamps: a pole, a warm glow sprite, and a pool of light on the asphalt
@@ -290,7 +296,7 @@
   const poleGeo = new THREE.CylinderGeometry(0.05, 0.07, 3.2, 6), poleMat = new THREE.MeshStandardMaterial({ color: 0x33303a, roughness: 0.7, metalness: 0.6 });
   function lamp(x, z) {
     const p = new THREE.Mesh(poleGeo, poleMat); p.position.set(x, 1.6, z); p.castShadow = true; scene.add(p);
-    const glow = new THREE.Sprite(new THREE.SpriteMaterial({ map: lampGlowTex, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false, opacity: 0.9 }));
+    const glow = new THREE.Sprite(new THREE.SpriteMaterial({ map: lampGlowTex, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false, opacity: 0.55 }));
     glow.scale.set(1.6, 1.6, 1); glow.position.set(x, 3.3, z); scene.add(glow);
     const pool = new THREE.Mesh(new THREE.CircleGeometry(2.2, 20), new THREE.MeshBasicMaterial({ map: lampGlowTex, transparent: true, opacity: 0.22, blending: THREE.AdditiveBlending, depthWrite: false }));
     pool.rotation.x = -Math.PI / 2; pool.position.set(x, 0.02, z); scene.add(pool);
@@ -352,14 +358,29 @@
         }
       }
     }
-    const mk = (cv) => { const t = new THREE.CanvasTexture(cv); t.wrapS = t.wrapT = THREE.RepeatWrapping; t.encoding = THREE.sRGBEncoding; t.anisotropy = Math.min(8, renderer.capabilities.getMaxAnisotropy()); return t; };
-    return { map: mk(wall), lit: mk(lit), litCtx: l, cells, style };
+    // normal map: window reveals read as recessed, floor slabs as a ledge
+    const nrm = document.createElement("canvas"); nrm.width = nrm.height = S;
+    const n = nrm.getContext("2d");
+    n.fillStyle = "rgb(128,128,255)"; n.fillRect(0, 0, S, S);
+    const bev = style === "glass" ? 2 : 4;
+    cells.forEach((c) => {
+      n.fillStyle = "rgb(128,128,255)"; n.fillRect(c.x, c.y, c.w, c.h);
+      n.fillStyle = "rgb(70,128,230)"; n.fillRect(c.x, c.y, bev, c.h);          // left reveal faces +x light
+      n.fillStyle = "rgb(186,128,230)"; n.fillRect(c.x + c.w - bev, c.y, bev, c.h);
+      n.fillStyle = "rgb(128,186,230)"; n.fillRect(c.x, c.y, c.w, bev);
+      n.fillStyle = "rgb(128,70,230)"; n.fillRect(c.x, c.y + c.h - bev, c.w, bev);
+      if (style === "glass") { n.fillStyle = "rgb(128,128,255)"; n.fillRect(c.x + c.w / 2 - 1, c.y, 2, c.h); }
+    });
+    for (let r = 0; r < TILE; r++) { n.fillStyle = "rgb(128,170,235)"; n.fillRect(0, r * chh, S, 2); n.fillStyle = "rgb(128,86,235)"; n.fillRect(0, r * chh + 2, S, 2); }
+    const mk = (cv, srgb) => { const t = new THREE.CanvasTexture(cv); t.wrapS = t.wrapT = THREE.RepeatWrapping; if (srgb) t.encoding = THREE.sRGBEncoding; t.anisotropy = Math.min(8, renderer.capabilities.getMaxAnisotropy()); return t; };
+    return { map: mk(wall, true), lit: mk(lit, true), nrm: mk(nrm, false), litCtx: l, cells, style };
   }
   const roofGeo = new THREE.BoxGeometry(1, 1, 1); roofGeo.translate(0, 0.5, 0);
   const tankGeo = new THREE.CylinderGeometry(0.35, 0.35, 0.7, 10);
   const roofMat = new THREE.MeshStandardMaterial({ color: 0x24222a, roughness: 0.95 });
   const hvacMat = new THREE.MeshStandardMaterial({ color: 0x4a4852, roughness: 0.6, metalness: 0.5 });
   const antennaMat = new THREE.MeshStandardMaterial({ color: 0x55525c, roughness: 0.5, metalness: 0.7 });
+  const topMat = new THREE.MeshStandardMaterial({ color: 0x1c1a21, roughness: 0.95 });
 
   function makeBuilding(color, w, h, x, z, opts) {
     opts = opts || {};
@@ -371,9 +392,9 @@
     } else {
       fac = facadeTextures();
       fm = new THREE.MeshStandardMaterial({ map: fac.map, emissive: 0xffffff, emissiveMap: fac.lit, emissiveIntensity: 1.0,
-        roughness: fac.style === "glass" ? 0.25 : 0.8, metalness: fac.style === "glass" ? 0.7 : 0.1, envMapIntensity: fac.style === "glass" ? 1.0 : 0.3 });
+        normalMap: fac.nrm, normalScale: new THREE.Vector2(0.9, 0.9),
+        roughness: fac.style === "glass" ? 0.22 : 0.8, metalness: fac.style === "glass" ? 0.7 : 0.08, envMapIntensity: fac.style === "glass" ? 1.1 : 0.3 });
     }
-    const topMat = new THREE.MeshStandardMaterial({ color: 0x1c1a21, roughness: 0.95 });
     const mesh = new THREE.Mesh(boxGeo, [fm, fm, topMat, topMat, fm, fm]);
     mesh.castShadow = true; mesh.receiveShadow = true;
     mesh.position.set(x, 0, z);
@@ -383,12 +404,31 @@
     const crown = new THREE.Mesh(roofGeo, new THREE.MeshStandardMaterial({ color: 0x111111, emissive: color, emissiveIntensity: 1.6, transparent: true, opacity: 0.95 }));
     crown.scale.set(w + 0.16, 0.06, d + 0.16); crown.position.y = 0.2; roof.add(crown);
     const parapet = new THREE.Mesh(roofGeo, roofMat); parapet.scale.set(w + 0.12, 0.22, d + 0.12); parapet.position.y = -0.02; roof.add(parapet);
+    let topY = 0; // where the roof clutter sits, above any setback tiers
+    if (!opts.plain && h > 6.5 && rnd() < 0.7) {
+      const tiers = rnd() < 0.4 ? 2 : 1;
+      let tw = w, td = d;
+      for (let i = 0; i < tiers; i++) {
+        tw *= 0.62 + rnd() * 0.18; td *= 0.62 + rnd() * 0.18;
+        const th = FLOOR_H * (2 + Math.floor(rnd() * 4));
+        const tf = facadeTextures();
+        const tm = new THREE.MeshStandardMaterial({ map: tf.map, emissive: 0xffffff, emissiveMap: tf.lit, emissiveIntensity: 1.0, normalMap: tf.nrm, normalScale: new THREE.Vector2(0.9, 0.9),
+          roughness: tf.style === "glass" ? 0.22 : 0.8, metalness: tf.style === "glass" ? 0.7 : 0.08, envMapIntensity: tf.style === "glass" ? 1.1 : 0.3 });
+        const rx = Math.max(0.25, tw / (WIN_W * TILE)), ry = th / (FLOOR_H * TILE);
+        tf.map.repeat.set(rx, ry); tf.lit.repeat.set(rx, ry); tf.nrm.repeat.set(rx, ry);
+        const tier = new THREE.Mesh(roofGeo, [tm, tm, topMat, topMat, tm, tm]);
+        tier.scale.set(tw, th, td); tier.position.set((rnd() - 0.5) * (w - tw) * 0.6, topY + 0.2, (rnd() - 0.5) * (d - td) * 0.6);
+        tier.castShadow = true; tier.receiveShadow = true; roof.add(tier);
+        const ledge = new THREE.Mesh(roofGeo, roofMat); ledge.scale.set(tw + 0.12, 0.2, td + 0.12); ledge.position.set(tier.position.x, topY + 0.2 + th, tier.position.z); roof.add(ledge);
+        topY += 0.2 + th;
+      }
+    }
     if (!opts.plain) {
-      const hv = new THREE.Mesh(roofGeo, hvacMat); hv.scale.set(w * 0.3, 0.25 + rnd() * 0.3, d * 0.3); hv.position.set((rnd() - 0.5) * w * 0.4, 0.2, (rnd() - 0.5) * d * 0.4); hv.castShadow = true; roof.add(hv);
-      if (rnd() < 0.5) { const tank = new THREE.Mesh(tankGeo, hvacMat); tank.scale.setScalar(w / 2.6); tank.position.set((rnd() - 0.5) * w * 0.5, 0.2 + 0.35 * (w / 2.6), (rnd() - 0.5) * d * 0.5); tank.castShadow = true; roof.add(tank); }
+      const hv = new THREE.Mesh(roofGeo, hvacMat); hv.scale.set(w * 0.3, 0.25 + rnd() * 0.3, d * 0.3); hv.position.set((rnd() - 0.5) * w * 0.3, topY + 0.2, (rnd() - 0.5) * d * 0.3); hv.castShadow = true; roof.add(hv);
+      if (rnd() < 0.5) { const tank = new THREE.Mesh(tankGeo, hvacMat); tank.scale.setScalar(w / 2.6); tank.position.set((rnd() - 0.5) * w * 0.4, topY + 0.2 + 0.35 * (w / 2.6), (rnd() - 0.5) * d * 0.4); tank.castShadow = true; roof.add(tank); }
       if (h > 7 || rnd() < 0.3) {
-        const ant = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.04, 1.6, 5), antennaMat); ant.position.set(w * 0.3, 1.0, -d * 0.3); roof.add(ant);
-        const beacon = new THREE.Mesh(new THREE.SphereGeometry(0.07, 8, 8), new THREE.MeshBasicMaterial({ color: 0xff2a2a })); beacon.position.set(w * 0.3, 1.85, -d * 0.3); roof.add(beacon);
+        const ant = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.04, 1.6, 5), antennaMat); ant.position.set(w * 0.3, topY + 1.0, -d * 0.3); roof.add(ant);
+        const beacon = new THREE.Mesh(new THREE.SphereGeometry(0.07, 8, 8), new THREE.MeshBasicMaterial({ color: 0xff2a2a })); beacon.position.set(w * 0.3, topY + 1.85, -d * 0.3); roof.add(beacon);
         roof.userData.beacon = beacon;
       }
     }
@@ -399,6 +439,25 @@
     pickables.push(mesh);
     return mesh;
   }
+  // distant skyline: a ring of dim towers far out, one shared facade, no interaction
+  (function skyline() {
+    const rnd = mulberry32(4242);
+    const far = facadeTextures();
+    far.map.repeat.set(2, 6); far.lit.repeat.set(2, 6); far.nrm.repeat.set(2, 6);
+    const fm = new THREE.MeshStandardMaterial({ map: far.map, emissive: 0xffffff, emissiveMap: far.lit, emissiveIntensity: 0.55, normalMap: far.nrm, roughness: 0.75, metalness: 0.2, envMapIntensity: 0.3 });
+    const geo = new THREE.BoxGeometry(1, 1, 1); geo.translate(0, 0.5, 0);
+    const N = 160, im = new THREE.InstancedMesh(geo, [fm, fm, topMat, topMat, fm, fm], N), o = new THREE.Object3D();
+    for (let i = 0; i < N; i++) {
+      const a = rnd() * Math.PI * 2, r = 46 + rnd() * 38;
+      const w = 2.5 + rnd() * 4, h = 4 + Math.pow(rnd(), 1.8) * 22;
+      o.position.set(Math.cos(a) * r, 0, Math.sin(a) * r);
+      o.scale.set(w, h, 2.5 + rnd() * 4); o.rotation.y = rnd() * 0.3;
+      o.updateMatrix(); im.setMatrixAt(i, o.matrix);
+    }
+    im.castShadow = false; im.receiveShadow = false;
+    scene.add(im);
+  })();
+
   // every so often one window somewhere switches on or off
   let lastTwinkle = 0;
   function twinkle() {
@@ -651,9 +710,26 @@
     if (m) { tip.hidden = false; tip.textContent = nameOf(m); tip.style.left = e.clientX + "px"; tip.style.top = e.clientY + "px"; } else tip.hidden = true;
   });
 
+  // bloom makes lit windows, lamps and Kaelis glow like a long exposure
+  const composer = new THREE.EffectComposer(renderer);
+  composer.addPass(new THREE.RenderPass(scene, camera));
+  const bloom = new THREE.UnrealBloomPass(new THREE.Vector2(1, 1), 0.45, 0.5, 0.86);
+  composer.addPass(bloom);
+  // the composer renders off-screen, so tone mapping + sRGB must be applied by hand at the end
+  composer.addPass(new THREE.ShaderPass({
+    uniforms: { tDiffuse: { value: null }, exposure: { value: 1.05 } },
+    vertexShader: "varying vec2 vUv; void main(){ vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }",
+    fragmentShader: `uniform sampler2D tDiffuse; uniform float exposure; varying vec2 vUv;
+      vec3 aces(vec3 c){ const mat3 a = mat3(0.59719,0.07600,0.02840, 0.35458,0.90834,0.13383, 0.04823,0.01566,0.83777);
+        const mat3 b = mat3(1.60475,-0.10208,-0.00327, -0.53108,1.10813,-0.07276, -0.07367,-0.00605,1.07602);
+        c = a * c; c = (c * (c + 0.0245786) - 0.000090537) / (c * (0.983729 * c + 0.4329510) + 0.238081); return clamp(b * c, 0.0, 1.0); }
+      void main(){ vec4 t = texture2D(tDiffuse, vUv); vec3 c = aces(t.rgb * exposure / 0.6); gl_FragColor = LinearTosRGB(vec4(c, t.a)); }`
+  }));
   function resize() {
     const w = window.innerWidth, h = window.innerHeight;
     renderer.setSize(w, h, false);
+    composer.setSize(w, h);
+    bloom.resolution.set(Math.round(w / 2), Math.round(h / 2));
     camera.aspect = w / h;
     camera.fov = w < 720 ? 62 : 50;
     camera.updateProjectionMatrix();
@@ -693,7 +769,7 @@
         if (u.roof.userData.beacon) u.roof.userData.beacon.visible = reduce || ((t * 1.2 + u.phase) % 1) < 0.5;
       }
       // keep windows the same real-world size however tall the tower grows
-      if (u.fac) { const ry = Math.max(0.01, m.scale.y / (FLOOR_H * TILE)), rx = Math.max(0.25, u.w / (WIN_W * TILE)); u.fac.map.repeat.set(rx, ry); u.fac.lit.repeat.set(rx, ry); }
+      if (u.fac) { const ry = Math.max(0.01, m.scale.y / (FLOOR_H * TILE)), rx = Math.max(0.25, u.w / (WIN_W * TILE)); u.fac.map.repeat.set(rx, ry); u.fac.lit.repeat.set(rx, ry); u.fac.nrm.repeat.set(rx, ry); }
     });
 
     // Kaelis patrol or focus
@@ -715,7 +791,7 @@
     beam.position.set(kaelis.position.x, bh / 2, kaelis.position.z);
 
     controls.update();
-    renderer.render(scene, camera);
+    composer.render();
 
     // labels
     LABELS.forEach((l) => {
