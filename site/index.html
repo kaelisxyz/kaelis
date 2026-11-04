@@ -123,6 +123,8 @@
   .rail a.on { color: var(--ink); }
   .rail a.on::after { border-color: var(--ink); background: var(--ink); opacity: 1; }
   .rail.off { opacity: 0; pointer-events: none; }
+  .clock { transition: opacity .4s; }
+  body.at-hero .clock { opacity: 0; }
 
   /* header: tiny logo left, reality switch centre, clock and buy right */
   .topbar { position: fixed; z-index: 5; top: 0; left: 0; right: 0; display: grid; grid-template-columns: 1fr auto 1fr; align-items: start; gap: 12px;
@@ -289,7 +291,7 @@
   </div>
 </header>
 
-<nav class="rail" aria-label="Story progress">
+<nav class="rail off" aria-label="Story progress">
   <a href="#chaos"><span>01 Chaos</span></a>
   <a href="#block"><span>02 Block</span></a>
   <a href="#chain"><span>03 Chain</span></a>
@@ -300,16 +302,12 @@
 
 <main>
   <section class="beat hero" id="chaos">
-    <div class="infocard" aria-hidden="true"><b>KAELIS /26</b><span>KAE (forge) + LIS (signal)</span><span>Block height: none</span></div>
-    <div class="callout c1" aria-hidden="true"><i></i>Where loose data drifts into a shape you can trust</div>
-    <div class="callout c2" aria-hidden="true"><i></i>Move your cursor through the noise</div>
     <h1 class="sr">KAELIS</h1>
     <div class="herofoot">
       <div class="card">
         <div class="tag">[ $KAEL · an agent forged by builders ]</div>
         <p class="lead"><b>Forged by builders. Awakened by the chain.</b> Before the chain, there was only noise: loose data drifting, with nothing to hold it together.</p>
       </div>
-      <div class="hint">Scroll to forge ↓</div>
     </div>
   </section>
 
@@ -768,10 +766,11 @@ let storyPaused = false;
       const r = Math.random();
       const h = (0.6 + Math.pow(r, 2.2) * 2.2 + (r > 0.97 ? 1.4 : 0)) * cell * 1.05;
       // two-tone wordmark: K, E, I in black stone, A, L, S in white stone
-      if (letter % 2 === 0) tint.setHSL(0.08, 0.02, 0.05 + Math.random() * 0.04);
+      const dark = letter % 2 === 0, shade = Math.random();
+      if (dark) tint.setHSL(0.08, 0.02, 0.05 + shade * 0.04);
       else tint.setRGB(1.25, 1.25, 1.25);
       mesh.setColorAt(i, tint);
-      return { u, v, h, d: Math.random() };
+      return { u, v, h, d: Math.random(), dark, shade };
     });
     mesh.instanceColor.needsUpdate = true;
     towerBoard.add(mesh);
@@ -796,6 +795,7 @@ let storyPaused = false;
     slab.rotation.x = -Math.PI / 2; towerBoard.add(slab);
     towers = { mesh, lines, data, cell, offs, scl, slab, lmat, mat, mapRef: mat.map };
   }
+  const towerTint = new THREE.Color();
   const tMat = new THREE.Matrix4(), tPos = new THREE.Vector3(), tScale = new THREE.Vector3(), tQuat = new THREE.Quaternion();
   const boardPlane = new THREE.Plane(), boardHit = new THREE.Vector3(), boardInv = new THREE.Matrix4();
   function updateTowers(rise, time) {
@@ -831,9 +831,17 @@ let storyPaused = false;
     // built: textured stone towers; blueprint: white blocks with cobalt outlines
     T.mat.opacity = Math.min(1, rise * 2);
     T.mat.color.copy(WHITE);
-    T.mat.emissiveIntensity = 0.55 * (1 - bp);
-    T.mat.map = bp > 0.5 ? null : T.mapRef;
-    if (T.lastBp !== (bp > 0.5)) { T.lastBp = bp > 0.5; T.mat.needsUpdate = true; }
+    // same two-tone towers in both realities; in blueprint the dark letters turn cobalt
+    T.mat.emissiveIntensity = 0.55 * (1 - bp * 0.5);
+    if (Math.abs((T.lastBp ?? -1) - bp) > 0.01) {
+      T.lastBp = bp;
+      T.data.forEach((d, i) => {
+        if (!d.dark) return;
+        towerTint.setHSL(0.08, 0.02, 0.05 + d.shade * 0.04).lerp(BLUE, bp);
+        T.mesh.setColorAt(i, towerTint);
+      });
+      T.mesh.instanceColor.needsUpdate = true;
+    }
     T.lmat.uniforms.uColor.value.copy(INK).lerp(BLUE, bp);
     T.lmat.uniforms.uAlpha.value = lerp(0.45, 0.95, bp) * Math.min(1, rise * 2);
     T.slab.material.opacity = 0.9 * Math.min(1, rise * 2) * (1 - bp);
@@ -992,7 +1000,9 @@ let storyPaused = false;
     }
     target = clamp(v, 0, 5);
     const last = beats[beats.length - 1];
-    railEl.classList.toggle("off", y > last.offsetTop + last.offsetHeight * 0.6);
+    const atHero = y < innerHeight * 0.5;
+    railEl.classList.toggle("off", atHero || y > last.offsetTop + last.offsetHeight * 0.6);
+    document.body.classList.toggle("at-hero", atHero);
     topEl.classList.toggle("solid", y > last.offsetTop + last.offsetHeight * 0.6);
   }
   window.addEventListener("scroll", readScroll, { passive: true });
