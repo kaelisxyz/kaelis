@@ -183,7 +183,7 @@
   .marquee span { display: inline-block; padding-left: 100%; animation: marq 32s linear infinite; }
   .marquee b { display: inline-block; width: 9px; height: 9px; border-radius: 50%; background: var(--mint); margin: 0 14px; box-shadow: 0 0 10px var(--mint); vertical-align: 0; }
   @keyframes marq { to { transform: translateX(-100%); } }
-  .duo { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px; align-items: start; }
+  .duo { display: grid; grid-template-columns: minmax(0, 640px); gap: 20px; align-items: start; }
   .duo .card { max-width: none; }
   .alloc { display: grid; gap: 12px; font-variant-numeric: tabular-nums; }
   .alloc .row { display: grid; grid-template-columns: 1fr auto; gap: 6px; font-size: 14px; }
@@ -197,6 +197,7 @@
   .band .big:hover span { transform: translate(8px, -8px); }
   .foot { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 12px 24px; align-items: center; border-top: 1px solid var(--ink); padding-top: 16px; }
   .foot .logo { font-size: 13px; }
+  .herocta { position: absolute; left: 50%; top: calc(50% + min(16vw, 150px)); transform: translateX(-50%); z-index: 3; white-space: nowrap; }
   .xlink { display: inline-grid; place-items: center; width: 30px; height: 30px; color: var(--ink); }
   .xlink svg { width: 16px; height: 16px; }
   .xlink:hover { opacity: .6; }
@@ -216,7 +217,7 @@
 <div class="paper" aria-hidden="true"></div>
 
 <header class="topbar">
-  <a class="logo" href="#chaos"><b class="mark" aria-label="KAELIS"><i>K</i><i>A</i><i>E</i><i>L</i><i>I</i><i>S</i></b><span>$KAEL · /26</span></a>
+  <a class="logo" href="#chaos"><b class="mark" aria-label="KAELIS"><i>K</i><i>A</i><i>E</i><i>L</i><i>I</i><i>S</i></b></a>
   <button class="reality" id="reality" type="button" aria-pressed="false">
     <span class="pill">Change reality</span>
   </button>
@@ -244,6 +245,7 @@
 <main>
   <section class="beat hero" id="chaos">
     <h1 class="sr">KAELIS</h1>
+    <a class="btn herocta" href="city.html">Enter Forge City ↗</a>
     <div class="herofoot">
       <div class="card">
         <div class="tag">[ $KAEL · an agent forged by builders ]</div>
@@ -310,7 +312,7 @@
         <span class="num">01.</span>
         <h3>Proof-of-Build</h3>
         <div class="hatch"><i style="width:72%"></i></div>
-        <p>Connect GitHub and a wallet. Kaelis verifies your real commits, your tower grows a floor and you earn $KAEL.</p>
+        <p>Link your code account and a wallet. Kaelis verifies your real commits, your tower grows a floor and you earn $KAEL.</p>
       </div>
       <div class="thread">
         <span class="num">02.</span>
@@ -340,11 +342,6 @@
         </div>
         <div class="note">Example numbers for the demo, not final.</div>
       </div>
-      <div class="card">
-        <div class="tag">Not a team. Just a builder.</div>
-        <p>Kaelis is built by one Forger, in public. Code, progress and the contract address all live on GitHub.</p>
-        <div class="ledger"><span>contract <b>to be announced</b></span><span>liquidity <b>locked at launch</b></span><span>builder tokens <b>vested 24 months</b></span></div>
-      </div>
     </div>
 
     <p class="quote">A city is only as honest as the people who build it.</p>
@@ -356,7 +353,7 @@
       <div class="toast" id="toast2" role="status"></div>
     </div>
     <footer class="foot">
-      <span class="logo"><b class="mark" aria-label="KAELIS"><i>K</i><i>A</i><i>E</i><i>L</i><i>I</i><i>S</i></b><span>$KAEL · 2026 · Demo with example data</span></span>
+      <span class="logo"><b class="mark" aria-label="KAELIS"><i>K</i><i>A</i><i>E</i><i>L</i><i>I</i><i>S</i></b></span>
     </footer>
   </div>
 </section>

@@ -180,9 +180,9 @@
         <div class="bar tag"><span>02 · Build</span><i></i></div>
         <div class="body">
           <h2>Earn by shipping real code.</h2>
-          <p class="what">Proof-of-Build rewards merged work on public GitHub repos, not hype. Your work becomes a tower in Forge City.</p>
+          <p class="what">Proof-of-Build rewards merged work in public code repos, not hype. Your work becomes a tower in Forge City.</p>
           <ol>
-            <li>Connect GitHub (read-only) and sign once with your wallet.</li>
+            <li>Link your code account (read-only) and sign once with your wallet.</li>
             <li>Ship. Only merged work in public repos counts.</li>
             <li>Each week, claim your share. Your tower gains a floor.</li>
           </ol>
@@ -210,7 +210,7 @@
       <span class="tag">Under the hood</span>
       <h3>Rules decide. AI only explains.</h3>
       <div class="flow">
-        <div><span class="tag">01</span><b>Read</b><p>Public data from the blockchain and GitHub. Never your keys or funds.</p></div>
+        <div><span class="tag">01</span><b>Read</b><p>Public data from the blockchain and public code repos. Never your keys or funds.</p></div>
         <div><span class="tag">02</span><b>Check</b><p>Fixed, open-source rules look for known patterns.</p></div>
         <div><span class="tag">03</span><b>Score</b><p>Same data, same score. Anyone can re-run it.</p></div>
         <div><span class="tag">04</span><b>Explain</b><p>An AI writes a plain summary. It can't change the score.</p></div>
@@ -224,7 +224,7 @@
       <h3>How each part works.</h3>
       <div class="arch">
         <div class="cap"><span class="tag">Fig. 01 — Kaelis Core pipeline</span><span class="tag hint">Each stage is logged and replayable</span></div>
-        <svg viewBox="0 0 960 250" role="img" aria-label="Pipeline: chain data and GitHub flow into Ingest, then Signals, then Score, then Explain, then out to Forge City, alerts and on-chain attestations">
+        <svg viewBox="0 0 960 250" role="img" aria-label="Pipeline: chain data and code activity flow into Ingest, then Signals, then Score, then Explain, then out to Forge City, alerts and on-chain attestations">
           <defs><marker id="ah" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="8" markerHeight="8" orient="auto"><path d="M0 0L8 4L0 8z" fill="currentColor"/></marker></defs>
           <g fill="none" stroke="currentColor" stroke-width="1">
             <rect x="10" y="40" width="130" height="56"/><rect x="10" y="150" width="130" height="56"/>
@@ -237,7 +237,7 @@
           </g>
           <g fill="currentColor" font-size="11" letter-spacing="1">
             <text x="22" y="64">SOLANA RPC</text><text x="22" y="82" fill-opacity=".6" font-size="9" letter-spacing="0">pools, holders, txs</text>
-            <text x="22" y="174">GITHUB API</text><text x="22" y="192" fill-opacity=".6" font-size="9" letter-spacing="0">commits, PRs, repos</text>
+            <text x="22" y="174">CODE REPOS</text><text x="22" y="192" fill-opacity=".6" font-size="9" letter-spacing="0">commits, PRs, repos</text>
             <text x="202" y="119">01 INGEST</text><text x="202" y="137" fill-opacity=".6" font-size="9" letter-spacing="0">webhooks + indexer</text>
             <text x="382" y="119">02 SIGNALS</text><text x="382" y="137" fill-opacity=".6" font-size="9" letter-spacing="0">deterministic checks</text>
             <text x="562" y="119">03 SCORE</text><text x="562" y="137" fill-opacity=".6" font-size="9" letter-spacing="0">weighted, open rules</text>
@@ -273,7 +273,7 @@
 
       <div class="panel" role="tabpanel" id="t-pob" aria-labelledby="tb-pob" hidden>
         <ol class="steps">
-          <li><span>01</span><div><b>Link GitHub and a wallet</b><p>Read-only GitHub sign-in, plus a signed message from your wallet. One GitHub account maps to one wallet.</p></div></li>
+          <li><span>01</span><div><b>Link your code account and a wallet</b><p>Read-only sign-in to your code account, plus a signed message from your wallet. One code account maps to one wallet.</p></div></li>
           <li><span>02</span><div><b>Verify real work</b><p>Only commits in public repos count, and only once they land in a merged pull request or on the default branch. Forks, generated files and copy-paste commits are filtered out.</p></div></li>
           <li><span>03</span><div><b>Score the epoch</b><p>Each week, build points come from merged changes, review activity and how many other people use the repo. A daily cap stops anyone from farming points with tiny commits.</p></div></li>
           <li><span>04</span><div><b>Attest and reward</b><p>A hash of the weekly results is posted on-chain. Builders claim their share of the Proof-of-Build pool with a Merkle proof, and their tower grows a floor.</p></div></li>
@@ -302,13 +302,13 @@
 
       <div class="panel" role="tabpanel" id="t-core" aria-labelledby="tb-core" hidden>
         <ol class="steps">
-          <li><span>01</span><div><b>Event-driven</b><p>New pools, large transfers and GitHub pushes arrive as events. Kaelis acts on them in the order they happened.</p></div></li>
+          <li><span>01</span><div><b>Event-driven</b><p>New pools, large transfers and code pushes arrive as events. Kaelis acts on them in the order they happened.</p></div></li>
           <li><span>02</span><div><b>Rules decide, the model explains</b><p>Scores come only from the open rules. The language model gets the evidence and writes the summary, and it cannot change a number.</p></div></li>
           <li><span>03</span><div><b>Replayable</b><p>Every input is stored with its block height. Anyone can re-run a score from the public rules and get the same result.</p></div></li>
           <li><span>04</span><div><b>Speaks where people are</b><p>The same results drive Forge City, a Telegram and X bot, and a public API.</p></div></li>
         </ol>
         <div class="spec">
-          <div class="kv"><span>Rules</span><span>Open source on GitHub, versioned. Every score names the rule version it used.</span></div>
+          <div class="kv"><span>Rules</span><span>Open source and versioned. Every score names the rule version it used.</span></div>
           <div class="kv"><span>Guardrails</span><span>No trading, no custody, no buy or sell advice. Kaelis reports risk, never profit.</span></div>
           <div class="kv"><span>Status</span><span>Demo today. The city runs on example data.</span></div>
         </div>
@@ -335,13 +335,13 @@
       </div>
 
       <div class="row-head"><span class="tag">[ Stack ]</span><span class="tag hint">Planned</span></div>
-      <div class="stack"><span>Solana RPC + indexer</span><span>DEX pool readers</span><span>Sell simulation</span><span>GitHub API + webhooks</span><span>Postgres event log</span><span>Rules engine (TypeScript)</span><span>LLM explainer, read-only</span><span>Merkle distributor</span><span>Three.js Forge City</span><span>Telegram + X bot</span><span>Public API</span></div>
+      <div class="stack"><span>Solana RPC + indexer</span><span>DEX pool readers</span><span>Sell simulation</span><span>Code repo webhooks</span><span>Postgres event log</span><span>Rules engine (TypeScript)</span><span>LLM explainer, read-only</span><span>Merkle distributor</span><span>Three.js Forge City</span><span>Telegram + X bot</span><span>Public API</span></div>
 
       <div class="row-head"><span class="tag">[ Roadmap ]</span><span class="tag hint">No dates promised</span></div>
       <div class="road">
         <div><span class="st now">Now</span><b>Demo</b><p>Story site and Forge City with example data.</p></div>
-        <div><span class="st">Phase 1</span><b>Scanner beta</b><p>Free Telegram and X bot for 20–50 testers. Rules published on GitHub.</p></div>
-        <div><span class="st">Phase 2</span><b>Proof-of-Build beta</b><p>GitHub and wallet linking, weekly epochs, towers from real commits.</p></div>
+        <div><span class="st">Phase 1</span><b>Scanner beta</b><p>Free Telegram and X bot for 20–50 testers. Rules published openly.</p></div>
+        <div><span class="st">Phase 2</span><b>Proof-of-Build beta</b><p>Code account and wallet linking, weekly epochs, towers from real commits.</p></div>
         <div><span class="st">Phase 3</span><b>$KAEL launch</b><p>Live holder windows, the reward pool and on-chain attestations.</p></div>
         <div><span class="st">Phase 4</span><b>Open API</b><p>A risk API and SDK so wallets and apps can show Kaelis scores.</p></div>
       </div>
