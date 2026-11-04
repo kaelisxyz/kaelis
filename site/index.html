@@ -452,12 +452,10 @@ let storyPaused = false;
     for (let y = 0; y < c.height; y += 3) for (let x = 0; x < c.width; x += 3) if (data[(y * c.width + x) * 4 + 3] > 140) pts.push([x, y]);
     for (let i = pts.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [pts[i], pts[j]] = [pts[j], pts[i]]; }
     if (!pts.length) return;
-    for (let i = 0; i < P; i++) {
-      const p = pts[i % pts.length];
-      pText[i * 3] = (p[0] / c.width - 0.5) * 16 + (Math.random() - 0.5) * 0.04;
-      pText[i * 3 + 1] = -(p[1] / c.height - 0.5) * 4 + TEXT_Y;
-      pText[i * 3 + 2] = (Math.random() - 0.5) * 0.3;
-    }
+    // the wordmark is built from towers: one tower per filled cell of a coarse grid over the letters
+    const STEP = 11, cells = [];
+    for (let y = STEP / 2; y < c.height; y += STEP) for (let x = STEP / 2; x < c.width; x += STEP) if (data[(Math.floor(y) * c.width + Math.floor(x)) * 4 + 3] > 140) cells.push([(x / c.width - 0.5) * 16, (y / c.height - 0.5) * 4]);
+    buildTowers(cells, (STEP / c.width) * 16);
     textReady = true;
     introStart = performance.now();
     document.documentElement.classList.add("gl");
@@ -547,6 +545,93 @@ let storyPaused = false;
     c.facade.visible = false;
     c.mesh.add(c.facade);
   });
+
+  // KAELIS skyline: each letter is a block of small towers standing on a board tilted toward the camera
+  const towerBoard = new THREE.Group();
+  towerBoard.rotation.x = 0.8; // ~46 deg: the letters read from the front, the towers point up and out
+  scene.add(towerBoard);
+  let towers = null;
+  function buildTowers(cells, cell) {
+    const n = cells.length; if (!n) return;
+    const geo = new THREE.BoxGeometry(1, 1, 1); geo.translate(0, 0.5, 0);
+    const t = facadeTiles("concrete", 77); t.map.repeat.set(1, 1); t.lit.repeat.set(1, 1);
+    const mat = new THREE.MeshStandardMaterial({ map: t.map, emissiveMap: t.lit, emissive: 0xffffff, emissiveIntensity: 0.55, color: 0xffffff,
+      normalMap: NRM.concrete, normalScale: new THREE.Vector2(0.6, 0.6), roughness: 0.85, metalness: 0.05, transparent: true });
+    const mesh = new THREE.InstancedMesh(geo, mat, n);
+    const tint = new THREE.Color();
+    const data = cells.map(([u, v], i) => {
+      // taller towers toward the middle of each stroke, a few spires
+      const r = Math.random();
+      const h = (0.6 + Math.pow(r, 2.2) * 2.2 + (r > 0.97 ? 1.4 : 0)) * cell * 1.05;
+      tint.setHSL(0.08, 0.06 + Math.random() * 0.08, 0.72 + Math.random() * 0.2);
+      mesh.setColorAt(i, tint);
+      return { u, v, h, d: Math.random() };
+    });
+    mesh.instanceColor.needsUpdate = true;
+    towerBoard.add(mesh);
+    // blueprint outlines: instanced edges of a unit box, scaled per tower in the vertex shader
+    const eg = new THREE.EdgesGeometry(geo);
+    const lg = new THREE.InstancedBufferGeometry();
+    lg.setAttribute("position", eg.getAttribute("position"));
+    const offs = new Float32Array(n * 3), scl = new Float32Array(n * 3);
+    lg.setAttribute("iOff", new THREE.InstancedBufferAttribute(offs, 3));
+    lg.setAttribute("iScl", new THREE.InstancedBufferAttribute(scl, 3));
+    lg.instanceCount = n;
+    const lmat = new THREE.ShaderMaterial({
+      uniforms: { uColor: { value: new THREE.Color(0x111111) }, uAlpha: { value: 0.2 } },
+      vertexShader: "attribute vec3 iOff; attribute vec3 iScl; void main() { gl_Position = projectionMatrix * modelViewMatrix * vec4(position * iScl + iOff, 1.0); }",
+      fragmentShader: "uniform vec3 uColor; uniform float uAlpha; void main() { gl_FragColor = vec4(uColor, uAlpha); }",
+      transparent: true, depthWrite: false
+    });
+    const lines = new THREE.LineSegments(lg, lmat); lines.frustumCulled = false;
+    towerBoard.add(lines);
+    // ground slab under the word
+    const slab = new THREE.Mesh(new THREE.PlaneGeometry(1, 1), new THREE.MeshStandardMaterial({ color: 0xf1eee8, roughness: 1, transparent: true }));
+    slab.rotation.x = -Math.PI / 2; towerBoard.add(slab);
+    towers = { mesh, lines, data, cell, offs, scl, slab, lmat, mat, mapRef: mat.map };
+  }
+  const tMat = new THREE.Matrix4(), tPos = new THREE.Vector3(), tScale = new THREE.Vector3(), tQuat = new THREE.Quaternion();
+  const boardPlane = new THREE.Plane(), boardHit = new THREE.Vector3(), boardInv = new THREE.Matrix4();
+  function updateTowers(rise, time) {
+    if (!towers) return;
+    const T = towers, k = textScale * (wideView ? 0.82 : 1.25), c = T.cell * k;
+    towerBoard.visible = rise > 0.005;
+    if (!towerBoard.visible) return;
+    towerBoard.position.set(0, TEXT_Y - 0.4 * k, 0);
+    towerBoard.updateMatrixWorld();
+    // cursor: towers near it grow, like a district lighting up
+    let mx = 1e9, mz = 1e9;
+    if (mouseMoved && !reduce) {
+      boardPlane.setFromNormalAndCoplanarPoint(new THREE.Vector3(0, 1, 0).applyQuaternion(towerBoard.quaternion), towerBoard.position);
+      mouseRay.setFromCamera({ x: mouse.x, y: mouse.y }, camera);
+      if (mouseRay.ray.intersectPlane(boardPlane, boardHit)) { boardInv.copy(towerBoard.matrixWorld).invert(); boardHit.applyMatrix4(boardInv); mx = boardHit.x; mz = boardHit.z; }
+    }
+    const R = 2.2 * k;
+    T.data.forEach((d, i) => {
+      const grow = clamp(rise * 1.6 - d.d * 0.6, 0, 1), g = grow * grow * (3 - 2 * grow);
+      const x = d.u * k, z = d.v * k;
+      const dist = Math.hypot(x - mx, z - mz);
+      const boost = dist < R ? (1 - dist / R) * 1.2 : 0;
+      const wob = reduce ? 0 : Math.sin(time * 0.8 + d.u * 0.9 + d.v) * 0.04;
+      const h = Math.max(0.0001, d.h * k * g * (1 + boost + wob));
+      tPos.set(x, 0, z); tScale.set(c * 0.84, h, c * 0.84);
+      tMat.compose(tPos, tQuat, tScale); T.mesh.setMatrixAt(i, tMat);
+      T.offs[i * 3] = x; T.offs[i * 3 + 1] = 0; T.offs[i * 3 + 2] = z;
+      T.scl[i * 3] = c * 0.84; T.scl[i * 3 + 1] = h; T.scl[i * 3 + 2] = c * 0.84;
+    });
+    T.mesh.instanceMatrix.needsUpdate = true;
+    T.lines.geometry.attributes.iOff.needsUpdate = true; T.lines.geometry.attributes.iScl.needsUpdate = true;
+    T.slab.scale.set(17 * k, 5 * k, 1);
+    // built: textured stone towers; blueprint: white blocks with cobalt outlines
+    T.mat.opacity = Math.min(1, rise * 2);
+    T.mat.color.copy(WHITE);
+    T.mat.emissiveIntensity = 0.55 * (1 - bp);
+    T.mat.map = bp > 0.5 ? null : T.mapRef;
+    if (T.lastBp !== (bp > 0.5)) { T.lastBp = bp > 0.5; T.mat.needsUpdate = true; }
+    T.lmat.uniforms.uColor.value.copy(INK).lerp(BLUE, bp);
+    T.lmat.uniforms.uAlpha.value = lerp(0.18, 0.95, bp) * Math.min(1, rise * 2);
+    T.slab.material.opacity = 0.9 * Math.min(1, rise * 2) * (1 - bp);
+  }
 
   const linkGeo = new THREE.BufferGeometry();
   const linkPos = new Float32Array(N * 3);
@@ -771,7 +856,9 @@ let storyPaused = false;
       }
       pGeo.attributes.position.needsUpdate = true;
     }
-    pMat.size = lerp(0.1, 0.08 * Math.max(1, textScale), form);
+    pMat.size = 0.1;
+    pMat.opacity *= lerp(1, 0.35, form); // dust thins out while the towers stand
+    updateTowers(form, time);
     pMat.color.setHex(0x9a9a9a).lerp(INK, form).lerp(BLUE, bp);
 
     // hammer
