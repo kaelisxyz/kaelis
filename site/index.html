@@ -197,6 +197,49 @@
   .band .big:hover span { transform: translate(8px, -8px); }
   .foot { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 12px 24px; align-items: center; border-top: 1px solid var(--ink); padding-top: 16px; }
   .foot .logo { font-size: 13px; }
+  /* "Try it": a tiny, example-data simulation of the three Kaelis jobs, right after the landing screen */
+  .sim { position: relative; z-index: 2; min-height: 100svh; display: grid; place-items: center; padding: 12vh var(--gut); box-sizing: border-box; }
+  .sim .card { max-width: 46rem; width: 100%; }
+  .sim .tabs { display: flex; flex-wrap: wrap; gap: 6px; }
+  .sim .tabs button { font-family: var(--f-mono); font-size: 10.5px; letter-spacing: .1em; text-transform: uppercase; padding: 8px 12px; border-radius: 999px; border: 1px solid var(--ink); background: var(--paper); color: var(--ink); cursor: pointer; }
+  .sim .tabs button[aria-selected="true"] { background: var(--ink); color: var(--paper); }
+  .sim .pane[hidden] { display: none; }
+  .sim .pane { display: grid; gap: 14px; }
+  .sim .row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+  .sim .tok { font-family: var(--f-mono); font-size: 11px; letter-spacing: .06em; padding: 8px 12px; border: 1px dashed var(--ink); border-radius: 999px; background: var(--paper); color: var(--ink); cursor: pointer; }
+  .sim .tok[aria-pressed="true"] { border-style: solid; background: color-mix(in srgb, var(--ink) 8%, var(--paper)); }
+  .sim .go { margin-left: auto; }
+  .sim .stages { display: grid; grid-template-columns: repeat(4, 1fr); gap: 4px; }
+  .sim .stages span { font-family: var(--f-mono); font-size: 10px; letter-spacing: .1em; text-transform: uppercase; text-align: center; padding: 7px 4px; border: 1px solid var(--rule); color: var(--mute); transition: all .25s; }
+  .sim .stages span.on { border-color: var(--ink); color: var(--paper); background: var(--ink); }
+  .sim .stages span.done { border-color: var(--ink); color: var(--ink); }
+  .sim .checks { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: 1fr 1fr; gap: 0 18px; }
+  .sim .checks li { display: grid; grid-template-columns: 16px 1fr auto; gap: 8px; align-items: center; padding: 6px 0; border-bottom: 1px solid var(--rule); font-size: 13.5px; color: var(--mute); transition: color .2s; }
+  .sim .checks li i { width: 14px; height: 14px; border: 1px solid var(--rule); font-style: normal; font-size: 10px; line-height: 12px; text-align: center; color: #fff; }
+  .sim .checks li em { font-style: normal; font-family: var(--f-mono); font-size: 11px; }
+  .sim .checks li.hit { color: var(--ink); } .sim .checks li.hit i { background: #c4452c; border-color: #c4452c; } .sim .checks li.hit em { color: #c4452c; }
+  .sim .checks li.ok { color: var(--ink); } .sim .checks li.ok i { background: #2f8f5b; border-color: #2f8f5b; }
+  .sim .result { display: grid; grid-template-columns: auto 1fr; gap: 6px 18px; align-items: end; }
+  .sim .num { font-family: var(--f-head); font-size: 64px; line-height: .85; letter-spacing: -0.05em; font-variant-numeric: tabular-nums; }
+  .sim .num small { font-size: 16px; color: var(--mute); letter-spacing: 0; }
+  .sim .meter { position: relative; height: 8px; display: grid; grid-template-columns: 40fr 30fr 30fr; gap: 2px; margin-bottom: 8px; }
+  .sim .meter b { background: #2f8f5b; } .sim .meter b + b { background: #c88a12; } .sim .meter b + b + b { background: #c4452c; }
+  .sim .meter i { position: absolute; top: -5px; bottom: -5px; width: 3px; margin-left: -1px; background: var(--ink); left: 0; transition: left .08s linear; }
+  .sim .band { font-family: var(--f-mono); font-size: 10.5px; letter-spacing: .1em; text-transform: uppercase; justify-self: start; }
+  .sim .say { min-height: 3em; font-size: 15px; color: var(--ink); background: color-mix(in srgb, var(--ink) 5%, var(--paper)); padding: 10px 12px; max-width: none; }
+  .sim .say b { font-family: var(--f-mono); font-size: 10px; letter-spacing: .1em; display: block; color: var(--mute); margin-bottom: 2px; }
+  .sim .city { display: flex; align-items: flex-end; gap: 6px; height: 120px; border-bottom: 1px solid var(--ink); padding: 0 4px; }
+  .sim .city span { flex: 1; background: repeating-linear-gradient(to top, var(--ink) 0 14px, var(--paper) 14px 16px); border: 1px solid var(--ink); transition: height .5s cubic-bezier(.2,.8,.2,1); }
+  .sim .city span.me { background: repeating-linear-gradient(to top, var(--ember) 0 14px, var(--paper) 14px 16px); border-color: var(--ember); }
+  .sim .win { display: grid; grid-template-columns: repeat(12, 1fr); gap: 4px; padding: 10px; border: 1px solid var(--ink); background: var(--ink); }
+  .sim .win i { aspect-ratio: 1; background: #2a2a2e; transition: background .4s, box-shadow .4s; }
+  .sim .win i.lit { background: #f3d9a4; }
+  .sim .win i.me { background: var(--ember); box-shadow: 0 0 10px var(--ember); }
+  .sim .stat { font-family: var(--f-mono); font-size: 11px; letter-spacing: .08em; text-transform: uppercase; color: var(--mute); }
+  .sim .stat b { color: var(--ink); font-weight: 500; }
+  .sim .more { display: flex; justify-content: space-between; gap: 12px; flex-wrap: wrap; border-top: 1px solid var(--rule); padding-top: 12px; }
+  .sim .more a { color: var(--ink); }
+  @media (max-width: 560px) { .sim .checks { grid-template-columns: 1fr; } .sim .go { margin-left: 0; } .sim .num { font-size: 52px; } }
   .xlink { display: inline-grid; place-items: center; width: 30px; height: 30px; color: var(--ink); }
   .xlink svg { width: 16px; height: 16px; }
   .xlink:hover { opacity: .6; }
@@ -246,6 +289,50 @@
         <div class="tag">[ $KAEL · an agent forged by builders ]</div>
         <p class="lead"><b>Forged by builders. Awakened by the chain.</b> Before the chain, there was only noise: loose data drifting, with nothing to hold it together.</p>
       </div>
+    </div>
+  </section>
+
+  <section class="sim" id="try" aria-labelledby="tryTitle">
+    <div class="card">
+      <div class="tag" id="tryTitle">Try it · Kaelis in 10 seconds</div>
+      <div class="tabs" role="tablist" aria-label="Kaelis jobs">
+        <button type="button" role="tab" id="st-scan" aria-controls="sp-scan" aria-selected="true">01 Scan a token</button>
+        <button type="button" role="tab" id="st-build" aria-controls="sp-build" aria-selected="false" tabindex="-1">02 Build</button>
+        <button type="button" role="tab" id="st-hold" aria-controls="sp-hold" aria-selected="false" tabindex="-1">03 Hold</button>
+      </div>
+
+      <div class="pane" id="sp-scan" role="tabpanel" aria-labelledby="st-scan">
+        <p>Pick a token and press scan. Kaelis reads the chain, runs seven checks and explains the result.</p>
+        <div class="row" role="group" aria-label="Example tokens">
+          <button type="button" class="tok" data-tok="safu" aria-pressed="true">$SAFU</button>
+          <button type="button" class="tok" data-tok="moon" aria-pressed="false">$MOON</button>
+          <button type="button" class="tok" data-tok="rugme" aria-pressed="false">$RUGME</button>
+          <button type="button" class="btn go" id="scanGo">Scan ↗</button>
+        </div>
+        <div class="stages" aria-hidden="true"><span>Read</span><span>Check</span><span>Score</span><span>Explain</span></div>
+        <ul class="checks" id="simChecks"></ul>
+        <div class="result">
+          <div class="num" id="simNum">–<small> / 100</small></div>
+          <div><div class="meter"><b></b><b></b><b></b><i id="simPin"></i></div><span class="band" id="simBand">Waiting for a scan</span></div>
+        </div>
+        <div class="say" aria-live="polite"><b>AI SUMMARY</b><span id="simSay">Press scan to see Kaelis at work.</span></div>
+      </div>
+
+      <div class="pane" id="sp-build" role="tabpanel" aria-labelledby="st-build" hidden>
+        <p>Builders earn by shipping real code. Merged work is verified, and your tower grows a floor.</p>
+        <div class="city" id="simCity" aria-hidden="true"></div>
+        <div class="row"><span class="stat">Your tower · <b id="simFloors">3</b> floors · <b id="simPts">0</b> build points</span><button type="button" class="btn go" id="buildGo">Ship code ↗</button></div>
+        <div class="say" aria-live="polite"><b>KAELIS</b><span id="buildSay">Press ship code to merge a change.</span></div>
+      </div>
+
+      <div class="pane" id="sp-hold" role="tabpanel" aria-labelledby="st-hold" hidden>
+        <p>Every wallet holding $KAEL lights one window in Forge City. Sell everything and it turns off.</p>
+        <div class="win" id="simWin" aria-hidden="true"></div>
+        <div class="row"><span class="stat"><b id="simHolders">41</b> holders · <b id="simLit">41</b> lit windows</span><button type="button" class="btn go" id="holdGo">Hold $KAEL ↗</button></div>
+        <div class="say" aria-live="polite"><b>KAELIS</b><span id="holdSay">Press hold to light your window.</span></div>
+      </div>
+
+      <div class="more"><span class="hint">Simulation with example data</span><a class="hint" href="guide.html">How it works → Guide</a></div>
     </div>
   </section>
 
@@ -1023,6 +1110,98 @@ let storyPaused = false;
 </script>
 
 
+<script>
+// "Try it": three tiny simulations (scan, build, hold) with example data. Same weights as the guide.
+(function () {
+  const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  const wait = (ms) => new Promise((r) => setTimeout(r, reduce ? 0 : ms));
+  const $ = (id) => document.getElementById(id);
+  // tabs
+  const tabs = Array.from(document.querySelectorAll('#try [role="tab"]'));
+  function show(t) { tabs.forEach((b) => { const on = b === t; b.setAttribute("aria-selected", on); b.tabIndex = on ? 0 : -1; $(b.getAttribute("aria-controls")).hidden = !on; }); }
+  tabs.forEach((b, i) => {
+    b.addEventListener("click", () => show(b));
+    b.addEventListener("keydown", (e) => { const d = e.key === "ArrowRight" ? 1 : e.key === "ArrowLeft" ? -1 : 0; if (d) { const n = tabs[(i + d + tabs.length) % tabs.length]; show(n); n.focus(); } });
+  });
+
+  // 01 scan
+  const CHECKS = ["Sell works (not a honeypot)", "Liquidity locked", "Creator holds little supply", "Creator has no rug history", "Mint authority off", "Holders not from one wallet", "Freeze authority off"];
+  const TOKENS = {
+    safu:  { pts: [0, 0, 0, 0, 0, 0, 5], say: "No known red flags. The pool is locked and supply is spread out. That is not a promise of safety." },
+    moon:  { pts: [0, 20, 8, 0, 10, 6, 0], say: "Liquidity can be pulled and new tokens can still be minted. Read the evidence before buying." },
+    rugme: { pts: [25, 20, 15, 15, 10, 8, 5], say: "Selling fails, so this is a honeypot. The creator rugged tokens before. Treat it as a trap." }
+  };
+  const list = $("simChecks");
+  list.innerHTML = CHECKS.map((c) => `<li><i></i><span>${c}</span><em></em></li>`).join("");
+  const items = Array.from(list.children), stages = Array.from(document.querySelectorAll("#sp-scan .stages span"));
+  let tok = "safu", running = false;
+  document.querySelectorAll("#sp-scan .tok").forEach((b) => b.addEventListener("click", () => {
+    if (running) return; tok = b.dataset.tok;
+    document.querySelectorAll("#sp-scan .tok").forEach((x) => x.setAttribute("aria-pressed", x === b));
+  }));
+  function stage(i) { stages.forEach((s, k) => { s.classList.toggle("on", k === i); s.classList.toggle("done", k < i); }); }
+  function setScore(v) {
+    $("simNum").firstChild.nodeValue = v; $("simPin").style.left = v + "%";
+    const band = v >= 70 ? ["Dangerous", "#c4452c"] : v >= 40 ? ["Suspicious", "#c88a12"] : ["Low risk", "#2f8f5b"];
+    $("simBand").textContent = band[0]; $("simBand").style.color = band[1];
+  }
+  async function type(el, text) { el.textContent = ""; if (reduce) { el.textContent = text; return; } for (let i = 0; i <= text.length; i += 2) { el.textContent = text.slice(0, i); await wait(18); } el.textContent = text; }
+  $("scanGo").addEventListener("click", async () => {
+    if (running) return; running = true; $("scanGo").disabled = true;
+    const T = TOKENS[tok];
+    items.forEach((li) => { li.className = ""; li.querySelector("i").textContent = ""; li.querySelector("em").textContent = ""; });
+    $("simNum").firstChild.nodeValue = "–"; $("simPin").style.left = "0%"; $("simBand").textContent = "Scanning…"; $("simBand").style.color = "";
+    stage(0); $("simSay").textContent = "Reading the creator, holders and pool from the chain…"; await wait(700);
+    stage(1); $("simSay").textContent = "Running seven fixed checks…";
+    for (let i = 0; i < items.length; i++) {
+      const hit = T.pts[i] > 0, li = items[i];
+      li.className = hit ? "hit" : "ok"; li.querySelector("i").textContent = hit ? "✕" : "✓"; li.querySelector("em").textContent = hit ? "+" + T.pts[i] : "";
+      await wait(230);
+    }
+    stage(2);
+    let total = T.pts.reduce((a, b) => a + b, 0); if (T.pts[0] > 0) total = Math.max(85, total); total = Math.min(100, total);
+    const steps = reduce ? 1 : 24;
+    for (let k = 1; k <= steps; k++) { setScore(Math.round(total * k / steps)); await wait(28); }
+    stage(3); await type($("simSay"), T.say);
+    stage(4); running = false; $("scanGo").disabled = false;
+  });
+
+  // 02 build
+  const city = $("simCity"), H = [38, 62, 30, 80, 46, 0, 54, 34, 70, 42];
+  city.innerHTML = H.map((h, i) => `<span${i === 5 ? ' class="me"' : ""} style="height:${i === 5 ? 3 * 12 : h}%"></span>`).join("");
+  const me = city.children[5]; let floors = 3, pts = 0, building = false;
+  $("buildGo").addEventListener("click", async () => {
+    if (building) return; building = true; $("buildGo").disabled = true;
+    await type($("buildSay"), "Pull request merged in a public repo. Checking it is real work…"); await wait(500);
+    floors++; pts += 120; me.style.height = Math.min(100, floors * 12) + "%";
+    $("simFloors").textContent = floors; $("simPts").textContent = pts;
+    await type($("buildSay"), `Verified. +120 build points, your tower is now ${floors} floors. Rewards are paid weekly.`);
+    building = false; $("buildGo").disabled = false;
+  });
+
+  // 03 hold
+  const win = $("simWin"), N = 60; let holders = 41, mine = -1;
+  const lit = new Set(); let seed = 9; const rnd = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
+  while (lit.size < holders) lit.add(Math.floor(rnd() * N));
+  win.innerHTML = Array.from({ length: N }, (_, i) => `<i class="${lit.has(i) ? "lit" : ""}"></i>`).join("");
+  const cells = Array.from(win.children);
+  $("holdGo").addEventListener("click", async () => {
+    if (mine < 0) {
+      mine = cells.findIndex((c, i) => !lit.has(i) && i > 20);
+      cells[mine].className = "me"; holders++;
+      $("holdGo").textContent = "Sell all ↗";
+      $("simHolders").textContent = holders; $("simLit").textContent = holders;
+      await type($("holdSay"), "Your wallet holds $KAEL, so your window lights up. It stays in the same spot every visit.");
+    } else {
+      cells[mine].className = ""; mine = -1; holders--;
+      $("holdGo").textContent = "Hold $KAEL ↗";
+      $("simHolders").textContent = holders; $("simLit").textContent = holders;
+      await type($("holdSay"), "You sold everything, so your window turns off at the next snapshot.");
+    }
+    $("simHolders").textContent = holders; $("simLit").textContent = holders;
+  });
+})();
+</script>
 <script>
 // "Change reality": flips the page between built (ink on paper) and blueprint (cobalt line art). Remembered per viewer.
 (function () {
