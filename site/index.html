@@ -86,18 +86,18 @@
 
   /* hero: huge uppercase statement top-left, technical callouts around the 3D wordmark */
   .beat.hero { align-items: flex-end; padding-block: 18vh 7vh; position: relative; }
-  .hero .card { all: unset; display: grid; gap: 16px; max-width: 46rem; }
-  .hero .card::after { content: none; }
-  .hero h1 { font-family: var(--f-head); font-size: clamp(36px, min(5.6vw, 9svh), 92px); line-height: .88; text-transform: uppercase; letter-spacing: -0.045em; font-weight: 500; }
-  html[data-reality="blueprint"] .hero h1 { font-weight: 300; }
-  .hero .lead { max-width: 34ch; }
+  .sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+  .herofoot { width: 100%; display: flex; justify-content: space-between; align-items: flex-end; gap: 16px; }
+  .herofoot .card { max-width: 25rem; }
+  .herofoot .lead { font-size: 15px; }
+  .herofoot .lead b { font-weight: 500; }
   .callout { position: absolute; z-index: 3; display: grid; gap: 6px; max-width: 200px; font-family: var(--f-mono); font-size: 10px; letter-spacing: .08em; text-transform: uppercase; line-height: 1.4; color: var(--ink); pointer-events: none; }
   .callout::before { content: ""; position: absolute; width: 7px; height: 7px; background: var(--ink); }
   .callout i { position: absolute; height: 1px; background: var(--ink); transform-origin: left center; }
-  .callout.c1 { top: 20vh; right: 9vw; }
+  .callout.c1 { top: 15vh; right: 8vw; }
   .callout.c1::before { left: -110px; top: 66px; }
   .callout.c1 i { left: -104px; top: 69px; width: 112px; transform: rotate(-32deg); }
-  .callout.c2 { top: 68vh; right: 15vw; text-align: right; }
+  .callout.c2 { top: 70vh; right: 10vw; text-align: right; }
   .callout.c2::before { right: calc(100% + 120px); top: -40px; }
   .callout.c2 i { right: 100%; top: -37px; width: 128px; transform-origin: right center; transform: rotate(-17deg); }
   .infocard { position: absolute; z-index: 3; top: 18vh; left: var(--gut); border: 1px solid var(--ink); padding: 10px 12px; display: grid; gap: 4px; font-family: var(--f-mono); font-size: 10px; letter-spacing: .08em; text-transform: uppercase; background: var(--paper); }
@@ -153,7 +153,8 @@
   @media (max-width: 899px) {
     .beat:not(.hero) { align-items: flex-end; padding-block: 54svh 5svh; }
     .beat.hero { padding-block: 34svh 5svh; }
-    .hero .lead { font-size: 16px; }
+    .herofoot { flex-direction: column; align-items: stretch; }
+    .herofoot .card { max-width: none; }
     .beat.right { justify-content: flex-start; }
     .beat .card { max-width: none; }
     .rail { display: none; }
@@ -241,10 +242,12 @@
     <div class="infocard" aria-hidden="true"><b>KAELIS /26</b><span>KAE (forge) + LIS (signal)</span><span>Block height: none</span></div>
     <div class="callout c1" aria-hidden="true"><i></i>Where loose data drifts into a shape you can trust</div>
     <div class="callout c2" aria-hidden="true"><i></i>Move your cursor through the noise</div>
-    <div class="card">
-      <div class="tag">[ $KAEL · an agent forged by builders ]</div>
-      <h1>Forged by builders. Awakened by the chain.</h1>
-      <p class="lead">Before the chain, there was only noise: loose data drifting, with nothing to hold it together.</p>
+    <h1 class="sr">KAELIS</h1>
+    <div class="herofoot">
+      <div class="card">
+        <div class="tag">[ $KAEL · an agent forged by builders ]</div>
+        <p class="lead"><b>Forged by builders. Awakened by the chain.</b> Before the chain, there was only noise: loose data drifting, with nothing to hold it together.</p>
+      </div>
       <div class="hint">Scroll to forge ↓</div>
     </div>
   </section>
@@ -452,7 +455,7 @@ let storyPaused = false;
     for (let i = 0; i < P; i++) {
       const p = pts[i % pts.length];
       pText[i * 3] = (p[0] / c.width - 0.5) * 16 + (Math.random() - 0.5) * 0.04;
-      pText[i * 3 + 1] = -(p[1] / c.height - 0.5) * 4 + 2.4;
+      pText[i * 3 + 1] = -(p[1] / c.height - 0.5) * 4 + TEXT_Y;
       pText[i * 3 + 2] = (Math.random() - 0.5) * 0.3;
     }
     textReady = true;
@@ -460,7 +463,8 @@ let storyPaused = false;
     document.documentElement.classList.add("gl");
   }
   (document.fonts && document.fonts.ready ? document.fonts.ready : Promise.resolve()).then(sampleWordmark, sampleWordmark);
-  let textScale = 1;
+  let textScale = 1, vw = 1, vh = 1, wideView = true;
+  const TEXT_Y = 0.9; // the wordmark fills the first screen, centred
   const mouseRay = new THREE.Raycaster(), zPlane = new THREE.Plane(new THREE.Vector3(0, 0, 1), 0), mWorld = new THREE.Vector3();
   const pGeo = new THREE.BufferGeometry();
   pGeo.setAttribute("position", new THREE.BufferAttribute(pPos, 3));
@@ -714,12 +718,10 @@ let storyPaused = false;
     camera.fov = w < 640 ? 70 : 55;
     const wide = w >= 900;
     camera.zoom = wide ? 0.85 : 0.95;
-    // shift the scene into the area the text does not use
-    if (wide) camera.setViewOffset(w, h, -w * 0.2, 0, w, h);
-    else camera.setViewOffset(w, h, 0, h * 0.2, w, h);
+    vw = w; vh = h; wideView = wide;
     camera.updateProjectionMatrix();
     const visW = (2 * 18 * Math.tan((camera.fov * Math.PI) / 360) * camera.aspect) / camera.zoom;
-    textScale = Math.min(1, (visW * (wide ? 0.52 : 0.86)) / 16);
+    textScale = Math.min(3, (visW * (wide ? 1.25 : 0.9)) / 16); // KAELIS spans the screen
     readScroll();
   }
   window.addEventListener("resize", resize);
@@ -758,7 +760,7 @@ let storyPaused = false;
         const e = e0 * e0 * (3 - 2 * e0);
         const i3 = i * 3;
         let x = lerp(pHome[i3], pText[i3] * textScale, e);
-        let y = lerp(pHome[i3 + 1], (pText[i3 + 1] - 2.4) * textScale + 2.4, e);
+        let y = lerp(pHome[i3 + 1], (pText[i3 + 1] - TEXT_Y) * textScale + TEXT_Y, e);
         let z = lerp(pHome[i3 + 2], pText[i3 + 2], e);
         if (e > 0.6 && hitM && !reduce && mouseMoved) {
           const dx = x - mWorld.x, dy = y - mWorld.y, d2 = dx * dx + dy * dy;
@@ -769,7 +771,7 @@ let storyPaused = false;
       }
       pGeo.attributes.position.needsUpdate = true;
     }
-    pMat.size = lerp(0.1, 0.12, form);
+    pMat.size = lerp(0.1, 0.08 * Math.max(1, textScale), form);
     pMat.color.setHex(0x9a9a9a).lerp(INK, form).lerp(BLUE, bp);
 
     // hammer
@@ -888,6 +890,10 @@ let storyPaused = false;
       aGeo.attributes.position.needsUpdate = true;
     }
 
+    // hero: the scene is centred so KAELIS owns the screen; later beats shift it into the area the text does not use
+    const shift = smooth(0.25, 0.9, s);
+    if (wideView) camera.setViewOffset(vw, vh, -vw * 0.2 * shift, 0, vw, vh);
+    else camera.setViewOffset(vw, vh, 0, vh * 0.2 * shift, vw, vh);
     camAt(s);
     if (!reduce) {
       camera.position.x += mouse.x * 0.6;
