@@ -1,3 +1,7 @@
+<!doctype html>
+<html lang="en">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Kaelis Forge City</title>
 <meta name="claude:viewport-fit-sides" content="cover">
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -118,7 +122,7 @@
     <h1>KAELIS <span>FORGE CITY</span></h1>
     <span class="tag">Drag to orbit · scroll to zoom · click a building</span>
     <span class="demo">Demo with example data</span>
-    <a class="back" href="index.html">← Back to the Kaelis story</a>
+    <a class="back" id="backLink" href="index.html">← Back to the Kaelis story</a>
   </div>
   <div class="stats">
     <div class="stat e"><span class="tag">Builders</span><b id="sBuilders">0</b></div>
@@ -1233,7 +1237,16 @@
 
   // ---------- Loop ----------
   const v = new THREE.Vector3(), kTarget = new THREE.Vector3();
+  // embedded at the end of the home page: the parent pauses us while the story is on screen
+  const embedded = window.parent !== window;
+  let paused = false;
+  if (embedded) {
+    window.addEventListener("message", (e) => { if (e.data && e.data.kaelis === "pause") paused = true; if (e.data && e.data.kaelis === "resume") { paused = false; clock.getDelta(); } });
+    const back = document.getElementById("backLink");
+    if (back) { back.textContent = "↑ Back to the Kaelis story"; back.addEventListener("click", (e) => { e.preventDefault(); window.parent.postMessage({ kaelis: "story" }, "*"); }); }
+  }
   function frame() {
+    if (paused) { requestAnimationFrame(frame); return; }
     const dt = Math.min(clock.getDelta(), 0.05), t = clock.elapsedTime;
 
     // grow and flicker buildings

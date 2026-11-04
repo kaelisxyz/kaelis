@@ -1,3 +1,7 @@
+<!doctype html>
+<html lang="en">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Kaelis Forge</title>
 <meta name="claude:viewport-fit-sides" content="cover">
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -166,6 +170,19 @@
   .band .toast { flex-basis: 100%; }
   .foot { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 8px; font-family: var(--f-mono); font-size: 12px; color: var(--dim); border-top: 1px solid var(--line); padding-top: 16px; margin-top: 20px; }
   @media (max-width: 899px) { .topbar .hide-sm { display: none; } }
+
+  /* Forge City lives at the end of the same page: a full-screen embedded scene, loaded only when the reader gets close */
+  html { scroll-behavior: smooth; }
+  @media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } }
+  .citywrap { position: relative; z-index: 2; height: 100vh; height: 100svh; background: var(--void); border-top: 1px solid var(--line); }
+  .citywrap iframe { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; display: block; background: var(--void); }
+  .citywrap .gate { position: absolute; inset: 0; display: grid; place-content: center; gap: 14px; text-align: center; padding: 16px;
+    background: radial-gradient(600px 300px at 50% 60%, rgba(255, 138, 61, 0.16), transparent 70%), var(--void); transition: opacity .6s; }
+  .citywrap .gate b { font-family: var(--f-display); font-size: clamp(28px, 5vw, 56px); line-height: 1; letter-spacing: .02em; }
+  .citywrap .gate b span { color: var(--ember); }
+  .citywrap .gate small { font-family: var(--f-mono); font-size: 12px; color: var(--dim); letter-spacing: .2em; text-transform: uppercase; }
+  .citywrap.ready .gate { opacity: 0; pointer-events: none; }
+  body.in-city .topbar, body.in-city .rail { opacity: 0; pointer-events: none; }
 </style>
 
 <canvas id="stage" aria-hidden="true"></canvas>
@@ -176,7 +193,7 @@
   <nav aria-label="Main">
     <a class="hide-sm" href="#block">Story</a>
     <a class="hide-sm" href="#token">Token</a>
-    <a href="city.html">Forge City</a>
+    <a href="#forge-city">Forge City</a>
     <a class="btn sm" href="#forge">Buy</a>
   </nav>
 </header>
@@ -241,7 +258,7 @@
       <h2>Kaelis runs on $KAEL. Builders keep it alive.</h2>
       <p>Kaelis now patrols a whole city. Builders raise towers with real work, every token you send it gets scanned, and every holder lights a window.</p>
       <div class="cta">
-        <a class="btn" href="city.html">Enter Forge City →</a>
+        <a class="btn" href="#forge-city">Enter Forge City →</a>
         <button class="btn ghost" id="buyBtn" type="button">Buy $KAEL</button>
       </div>
       <div class="toast" id="toast" role="status"></div>
@@ -292,7 +309,7 @@
     <div class="band">
       <div>
         <div class="tag sig">The city is open</div>
-        <a class="big" href="city.html">Enter Forge City <span>→</span></a>
+        <a class="big" href="#forge-city">Enter Forge City <span>→</span></a>
       </div>
       <div class="cta">
         <button class="btn ghost" id="joinBtn" type="button">Join the community</button>
@@ -307,9 +324,14 @@
   </div>
 </section>
 
+<section class="citywrap" id="forge-city" aria-label="Forge City">
+  <div class="gate" aria-hidden="true"><small>Entering</small><b>FORGE <span>CITY</span></b><small>Loading the city…</small></div>
+</section>
+
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js"></script>
 <script>
+let storyPaused = false;
 (function () {
   const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
   const canvas = document.getElementById("stage");
@@ -796,7 +818,7 @@
       lastLinked = linked;
     }
 
-    renderer.render(scene, camera);
+    if (!storyPaused) renderer.render(scene, camera); // the story scene sleeps while Forge City fills the screen
     requestAnimationFrame(frame);
   }
   requestAnimationFrame(frame);
@@ -809,6 +831,37 @@
   document.getElementById("joinBtn").addEventListener("click", () => {
     document.getElementById("toast2").textContent = "Demo only: your Discord, X or Telegram link goes here.";
   });
+})();
+</script>
+
+<script>
+// Forge City: load the embedded city once the reader is near, pause whichever scene is off screen
+(function () {
+  const wrap = document.getElementById("forge-city");
+  let frame = null, cityOn = false;
+  function load() {
+    if (frame) return;
+    frame = document.createElement("iframe");
+    frame.src = "city.html?embed=1";
+    frame.title = "Forge City, interactive 3D city";
+    frame.setAttribute("allow", "fullscreen");
+    frame.addEventListener("load", () => { wrap.classList.add("ready"); tell(cityOn ? "resume" : "pause"); });
+    wrap.appendChild(frame);
+  }
+  function tell(msg) { if (frame && frame.contentWindow) frame.contentWindow.postMessage({ kaelis: msg }, "*"); }
+  function update() {
+    const r = wrap.getBoundingClientRect(), vh = window.innerHeight;
+    if (r.top < vh * 2.5) load(); // start loading about two screens early
+    const visible = Math.max(0, Math.min(vh, r.bottom) - Math.max(0, r.top)) / vh;
+    const on = visible > 0.55;
+    if (on !== cityOn) { cityOn = on; document.body.classList.toggle("in-city", on); storyPaused = on; tell(on ? "resume" : "pause"); }
+  }
+  window.addEventListener("scroll", update, { passive: true });
+  window.addEventListener("resize", update);
+  update();
+  // "Back to the story" inside the city scrolls this page back to the top
+  window.addEventListener("message", (e) => { if (e.data && e.data.kaelis === "story") { document.documentElement.style.scrollBehavior = "auto"; window.scrollTo(0, 0); document.documentElement.style.scrollBehavior = ""; } });
+  if (location.hash === "#forge-city") { load(); setTimeout(() => wrap.scrollIntoView(), 50); }
 })();
 </script>
 
