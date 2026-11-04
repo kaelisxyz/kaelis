@@ -163,13 +163,13 @@
   <section>
     <div class="wrap tools">
       <article class="card">
-        <div class="bar tag"><span>01 · Scan a token</span><i></i></div>
+        <div class="bar tag"><span>01 · Scan a token · Live beta</span><i></i></div>
         <div class="body">
           <h2>Check a token before you buy.</h2>
           <p class="what">Kaelis looks for seven known scam signs, like liquidity that can be pulled or a sell that fails, and gives a risk score.</p>
           <ol>
             <li>Copy the token's address.</li>
-            <li>Send it to the Kaelis bot on Telegram or X.</li>
+            <li>Paste it into the <a href="scan.html">Kaelis Scanner</a>.</li>
             <li>Get a score from 0 to 100, with proof for every warning.</li>
           </ol>
           <div class="bands"><span>0–39 low</span><span>40–69 suspicious</span><span>70+ dangerous</span></div>
@@ -177,7 +177,7 @@
         </div>
       </article>
       <article class="card">
-        <div class="bar tag"><span>02 · Build</span><i></i></div>
+        <div class="bar tag"><span>02 · Build · Planned</span><i></i></div>
         <div class="body">
           <h2>Earn by shipping real code.</h2>
           <p class="what">Proof-of-Build rewards merged work in public code repos, not hype. Your work becomes a tower in Forge City.</p>
@@ -190,7 +190,7 @@
         </div>
       </article>
       <article class="card">
-        <div class="bar tag"><span>03 · Hold</span><i></i></div>
+        <div class="bar tag"><span>03 · Hold · After launch</span><i></i></div>
         <div class="body">
           <h2>Light a window in the city.</h2>
           <p class="what">Every wallet holding $KAEL lights one window in Forge City. Your window stays in the same place every visit.</p>
@@ -215,13 +215,14 @@
         <div><span class="tag">03</span><b>Score</b><p>Same data, same score. Anyone can re-run it.</p></div>
         <div><span class="tag">04</span><b>Explain</b><p>An AI writes a plain summary. It can't change the score.</p></div>
       </div>
-      <p class="note">Status: today the website and Forge City run on example data. The scanner bot comes first (free beta), then Proof-of-Build, then $KAEL with live holder windows. No dates promised.</p>
+      <p class="note">Status: the <a href="scan.html">Scanner beta</a> is live and reads real Solana data. Forge City and the Build and Hold demos still use example data. Next: a Telegram and X bot, then Proof-of-Build, then $KAEL with live holder windows. No dates promised.</p>
     </div>
   </section>
   <section id="details">
     <div class="wrap tech">
       <span class="tag">Full details</span>
       <h3>How each part works.</h3>
+      <p class="note" style="margin:0 0 8px">Live today: the Scanner beta (rules v1, runs in your browser). Everything else in this section is the plan we are building toward.</p>
       <div class="arch">
         <div class="cap"><span class="tag">Fig. 01 — Kaelis Core pipeline</span><span class="tag hint">Each stage is logged and replayable</span></div>
         <svg viewBox="0 0 960 250" role="img" aria-label="Pipeline: chain data and code activity flow into Ingest, then Signals, then Score, then Explain, then out to Forge City, alerts and on-chain attestations">
@@ -305,7 +306,7 @@
           <li><span>01</span><div><b>Event-driven</b><p>New pools, large transfers and code pushes arrive as events. Kaelis acts on them in the order they happened.</p></div></li>
           <li><span>02</span><div><b>Rules decide, the model explains</b><p>Scores come only from the open rules. The language model gets the evidence and writes the summary, and it cannot change a number.</p></div></li>
           <li><span>03</span><div><b>Replayable</b><p>Every input is stored with its block height. Anyone can re-run a score from the public rules and get the same result.</p></div></li>
-          <li><span>04</span><div><b>Speaks where people are</b><p>The same results drive Forge City, a Telegram and X bot, and a public API.</p></div></li>
+          <li><span>04</span><div><b>Speaks where people are</b><p>Planned: the same results will drive Forge City, a Telegram and X bot, and a public API.</p></div></li>
         </ol>
         <div class="spec">
           <div class="kv"><span>Rules</span><span>Open source and versioned. Every score names the rule version it used.</span></div>
@@ -340,7 +341,7 @@
       <div class="row-head"><span class="tag">[ Roadmap ]</span><span class="tag hint">No dates promised</span></div>
       <div class="road">
         <div><span class="st now">Now</span><b>Demo</b><p>Story site and Forge City with example data.</p></div>
-        <div><span class="st">Phase 1</span><b>Scanner beta</b><p>Free Telegram and X bot for 20–50 testers. Rules published openly.</p></div>
+        <div><span class="st">Phase 1</span><b>Scanner beta</b><p>Live on the website now. Next: a free Telegram and X bot for testers.</p></div>
         <div><span class="st">Phase 2</span><b>Proof-of-Build beta</b><p>Code account and wallet linking, weekly epochs, towers from real commits.</p></div>
         <div><span class="st">Phase 3</span><b>$KAEL launch</b><p>Live holder windows, the reward pool and on-chain attestations.</p></div>
         <div><span class="st">Phase 4</span><b>Open API</b><p>A risk API and SDK so wallets and apps can show Kaelis scores.</p></div>
