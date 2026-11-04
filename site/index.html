@@ -447,6 +447,59 @@ let storyPaused = false;
     scene.add(mesh);
   }
 
+  // Facades: when the blocks settle into the city they get the same skin as Forge City
+  // (window grid, CC0 normal maps, glass that reflects a real blue-hour HDRI)
+  const texLoader = new THREE.TextureLoader();
+  const nrmTex = (f) => { const t = texLoader.load("textures/" + f); t.wrapS = t.wrapT = THREE.RepeatWrapping; return t; };
+  const NRM = { concrete: nrmTex("normal_0015.webp"), brick: nrmTex("normal_0006.webp"), glass: nrmTex("normal_0021.webp") };
+  let hdrEnv = null; const glassFacades = [];
+  texLoader.load("textures/city_env_rgbe.png", (t) => {
+    t.encoding = THREE.RGBEEncoding; t.minFilter = t.magFilter = THREE.NearestFilter; t.generateMipmaps = false;
+    t.mapping = THREE.EquirectangularReflectionMapping;
+    hdrEnv = new THREE.PMREMGenerator(renderer).fromEquirectangular(t).texture; t.dispose();
+    glassFacades.forEach((m) => { m.envMap = hdrEnv; m.needsUpdate = true; });
+  });
+  // one tile = 3 window columns x 4 floors; colour map plus a lit-window mask for the emissive glow
+  function facadeTiles(style, seed) {
+    let a = seed * 9301 + 49297; const rnd = () => (a = (a * 16807) % 2147483647) / 2147483647;
+    const COLS = style === "glass" ? 5 : 4, W = 256, H = 256, fh = H / 4, cw = W / COLS;
+    const wall = document.createElement("canvas"), lit = document.createElement("canvas");
+    wall.width = lit.width = W; wall.height = lit.height = H;
+    const g = wall.getContext("2d"), l = lit.getContext("2d");
+    g.fillStyle = style === "concrete" ? "#4a4652" : style === "glass" ? "#141a26" : "#5a3a30"; g.fillRect(0, 0, W, H);
+    for (let i = 0; i < 900; i++) { g.fillStyle = `rgba(${rnd() < 0.5 ? "255,255,255" : "0,0,0"},${rnd() * 0.07})`; g.fillRect(rnd() * W, rnd() * H, 2, 2); }
+    if (style === "brick") { g.fillStyle = "rgba(0,0,0,0.3)"; for (let y = 0; y < H; y += 6) g.fillRect(0, y, W, 1); }
+    l.fillStyle = "#000"; l.fillRect(0, 0, W, H);
+    for (let f = 0; f < 4; f++) {
+      g.fillStyle = "rgba(0,0,0,0.5)"; g.fillRect(0, f * fh, W, 3); // floor slab line
+      for (let c = 0; c < COLS; c++) {
+        const ix = style === "glass" ? 3 : 14, iy = style === "glass" ? 5 : 15;
+        const x = c * cw + ix, y = f * fh + iy, w = cw - ix * 2, h = fh - iy * 2;
+        g.fillStyle = "#1b1d24"; g.fillRect(x - 3, y - 3, w + 6, h + 6);          // frame
+        g.fillStyle = style === "glass" ? "#0c1422" : "#06080d"; g.fillRect(x, y, w, h);                          // dark pane
+        if (rnd() < 0.3) { const warm = rnd() < 0.75; l.fillStyle = warm ? "#c9a274" : "#9fb4cc"; l.fillRect(x, y, w, h); g.fillStyle = warm ? "#b89870" : "#97a8bf"; g.fillRect(x, y, w, h); }
+        g.fillStyle = "rgba(0,0,0,0.45)"; g.fillRect(x - 3, y + h + 3, w + 6, 3); // sill shadow
+      }
+    }
+    const mk = (cv) => { const t = new THREE.CanvasTexture(cv); t.wrapS = t.wrapT = THREE.RepeatWrapping; t.anisotropy = Math.min(8, renderer.capabilities.getMaxAnisotropy()); return t; };
+    return { map: mk(wall), lit: mk(lit) };
+  }
+  const STYLES = ["concrete", "glass", "brick"];
+  const facadeBox = new THREE.BoxGeometry(1.01, 1.0, 1.01);
+  cubes.forEach((c, i) => {
+    const style = STYLES[(i * 7) % 3], t = facadeTiles(style, i + 1), floors = Math.max(4, Math.round(c.h * 3));
+    [t.map, t.lit].forEach((x) => x.repeat.set(1, floors / 4));
+    const glass = style === "glass";
+    const side = new THREE.MeshStandardMaterial({ map: t.map, emissiveMap: t.lit, emissive: 0xffffff, emissiveIntensity: 0.9,
+      normalMap: NRM[style], normalScale: new THREE.Vector2(glass ? 0.15 : 0.8, glass ? 0.15 : 0.8),
+      roughness: glass ? 0.12 : 0.85, metalness: glass ? 0.85 : 0.05, envMapIntensity: glass ? 1.4 : 0.3, transparent: true, opacity: 0 });
+    if (glass) { glassFacades.push(side); if (hdrEnv) side.envMap = hdrEnv; }
+    const roof = new THREE.MeshStandardMaterial({ color: 0x1f1c24, roughness: 0.9, transparent: true, opacity: 0 });
+    c.facade = new THREE.Mesh(facadeBox, [side, side, roof, roof, side, side]);
+    c.facade.visible = false;
+    c.mesh.add(c.facade);
+  });
+
   const linkGeo = new THREE.BufferGeometry();
   const linkPos = new Float32Array(N * 3);
   linkGeo.setAttribute("position", new THREE.BufferAttribute(linkPos, 3));
@@ -741,7 +794,16 @@ let storyPaused = false;
       const sig = smooth(3.3, 4.3, s) * ((i * 7) % 3 === 0 ? 1 : 0.35);
       m.material.emissive.copy(EMBER).lerp(SIGNAL, sig);
       c.edges.material.color.copy(EMBER).lerp(SIGNAL, sig);
-      c.edges.material.opacity = 0.35 + toCity * 0.5;
+      c.edges.material.opacity = 0.35 + toCity * 0.15;
+      // facade skin fades in as the block lands; lit windows pick up the story's ember -> signal tint
+      const skin = smooth(0.55, 1, toCity);
+      c.facade.visible = skin > 0.01;
+      if (c.facade.visible) {
+        const fm = c.facade.material;
+        fm[0].opacity = fm[2].opacity = skin;
+        fm[0].emissive.setRGB(1, 0.92, 0.8).lerp(SIGNAL, sig * 0.6);
+        fm[0].emissiveIntensity = 0.7 + 0.12 * Math.sin(time * 0.7 + i);
+      }
 
       linkPos[i * 3] = m.position.x;
       linkPos[i * 3 + 1] = m.position.y;
