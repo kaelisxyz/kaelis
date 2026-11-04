@@ -275,6 +275,21 @@
   envScene.add(new THREE.Mesh(new THREE.PlaneGeometry(200, 200), new THREE.MeshBasicMaterial({ color: 0x2a2018 })).rotateX(-Math.PI / 2).translateZ(-2));
   const pmrem = new THREE.PMREMGenerator(renderer);
   scene.environment = pmrem.fromScene(envScene, 0.04).texture;
+  // real-world reflections: CC0 HDRI (Potsdamer Platz, HDRI Haven) graded to blue hour, stored as RGBE in a PNG.
+  // The procedural env above stays as the fallback if the file cannot load.
+  const texLoader = new THREE.TextureLoader();
+  texLoader.load("textures/city_env_rgbe.png", (t) => {
+    t.encoding = THREE.RGBEEncoding; t.minFilter = t.magFilter = THREE.NearestFilter; t.generateMipmaps = false;
+    t.mapping = THREE.EquirectangularReflectionMapping;
+    hdrEnv = pmrem.fromEquirectangular(t).texture; t.dispose();
+    glassMats.forEach((m) => { m.envMap = hdrEnv; m.needsUpdate = true; });
+  });
+  // only glass gets the photo sky: lighting the whole scene with it washes the dark city out
+  let hdrEnv = null; const glassMats = new Set();
+  const useHdr = (m) => { glassMats.add(m); if (hdrEnv) { m.envMap = hdrEnv; m.needsUpdate = true; } return m; };
+  // CC0 normal maps (@pmndrs/assets): real concrete, plaster and asphalt micro-relief
+  const loadNormal = (f) => { const t = texLoader.load("textures/" + f); t.wrapS = t.wrapT = THREE.RepeatWrapping; t.anisotropy = Math.min(8, renderer.capabilities.getMaxAnisotropy()); return t; };
+  const NRM = { concrete: loadNormal("normal_0015.webp"), brick: loadNormal("normal_0006.webp"), glass: loadNormal("normal_0021.webp"), asphalt: loadNormal("normal_0010.webp") };
 
   const C = { ember: 0xff8a3d, signal: 0x8fe3ff, warn: 0xffc24a, danger: 0xff4d5e };
 
@@ -305,7 +320,10 @@
   const groundTex = new THREE.CanvasTexture(groundCanvas());
   groundTex.encoding = THREE.sRGBEncoding;
   groundTex.anisotropy = Math.min(8, renderer.capabilities.getMaxAnisotropy());
-  const ground = new THREE.Mesh(new THREE.PlaneGeometry(80, 80), new THREE.MeshStandardMaterial({ map: groundTex, roughness: 0.5, metalness: 0.1, envMapIntensity: 0.5 }));
+  const ground = new THREE.Mesh(new THREE.PlaneGeometry(80, 80), (() => { const m = new THREE.MeshStandardMaterial({ map: groundTex, normalMap: NRM.asphalt, normalScale: new THREE.Vector2(0.6, 0.6), roughness: 0.62, metalness: 0.05, envMapIntensity: 0.6 });
+    // r128 samples every map with the colour map's UVs; tile the asphalt normal separately so it reads at street scale
+    m.onBeforeCompile = (sh) => { sh.fragmentShader = sh.fragmentShader.replace("#include <normal_fragment_maps>", THREE.ShaderChunk.normal_fragment_maps.replace("texture2D( normalMap, vUv )", "texture2D( normalMap, vUv * 48.0 )")); };
+    return m; })());
   ground.rotation.x = -Math.PI / 2;
   ground.receiveShadow = true;
   scene.add(ground);
@@ -429,7 +447,10 @@
     if (style === "glass") { g.fillStyle = "rgba(90,110,140,0.35)"; for (let x = 0; x < S; x += 32) g.fillRect(x, 0, 2, S); }
     const tex = new THREE.CanvasTexture(c); tex.wrapS = tex.wrapT = THREE.RepeatWrapping; tex.encoding = THREE.sRGBEncoding; tex.repeat.set(2, 2);
     tex.anisotropy = Math.min(8, renderer.capabilities.getMaxAnisotropy());
-    const m = new THREE.MeshStandardMaterial({ map: tex, roughness: style === "glass" ? 0.4 : 0.92, metalness: style === "glass" ? 0.5 : 0.02, envMapIntensity: style === "glass" ? 0.8 : 0.25, emissive: 0x000000 });
+    const glass = style === "glass";
+    const m = new THREE.MeshStandardMaterial({ map: tex, normalMap: NRM[style], normalScale: new THREE.Vector2(glass ? 0.15 : 0.9, glass ? 0.15 : 0.9),
+      roughness: glass ? 0.1 : 0.88, metalness: glass ? 0.92 : 0.02, envMapIntensity: glass ? 1.5 : 0.25, emissive: 0x000000 });
+    if (glass) useHdr(m);
     wallCache[key] = m; return m;
   }
   // hollow window frame: an extruded rectangle with a hole, so the glass behind it stays visible
@@ -438,7 +459,7 @@
     const g = new THREE.ExtrudeGeometry(sh, { depth: 0.16, bevelEnabled: false }); g.translate(0, 0, -0.02); return g; })(); // sits almost entirely proud of the wall
   const paneGeo = new THREE.PlaneGeometry(0.42, 0.5), sillGeo = new THREE.BoxGeometry(0.6, 0.05, 0.22);
   const frameMat = new THREE.MeshStandardMaterial({ color: 0x2c2a33, roughness: 0.55, metalness: 0.4 });
-  const darkGlassMat = new THREE.MeshStandardMaterial({ color: 0x0a1020, roughness: 0.08, metalness: 1.0, envMapIntensity: 1.8 });
+  const darkGlassMat = useHdr(new THREE.MeshStandardMaterial({ color: 0x0a1020, roughness: 0.08, metalness: 1.0, envMapIntensity: 1.8 }));
   const litGlassMat = new THREE.MeshBasicMaterial({ color: 0xffffff }); // tinted per window through instanceColor
   const ledgeMat = new THREE.MeshStandardMaterial({ color: 0x3c3843, roughness: 0.85 });
   const zeroM = new THREE.Matrix4().makeScale(0, 0, 0);
@@ -520,10 +541,11 @@
     const d = opts.plain ? w : w * (0.8 + rnd() * 0.45);
     let fm, fac = null, style = null;
     if (opts.plain) {
-      fm = new THREE.MeshStandardMaterial({ color: 0x0f141c, roughness: 0.18, metalness: 0.85, envMapIntensity: 1.2 });
+      fm = useHdr(new THREE.MeshStandardMaterial({ color: 0x0f141c, roughness: 0.18, metalness: 0.85, envMapIntensity: 1.2 }));
     } else {
       const roll = rnd(); style = roll < 0.4 ? "concrete" : roll < 0.65 ? "glass" : "brick";
       fm = wallMaterial(style, facadeSeed++).clone(); // clone so each tower can flicker or glow on its own
+      if (style === "glass") useHdr(fm);
     }
     const mesh = new THREE.Mesh(boxGeo, [fm, fm, topMat, topMat, fm, fm]);
     mesh.castShadow = true; mesh.receiveShadow = true;
