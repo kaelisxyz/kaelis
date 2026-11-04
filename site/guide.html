@@ -49,9 +49,9 @@
   .card .body { padding: 18px 18px 20px; display: grid; gap: 14px; flex: 1; align-content: start; }
   .card h2 { font-size: 28px; line-height: 1.05; font-weight: 500; letter-spacing: -.02em; margin: 0; }
   .card .what { margin: 0; }
-  ol { list-style: none; padding: 0; margin: 0; counter-reset: s; border-top: 1px solid var(--ink); }
-  ol li { counter-increment: s; display: grid; grid-template-columns: 34px 1fr; gap: 8px; padding: 10px 0; border-bottom: 1px solid var(--rule); font-size: 16px; }
-  ol li::before { content: "0" counter(s); font-family: var(--f-mono); font-size: 12px; padding-top: 3px; }
+  .tools ol { list-style: none; padding: 0; margin: 0; counter-reset: s; border-top: 1px solid var(--ink); }
+  .tools ol li { counter-increment: s; display: grid; grid-template-columns: 34px 1fr; gap: 8px; padding: 10px 0; border-bottom: 1px solid var(--rule); font-size: 16px; }
+  .tools ol li::before { content: "0" counter(s); font-family: var(--f-mono); font-size: 12px; padding-top: 3px; }
   .bands { display: grid; grid-template-columns: repeat(3, 1fr); gap: 2px; font-family: var(--f-mono); font-size: 11px; color: #fff; }
   .bands span { padding: 8px; }
   .bands span:nth-child(1) { background: var(--ok); } .bands span:nth-child(2) { background: var(--warn); } .bands span:nth-child(3) { background: var(--bad); }
@@ -65,8 +65,70 @@
   @media (max-width: 480px) { .flow { grid-template-columns: 1fr; } }
   h3 { font-size: clamp(28px, 4vw, 48px); line-height: 1; letter-spacing: -.03em; font-weight: 500; margin: 10px 0 24px; }
   .note { font-size: 14px; color: var(--mute); max-width: 70ch; margin: 18px 0 0; }
+  .watch { padding: 0 0 64px; }
+  .vid { margin: 0; max-width: 960px; }
+  .vid video { display: block; width: 100%; aspect-ratio: 16 / 9; background: var(--tint); }
   footer { padding: 32px 0 56px; }
   footer .wrap { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 12px; }
+  .tech .tag, .tech .hint { font-family: var(--f-mono); font-size: 10.5px; letter-spacing: .08em; text-transform: uppercase; }
+  .tech .hint { color: var(--mute); }
+  .tech p { margin: 0; max-width: 60ch; }
+  .tech .row-head { display: flex; justify-content: space-between; align-items: baseline; gap: 16px; border-bottom: 1px solid var(--rule); padding-bottom: 10px; }
+  .tech .card { min-width: 0; display: grid; gap: 14px; background: var(--paper); border: 1px solid var(--ink); position: relative;
+    clip-path: polygon(0 0, 100% 0, 100% calc(100% - 14px), calc(100% - 14px) 100%, 0 100%); }
+  .tech .card > * { margin-inline: 18px; }
+  .tech .card > :last-child { margin-bottom: 18px; }
+  .tech .card > .tag:first-child { margin: 0; display: flex; justify-content: space-between; align-items: center; gap: 12px; background: var(--ink); color: var(--paper); padding: 6px 8px 6px 10px; }
+  .tech .card > .tag:first-child::after { content: ""; width: 9px; height: 9px; border: 1px solid var(--paper); flex: none; }
+  @media (max-width: 640px) { .tech .row-head .hint { display: none; } }
+  /* Full details (moved from the home page): architecture, modules, risk calculator, roadmap */
+  .tech { display: grid; gap: 28px; }
+  .tech .arch { border: 1px solid var(--ink); padding: 18px; overflow-x: auto; }
+  .tech .arch svg { display: block; width: 100%; min-width: 760px; height: auto; color: var(--ink); font-family: var(--f-mono); }
+  .tech .arch .cap { display: flex; justify-content: space-between; gap: 12px; margin-bottom: 10px; }
+  .tech .tabs { display: flex; flex-wrap: wrap; gap: 8px; }
+  .tech .tabs button { font-family: var(--f-mono); font-size: 11px; letter-spacing: .1em; text-transform: uppercase; padding: 9px 14px; border-radius: 999px; border: 1px solid var(--ink); background: var(--paper); color: var(--ink); cursor: pointer; }
+  .tech .tabs button[aria-selected="true"] { background: var(--ink); color: var(--paper); }
+  .tech .panel { display: grid; grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr); gap: 20px; align-items: start; }
+  .tech .panel[hidden] { display: none; }
+  .tech .steps { list-style: none; margin: 0; padding: 0; display: grid; border-top: 1px solid var(--rule); }
+  .tech .steps li { display: grid; grid-template-columns: 44px 1fr; gap: 12px; padding: 14px 0; border-bottom: 1px solid var(--rule); }
+  .tech .steps li > span { font-family: var(--f-mono); font-size: 11px; color: var(--mute); padding-top: 4px; }
+  .tech .steps b { display: block; font-weight: 500; font-size: 17px; letter-spacing: -0.01em; margin-bottom: 3px; color: var(--ink); }
+  .tech .steps p { font-size: 14.5px; }
+  .tech .spec { display: grid; gap: 0; }
+  .tech .spec .kv { display: grid; grid-template-columns: 9.5rem 1fr; gap: 12px; padding: 9px 0; border-bottom: 1px dashed var(--rule); font-size: 14px; }
+  .tech .spec .kv span:first-child { font-family: var(--f-mono); font-size: 10.5px; letter-spacing: .08em; text-transform: uppercase; color: var(--mute); padding-top: 2px; }
+  .tech .calc { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 0.8fr); gap: 20px; align-items: start; }
+  .tech .flags { display: grid; gap: 8px; }
+  .tech .flags label { display: grid; grid-template-columns: 18px 1fr auto; gap: 10px; align-items: center; padding: 10px 12px; border: 1px solid var(--rule); cursor: pointer; font-size: 14.5px; }
+  .tech .flags label:has(input:checked) { border-color: var(--ink); background: color-mix(in srgb, var(--ink) 5%, var(--paper)); }
+  .tech .flags input { accent-color: var(--ink); width: 16px; height: 16px; margin: 0; }
+  .tech .flags em { font-style: normal; font-family: var(--f-mono); font-size: 11px; color: var(--mute); }
+  .tech .meter { display: grid; gap: 12px; }
+  .tech .meter .num { font-family: var(--f-head); font-size: clamp(64px, 9vw, 128px); line-height: .85; letter-spacing: -0.05em; font-variant-numeric: tabular-nums; }
+  .tech .meter .num small { font-size: .28em; letter-spacing: 0; color: var(--mute); }
+  .tech .meter .band { font-family: var(--f-mono); font-size: 11px; letter-spacing: .12em; text-transform: uppercase; padding: 6px 10px; border-radius: 999px; justify-self: start; border: 1px solid currentColor; }
+  .tech .meter .scale { height: 10px; border: 1px solid var(--ink); position: relative; background: linear-gradient(to right, var(--mint) 0 40%, #f2c14e 40% 70%, #e2483d 70% 100%); }
+  .tech .meter .scale i { position: absolute; top: -5px; bottom: -5px; width: 2px; background: var(--ink); transition: left .35s; }
+  .tech .meter .why { font-size: 14px; }
+  .tech .stack { display: flex; flex-wrap: wrap; gap: 8px; }
+  .tech .stack span { font-family: var(--f-mono); font-size: 10.5px; letter-spacing: .08em; text-transform: uppercase; border: 1px solid var(--ink); border-radius: 999px; padding: 6px 11px; }
+  .tech .road { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 0; border-top: 1px solid var(--ink); }
+  .tech .road > div { padding: 14px 16px 14px 0; display: grid; gap: 6px; align-content: start; border-right: 1px dashed var(--rule); padding-left: 14px; }
+  .tech .road > div:first-child { padding-left: 0; }
+  .tech .road .st { font-family: var(--f-mono); font-size: 10px; letter-spacing: .1em; text-transform: uppercase; color: var(--mute); }
+  .tech .road .st.now { color: var(--ink); }
+  .tech .road .st.now::before { content: ""; display: inline-block; width: 7px; height: 7px; border-radius: 50%; background: var(--mint); margin-right: 6px; box-shadow: 0 0 8px var(--mint); }
+  .tech .road b { font-weight: 500; font-size: 17px; }
+  .tech .road p { font-size: 14px; }
+  @media (max-width: 899px) {
+    .tech .panel, .tech .calc { grid-template-columns: 1fr; }
+    .tech .spec .kv { grid-template-columns: 1fr; gap: 2px; }
+    .tech .road > div { border-right: 0; border-bottom: 1px dashed var(--rule); padding-left: 0; }
+  }
+  .tech { --f-head: var(--f-sans); --mint: #59e7ca; --soft: #121212; }
+  .tech h3 { margin-bottom: 0; }
 </style>
 
 <header>
@@ -83,6 +145,18 @@
       <h1>How to use Kaelis.</h1>
       <p class="lead">Kaelis does three things. Here is what each one does and how you use it.</p>
       <div class="status tag"><b></b>Demo with example data. Nothing here is financial advice.</div>
+    </div>
+  </section>
+
+  <section class="watch">
+    <div class="wrap">
+      <figure class="card vid">
+        <div class="bar tag"><span>Video · How the agent works · 0:36</span><i></i></div>
+        <video controls preload="metadata" playsinline poster="media/kaelis-agent.jpg" aria-label="Video: one token goes through the Kaelis agent, from address to answer">
+          <source src="media/kaelis-agent.mp4" type="video/mp4">
+          <source src="media/kaelis-agent.webm" type="video/webm">
+        </video>
+      </figure>
     </div>
   </section>
 
@@ -144,12 +218,169 @@
       <p class="note">Status: today the website and Forge City run on example data. The scanner bot comes first (free beta), then Proof-of-Build, then $KAEL with live holder windows. No dates promised.</p>
     </div>
   </section>
+  <section id="details">
+    <div class="wrap tech">
+      <span class="tag">Full details</span>
+      <h3>How each part works.</h3>
+      <div class="arch">
+        <div class="cap"><span class="tag">Fig. 01 — Kaelis Core pipeline</span><span class="tag hint">Each stage is logged and replayable</span></div>
+        <svg viewBox="0 0 960 250" role="img" aria-label="Pipeline: chain data and GitHub flow into Ingest, then Signals, then Score, then Explain, then out to Forge City, alerts and on-chain attestations">
+          <defs><marker id="ah" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="8" markerHeight="8" orient="auto"><path d="M0 0L8 4L0 8z" fill="currentColor"/></marker></defs>
+          <g fill="none" stroke="currentColor" stroke-width="1">
+            <rect x="10" y="40" width="130" height="56"/><rect x="10" y="150" width="130" height="56"/>
+            <rect x="190" y="95" width="130" height="56"/><rect x="370" y="95" width="130" height="56"/>
+            <rect x="550" y="95" width="130" height="56"/><rect x="730" y="95" width="130" height="56" stroke-dasharray="4 3"/>
+            <rect x="880" y="30" width="70" height="40"/><rect x="880" y="104" width="70" height="40"/><rect x="880" y="178" width="70" height="40"/>
+            <path d="M140 68 H165 V115 H188" marker-end="url(#ah)"/><path d="M140 178 H165 V131 H188" marker-end="url(#ah)"/>
+            <path d="M320 123 H368" marker-end="url(#ah)"/><path d="M500 123 H548" marker-end="url(#ah)"/><path d="M680 123 H728" marker-end="url(#ah)"/>
+            <path d="M860 115 H868 V50 H878" marker-end="url(#ah)"/><path d="M860 123 H878" marker-end="url(#ah)"/><path d="M860 131 H868 V198 H878" marker-end="url(#ah)"/>
+          </g>
+          <g fill="currentColor" font-size="11" letter-spacing="1">
+            <text x="22" y="64">SOLANA RPC</text><text x="22" y="82" fill-opacity=".6" font-size="9" letter-spacing="0">pools, holders, txs</text>
+            <text x="22" y="174">GITHUB API</text><text x="22" y="192" fill-opacity=".6" font-size="9" letter-spacing="0">commits, PRs, repos</text>
+            <text x="202" y="119">01 INGEST</text><text x="202" y="137" fill-opacity=".6" font-size="9" letter-spacing="0">webhooks + indexer</text>
+            <text x="382" y="119">02 SIGNALS</text><text x="382" y="137" fill-opacity=".6" font-size="9" letter-spacing="0">deterministic checks</text>
+            <text x="562" y="119">03 SCORE</text><text x="562" y="137" fill-opacity=".6" font-size="9" letter-spacing="0">weighted, open rules</text>
+            <text x="742" y="119">04 EXPLAIN</text><text x="742" y="137" fill-opacity=".6" font-size="9" letter-spacing="0">LLM, read-only</text>
+            <text x="888" y="54" font-size="9.5">CITY</text><text x="888" y="128" font-size="9.5">ALERTS</text><text x="888" y="202" font-size="9.5">ATTEST</text>
+          </g>
+          <g fill="currentColor" font-size="9.5" fill-opacity=".55"><text x="190" y="236">raw data is cached with block height + timestamp, so any score can be re-run later and must match</text></g>
+        </svg>
+      </div>
+
+      <div class="tabs" role="tablist" aria-label="Kaelis modules">
+        <button role="tab" aria-selected="true" aria-controls="t-scan" id="tb-scan">01 Scam scanner</button>
+        <button role="tab" aria-selected="false" aria-controls="t-pob" id="tb-pob">02 Proof-of-Build</button>
+        <button role="tab" aria-selected="false" aria-controls="t-hold" id="tb-hold">03 Holder light</button>
+        <button role="tab" aria-selected="false" aria-controls="t-core" id="tb-core">04 Agent core</button>
+      </div>
+
+      <div class="panel" role="tabpanel" id="t-scan" aria-labelledby="tb-scan">
+        <ol class="steps">
+          <li><span>01</span><div><b>Resolve the token</b><p>Paste a mint address or ticker. Kaelis finds the mint, its pools and its creator wallet.</p></div></li>
+          <li><span>02</span><div><b>Run seven checks</b><p>Authorities, liquidity lock, holder concentration, developer history, a simulated sell and funding clusters. Each check returns a severity from 0 to 1 with the transactions that prove it.</p></div></li>
+          <li><span>03</span><div><b>Score 0 to 100</b><p>Weights add up to 100. A failed sell simulation is a hard flag that forces the score to at least 85.</p></div></li>
+          <li><span>04</span><div><b>Keep watching</b><p>Scanned tokens are re-checked. If over half the liquidity leaves in one transaction, or the developer dumps, Kaelis marks a rug and the building falls in Forge City.</p></div></li>
+        </ol>
+        <div class="spec">
+          <div class="kv"><span>Input</span><span>Token mint address or ticker</span></div>
+          <div class="kv"><span>Data</span><span>Solana RPC and indexer, DEX pool state, holder snapshot</span></div>
+          <div class="kv"><span>Output</span><span>Score, band, the evidence for each flag, and a plain-language summary</span></div>
+          <div class="kv"><span>Bands</span><span>0–39 low risk · 40–69 suspicious · 70–100 dangerous</span></div>
+          <div class="kv"><span>Limits</span><span>A low score is not a promise of safety. It means none of the known red flags were found.</span></div>
+        </div>
+      </div>
+
+      <div class="panel" role="tabpanel" id="t-pob" aria-labelledby="tb-pob" hidden>
+        <ol class="steps">
+          <li><span>01</span><div><b>Link GitHub and a wallet</b><p>Read-only GitHub sign-in, plus a signed message from your wallet. One GitHub account maps to one wallet.</p></div></li>
+          <li><span>02</span><div><b>Verify real work</b><p>Only commits in public repos count, and only once they land in a merged pull request or on the default branch. Forks, generated files and copy-paste commits are filtered out.</p></div></li>
+          <li><span>03</span><div><b>Score the epoch</b><p>Each week, build points come from merged changes, review activity and how many other people use the repo. A daily cap stops anyone from farming points with tiny commits.</p></div></li>
+          <li><span>04</span><div><b>Attest and reward</b><p>A hash of the weekly results is posted on-chain. Builders claim their share of the Proof-of-Build pool with a Merkle proof, and their tower grows a floor.</p></div></li>
+        </ol>
+        <div class="spec">
+          <div class="kv"><span>Anti-cheat</span><span>Account age, repo with outside contributors, diff-size caps, rate limits, manual review for top earners</span></div>
+          <div class="kv"><span>Rewards</span><span>From the Proof-of-Build pool (20% of supply in the demo numbers), paid per weekly epoch</span></div>
+          <div class="kv"><span>Privacy</span><span>Kaelis only reads public data. No private repo access is requested.</span></div>
+          <div class="kv"><span>City</span><span>One tower per builder. Floors are verified epochs. Inactive builders dim.</span></div>
+        </div>
+      </div>
+
+      <div class="panel" role="tabpanel" id="t-hold" aria-labelledby="tb-hold" hidden>
+        <ol class="steps">
+          <li><span>01</span><div><b>Snapshot holders</b><p>An indexer reads every $KAEL token account every few minutes.</p></div></li>
+          <li><span>02</span><div><b>Filter dust</b><p>Wallets under a minimum balance are ignored, so nobody can light a thousand windows with a thousand empty wallets.</p></div></li>
+          <li><span>03</span><div><b>Assign a window</b><p>Your window position comes from a hash of your wallet address. It stays the same every time you come back.</p></div></li>
+          <li><span>04</span><div><b>Light or dim</b><p>Holding lights your window. Selling everything turns it off at the next snapshot.</p></div></li>
+        </ol>
+        <div class="spec">
+          <div class="kv"><span>Source</span><span>On-chain token accounts. No sign-up needed.</span></div>
+          <div class="kv"><span>Refresh</span><span>Every few minutes, with block height shown in the city</span></div>
+          <div class="kv"><span>Big holders</span><span>Planned: a house in the holder district, shown by size tier, never by name</span></div>
+        </div>
+      </div>
+
+      <div class="panel" role="tabpanel" id="t-core" aria-labelledby="tb-core" hidden>
+        <ol class="steps">
+          <li><span>01</span><div><b>Event-driven</b><p>New pools, large transfers and GitHub pushes arrive as events. Kaelis acts on them in the order they happened.</p></div></li>
+          <li><span>02</span><div><b>Rules decide, the model explains</b><p>Scores come only from the open rules. The language model gets the evidence and writes the summary, and it cannot change a number.</p></div></li>
+          <li><span>03</span><div><b>Replayable</b><p>Every input is stored with its block height. Anyone can re-run a score from the public rules and get the same result.</p></div></li>
+          <li><span>04</span><div><b>Speaks where people are</b><p>The same results drive Forge City, a Telegram and X bot, and a public API.</p></div></li>
+        </ol>
+        <div class="spec">
+          <div class="kv"><span>Rules</span><span>Open source on GitHub, versioned. Every score names the rule version it used.</span></div>
+          <div class="kv"><span>Guardrails</span><span>No trading, no custody, no buy or sell advice. Kaelis reports risk, never profit.</span></div>
+          <div class="kv"><span>Status</span><span>Demo today. The city runs on example data.</span></div>
+        </div>
+      </div>
+
+      <div class="row-head"><span class="tag">[ Try the risk model ]</span><span class="tag hint">Fig. 02 — tick the red flags</span></div>
+      <div class="calc">
+        <div class="flags" id="flags">
+          <label><input type="checkbox" data-w="25" data-hard="1" data-t="sells fail"><span>Sell simulation fails (honeypot)</span><em>hard flag</em></label>
+          <label><input type="checkbox" data-w="20" data-t="liquidity can be pulled"><span>Liquidity is not locked or burned</span><em>+20</em></label>
+          <label><input type="checkbox" data-w="15" data-t="the developer holds a lot"><span>Developer holds over 20% of supply</span><em>+15</em></label>
+          <label><input type="checkbox" data-w="15" data-t="the developer has rugged before"><span>Developer wallet launched rugged tokens before</span><em>+15</em></label>
+          <label><input type="checkbox" data-w="10" data-t="new tokens can be minted"><span>Mint authority is still active</span><em>+10</em></label>
+          <label><input type="checkbox" data-w="10" data-t="holders look fake"><span>Many holders funded from one wallet</span><em>+10</em></label>
+          <label><input type="checkbox" data-w="5" data-t="wallets can be frozen"><span>Freeze authority is still active</span><em>+5</em></label>
+        </div>
+        <div class="card meter" aria-live="polite">
+          <div class="tag">Risk score</div>
+          <div class="num" id="riskNum">0<small> / 100</small></div>
+          <div class="scale"><i id="riskPin" style="left:0%"></i></div>
+          <span class="band" id="riskBand">Low risk</span>
+          <p class="why" id="riskWhy">No known red flags. That is not a promise of safety.</p>
+        </div>
+      </div>
+
+      <div class="row-head"><span class="tag">[ Stack ]</span><span class="tag hint">Planned</span></div>
+      <div class="stack"><span>Solana RPC + indexer</span><span>DEX pool readers</span><span>Sell simulation</span><span>GitHub API + webhooks</span><span>Postgres event log</span><span>Rules engine (TypeScript)</span><span>LLM explainer, read-only</span><span>Merkle distributor</span><span>Three.js Forge City</span><span>Telegram + X bot</span><span>Public API</span></div>
+
+      <div class="row-head"><span class="tag">[ Roadmap ]</span><span class="tag hint">No dates promised</span></div>
+      <div class="road">
+        <div><span class="st now">Now</span><b>Demo</b><p>Story site and Forge City with example data.</p></div>
+        <div><span class="st">Phase 1</span><b>Scanner beta</b><p>Free Telegram and X bot for 20–50 testers. Rules published on GitHub.</p></div>
+        <div><span class="st">Phase 2</span><b>Proof-of-Build beta</b><p>GitHub and wallet linking, weekly epochs, towers from real commits.</p></div>
+        <div><span class="st">Phase 3</span><b>$KAEL launch</b><p>Live holder windows, the reward pool and on-chain attestations.</p></div>
+        <div><span class="st">Phase 4</span><b>Open API</b><p>A risk API and SDK so wallets and apps can show Kaelis scores.</p></div>
+      </div>
+    </div>
+  </section>
 </main>
 
 <footer>
   <div class="wrap tag">
     <span>Kaelis · Demo with example data · Not financial advice</span>
-    <a href="index.html#tech">Full tech details →</a>
+    <a href="#details">Full details ↑</a>
   </div>
 </footer>
+<script>
+// Tech section: module tabs and the interactive risk model (same weights as the spec above)
+(function () {
+  const tabs = Array.from(document.querySelectorAll('.tabs [role="tab"]'));
+  function show(t) {
+    tabs.forEach((b) => { const on = b === t; b.setAttribute("aria-selected", on); b.tabIndex = on ? 0 : -1; document.getElementById(b.getAttribute("aria-controls")).hidden = !on; });
+  }
+  tabs.forEach((b, i) => {
+    b.addEventListener("click", () => show(b));
+    b.addEventListener("keydown", (e) => { const d = e.key === "ArrowRight" ? 1 : e.key === "ArrowLeft" ? -1 : 0; if (d) { const n = tabs[(i + d + tabs.length) % tabs.length]; show(n); n.focus(); } });
+  });
+  const boxes = Array.from(document.querySelectorAll("#flags input"));
+  const num = document.getElementById("riskNum"), pin = document.getElementById("riskPin"), band = document.getElementById("riskBand"), why = document.getElementById("riskWhy");
+  function calc() {
+    let s = 0, hard = false; const hits = [];
+    boxes.forEach((b) => { if (b.checked) { s += +b.dataset.w; hits.push(b.dataset.t); if (b.dataset.hard) hard = true; } });
+    if (hard) s = Math.max(85, s);
+    s = Math.min(100, s);
+    num.firstChild.nodeValue = s;
+    pin.style.left = "calc(" + s + "% - 1px)";
+    const b = s >= 70 ? ["Dangerous", "#e2483d"] : s >= 40 ? ["Suspicious", "#c98a00"] : ["Low risk", "var(--ink)"];
+    band.textContent = b[0]; band.style.color = b[1];
+    why.textContent = hits.length ? "Flagged because " + hits.join(", ") + (hard ? ". A failed sell is a hard flag, so the score is at least 85." : ".") : "No known red flags. That is not a promise of safety.";
+  }
+  boxes.forEach((b) => b.addEventListener("change", calc));
+  calc();
+})();
+</script>
 </html>

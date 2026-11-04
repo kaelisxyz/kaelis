@@ -1,0 +1,205 @@
+<!doctype html>
+<html lang="en">
+<meta charset="utf-8">
+<title>How the Kaelis agent works</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter+Tight:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500&display=swap">
+<style>
+  /* 36-second explainer: one token goes through the Kaelis agent. Rendered frame by frame with window.renderAt(t). */
+  :root { --ink: #0b0b0c; --mute: #8c8c8c; --rule: #d6d6d6; --ok: #2f8f5b; --warn: #c88a12; --bad: #c4452c; --tint: #f4f4f1; }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; width: 1280px; height: 720px; overflow: hidden; background: #fff; color: var(--ink); font-family: "Inter Tight", Arial, sans-serif; }
+  .grid { position: absolute; inset: 0; background:
+      linear-gradient(to right, rgba(0,0,0,.06) 1px, transparent 1px) 40px 0 / 300px 100% repeat-x,
+      linear-gradient(to bottom, rgba(0,0,0,.06) 1px, transparent 1px) 0 0 / 100% 180px; }
+  .mono { font-family: "JetBrains Mono", monospace; font-size: 12px; letter-spacing: .1em; text-transform: uppercase; }
+  .top { position: absolute; left: 40px; right: 40px; top: 26px; display: flex; justify-content: space-between; z-index: 5; }
+  .mark { font-weight: 600; letter-spacing: .14em; font-family: "Inter Tight", Arial, sans-serif; font-size: 15px; }
+  .mark i { font-style: normal; }
+  .mark i:nth-child(even) { color: #fff; -webkit-text-stroke: 1px var(--ink); paint-order: stroke fill; }
+  .bar { position: absolute; left: 40px; right: 40px; bottom: 28px; height: 8px; border: 1px solid var(--ink); background: repeating-linear-gradient(-45deg, transparent 0 3px, var(--ink) 3px 4px); z-index: 5; }
+  .bar i { display: block; height: 100%; background: var(--ink); width: 0; }
+  .scene { position: absolute; inset: 0; opacity: 0; }
+  .txt { position: absolute; left: 40px; top: 130px; width: 470px; display: grid; gap: 18px; }
+  .tag { display: inline-flex; align-self: start; justify-self: start; background: var(--ink); color: #fff; padding: 6px 10px; }
+  h1 { font-size: 118px; line-height: .86; letter-spacing: -0.05em; margin: 0; font-weight: 500; }
+  h2 { font-size: 60px; line-height: .92; letter-spacing: -0.04em; margin: 0; font-weight: 400; }
+  p { margin: 0; font-size: 22px; line-height: 1.38; max-width: 28ch; }
+  .vis { position: absolute; left: 580px; top: 110px; width: 660px; height: 520px; }
+  .win { position: absolute; border: 1px solid var(--ink); background: #fff; }
+  .win > .t { height: 28px; background: var(--ink); color: #fff; display: flex; align-items: center; justify-content: space-between; padding: 0 10px; }
+  .win > .t::after { content: ""; width: 9px; height: 9px; border: 1px solid #fff; }
+  .win > .b { padding: 16px 18px; display: grid; gap: 12px; }
+  .bubble { justify-self: end; background: var(--ink); color: #fff; padding: 12px 16px; border-radius: 16px 16px 2px 16px; font-family: "JetBrains Mono", monospace; font-size: 18px; }
+  .bubble.in { justify-self: start; background: var(--tint); color: var(--ink); border-radius: 16px 16px 16px 2px; font-family: "Inter Tight", Arial, sans-serif; font-size: 18px; max-width: 90%; line-height: 1.35; }
+  .src { position: absolute; border: 1px solid var(--ink); background: #fff; padding: 12px 14px; width: 210px; display: grid; gap: 4px; }
+  .src b { font-weight: 500; font-size: 20px; }
+  .src span { color: var(--mute); font-size: 15px; }
+  .hub { position: absolute; width: 180px; height: 180px; border: 1px solid var(--ink); border-radius: 50%; display: grid; place-content: center; text-align: center; background: #fff; }
+  .hub b { font-size: 26px; font-weight: 500; letter-spacing: .1em; }
+  .line { position: absolute; height: 1px; background: var(--ink); transform-origin: left center; }
+  .dot { position: absolute; width: 10px; height: 10px; border-radius: 50%; background: var(--ink); margin: -5px 0 0 -5px; }
+  .chk { display: grid; grid-template-columns: 26px 1fr auto; gap: 14px; align-items: center; padding: 11px 0; border-bottom: 1px solid var(--rule); font-size: 21px; }
+  .chk i { width: 20px; height: 20px; border: 1px solid var(--ink); display: grid; place-items: center; font-style: normal; font-size: 14px; color: #fff; }
+  .chk .w { font-family: "JetBrains Mono", monospace; font-size: 15px; color: var(--mute); }
+  .chk.hit i { background: var(--bad); border-color: var(--bad); }
+  .chk.hit .w { color: var(--bad); }
+  .chk.pass i { background: var(--ok); border-color: var(--ok); }
+  .score { font-size: 210px; line-height: .8; letter-spacing: -0.06em; font-variant-numeric: tabular-nums; }
+  .score small { font-size: 40px; color: var(--mute); letter-spacing: 0; }
+  .meter { position: relative; height: 16px; display: grid; grid-template-columns: 40fr 30fr 30fr; gap: 3px; }
+  .meter span:nth-child(1) { background: var(--ok); } .meter span:nth-child(2) { background: var(--warn); } .meter span:nth-child(3) { background: var(--bad); }
+  .meter em { position: absolute; top: -10px; bottom: -10px; width: 4px; background: var(--ink); margin-left: -2px; }
+  .band { display: inline-block; font-family: "JetBrains Mono", monospace; font-size: 16px; letter-spacing: .12em; text-transform: uppercase; padding: 8px 14px; border: 1px solid var(--bad); color: var(--bad); }
+  .lock { display: flex; gap: 12px; align-items: center; border: 1px dashed var(--ink); padding: 12px 14px; font-size: 19px; }
+  .lock svg { width: 26px; height: 26px; flex: none; }
+  .out { position: absolute; border: 1px solid var(--ink); background: #fff; padding: 14px 16px; width: 300px; display: grid; gap: 6px; }
+  .out b { font-weight: 500; font-size: 21px; }
+  .out span { color: var(--mute); font-size: 16px; line-height: 1.35; }
+  .caret::after { content: "▍"; animation: none; }
+</style>
+<body>
+<div class="grid"></div>
+<div class="top mono"><span><b class="mark"><i>K</i><i>A</i><i>E</i><i>L</i><i>I</i><i>S</i></b> · How the agent works</span><span id="idx">01 / 07</span></div>
+
+<!-- 1 title -->
+<section class="scene" data-start="0" data-dur="4.2">
+  <div class="txt" style="top:180px;width:1100px">
+    <span class="tag mono" data-at=".2">[ Kaelis agent · 30 seconds ]</span>
+    <h1 data-at=".5">One token.<br>Four steps.</h1>
+    <p data-at="1.3" style="max-width:40ch">Follow a single token through Kaelis, from address to answer.</p>
+  </div>
+</section>
+
+<!-- 2 ask + read -->
+<section class="scene" data-start="4" data-dur="6.4">
+  <div class="txt">
+    <span class="tag mono" data-at=".2">01 · Read</span>
+    <h2 data-at=".4">You send an address. Kaelis reads the chain.</h2>
+    <p data-at="1.0">Only public data: who made the token, who holds it, where the money sits.</p>
+  </div>
+  <div class="vis">
+    <div class="win" data-at=".6" style="left:0;top:0;width:330px"><div class="t mono">Telegram · Kaelis bot</div><div class="b"><div class="bubble"><span data-type="1.0" data-text="/scan 7xKX…pump"></span></div></div></div>
+    <div class="hub" data-at="2.0" style="left:400px;top:150px"><b>KAELIS</b><span class="mono" style="color:var(--mute)">reading</span></div>
+    <div class="line arrow" data-at="1.8" style="left:300px;top:110px;width:150px;transform:rotate(38deg)"></div>
+    <div class="src" data-at="2.6" style="left:0;top:200px"><b>Creator</b><span>wallet + its past tokens</span></div>
+    <div class="src" data-at="2.9" style="left:0;top:300px"><b>Holders</b><span>top 100 wallets</span></div>
+    <div class="src" data-at="3.2" style="left:0;top:400px"><b>Pool</b><span>liquidity + lock status</span></div>
+    <div class="line" data-at="2.8" style="left:210px;top:240px;width:196px;transform:rotate(-1deg)"></div>
+    <div class="line" data-at="3.1" style="left:210px;top:340px;width:192px;transform:rotate(-17deg)"></div>
+    <div class="line" data-at="3.4" style="left:210px;top:440px;width:230px;transform:rotate(-33deg)"></div>
+  </div>
+</section>
+
+<!-- 3 checks -->
+<section class="scene" data-start="10.2" data-dur="7.2">
+  <div class="txt">
+    <span class="tag mono" data-at=".2">02 · Check</span>
+    <h2 data-at=".4">Seven fixed rules look for scam signs.</h2>
+    <p data-at="1.0">Each rule is open source. No guessing, no vibes.</p>
+  </div>
+  <div class="vis" style="top:120px">
+    <div class="chk" data-at=".8" data-flag="1.6"><i>✕</i><span>Liquidity not locked</span><span class="w">+20</span></div>
+    <div class="chk" data-at="1.2" data-flag="2.2"><i>✕</i><span>Creator holds 38% of supply</span><span class="w">+14</span></div>
+    <div class="chk" data-at="1.6" data-flag="2.8"><i>✕</i><span>Creator rugged 3 tokens before</span><span class="w">+15</span></div>
+    <div class="chk" data-at="2.0" data-flag="3.4"><i>✕</i><span>Can still mint new tokens</span><span class="w">+10</span></div>
+    <div class="chk" data-at="2.4" data-flag="4.0"><i>✕</i><span>Holders funded from one wallet</span><span class="w">+8</span></div>
+    <div class="chk" data-at="2.8" data-flag="4.6"><i>✕</i><span>Can freeze wallets</span><span class="w">+5</span></div>
+    <div class="chk" data-at="3.2" data-pass="5.2"><i>✓</i><span>Test sell works (not a honeypot)</span><span class="w">+0</span></div>
+  </div>
+</section>
+
+<!-- 4 score -->
+<section class="scene" data-start="17.2" data-dur="5.2">
+  <div class="txt">
+    <span class="tag mono" data-at=".2">03 · Score</span>
+    <h2 data-at=".4">The rules add up to a score.</h2>
+    <p data-at="1.0">Same data, same score, every time. Anyone can re-run it.</p>
+  </div>
+  <div class="vis" style="top:150px">
+    <div class="score" data-at=".6"><span id="scoreNum">0</span><small> / 100</small></div>
+    <div data-at=".8" style="margin-top:44px"><div class="meter"><span></span><span></span><span></span><em id="pin" style="left:0%"></em></div>
+      <div class="mono" style="display:flex;justify-content:space-between;color:var(--mute);margin-top:10px"><span>0 low</span><span>40 suspicious</span><span>70 dangerous</span><span>100</span></div></div>
+    <div data-at="2.6" style="margin-top:28px"><span class="band">Dangerous</span></div>
+  </div>
+</section>
+
+<!-- 5 explain -->
+<section class="scene" data-start="22.2" data-dur="5.6">
+  <div class="txt">
+    <span class="tag mono" data-at=".2">04 · Explain</span>
+    <h2 data-at=".4">AI writes it in plain words.</h2>
+    <p data-at="1.0">The AI only reads the result. It can never change the number.</p>
+  </div>
+  <div class="vis" style="top:140px">
+    <div class="win" data-at=".5" style="left:0;top:0;width:640px"><div class="t mono">Telegram · Kaelis bot</div><div class="b">
+      <div class="bubble">/scan 7xKX…pump</div>
+      <div class="bubble in"><b>72 / 100 · Dangerous.</b> <span data-type="1.0" data-text="The pool money can be pulled out at any time, and this creator rugged three tokens before. Treat this as high risk." data-cps="44"></span></div>
+    </div></div>
+    <div class="lock" data-at="3.2" style="position:absolute;left:0;top:250px;width:640px">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4"><rect x="4" y="10" width="16" height="11"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></svg>
+      <span>Every warning links to the transactions that prove it.</span></div>
+  </div>
+</section>
+
+<!-- 6 outputs -->
+<section class="scene" data-start="27.6" data-dur="5.6">
+  <div class="txt">
+    <span class="tag mono" data-at=".2">Then</span>
+    <h2 data-at=".4">It answers, shows and keeps watching.</h2>
+    <p data-at="1.0">If the money leaves the pool later, Kaelis flags the rug.</p>
+  </div>
+  <div class="vis">
+    <div class="out" data-at=".7" style="left:0;top:10px"><span class="mono">Bot</span><b>Reply on Telegram and X</b><span>Score, band and proof in one message.</span></div>
+    <div class="out" data-at="1.2" style="left:340px;top:10px"><span class="mono">Forge City</span><b>A building in the city</b><span>Its colour shows the risk band.</span></div>
+    <div class="out" data-at="1.7" style="left:0;top:190px"><span class="mono">API</span><b>Open for apps and wallets</b><span>GET /v1/score/{mint}</span></div>
+    <div class="out" data-at="2.2" style="left:340px;top:190px;border-color:var(--bad)"><span class="mono" style="color:var(--bad)">Watch mode</span><b>Rug detected → alert</b><span>The building collapses into the Scam Graveyard.</span></div>
+  </div>
+</section>
+
+<!-- 7 end -->
+<section class="scene" data-start="33" data-dur="3.4">
+  <div class="txt" style="top:190px;width:1100px">
+    <h1 data-at=".2">Rules decide.<br>AI explains.</h1>
+    <p data-at="1.0" style="max-width:52ch">Kaelis reports risk. It never predicts prices or promises profit. Demo with example data.</p>
+  </div>
+</section>
+
+<div class="bar"><i id="prog"></i></div>
+
+<script>
+const TOTAL = 36;
+const scenes = Array.from(document.querySelectorAll(".scene")).map((el) => ({ el, start: +el.dataset.start, dur: +el.dataset.dur, items: Array.from(el.querySelectorAll("[data-at]")), types: Array.from(el.querySelectorAll("[data-type]")), checks: Array.from(el.querySelectorAll(".chk")) }));
+const clamp = (v, a, b) => Math.min(b, Math.max(a, v));
+const ease = (x) => 1 - Math.pow(1 - x, 3);
+window.renderAt = function (t) {
+  document.getElementById("prog").style.width = (t / TOTAL * 100) + "%";
+  let active = 0;
+  scenes.forEach((s, i) => {
+    const l = t - s.start;
+    const op = i === 0 ? clamp((s.dur - l) / 0.4, 0, 1) : clamp(Math.min(l / 0.4, (s.dur - l) / 0.4), 0, 1);
+    s.el.style.opacity = op;
+    if (l >= 0 && l < s.dur) active = i;
+    s.items.forEach((it) => {
+      const p = ease(clamp((l - +it.dataset.at) / 0.5, 0, 1));
+      it.style.opacity = p;
+      const base = it.style.transform.replace(/translateY\([^)]*\)|scaleX\([^)]*\)/g, "").trim();
+      it.style.transform = it.classList.contains("line") ? (base + ` scaleX(${p})`).trim() : (base + ` translateY(${(1 - p) * 16}px)`).trim();
+    });
+    s.types.forEach((el) => {
+      const cps = +(el.dataset.cps || 20), txt = el.dataset.text;
+      const n = Math.floor(clamp((l - +el.dataset.type) * cps, 0, txt.length));
+      el.textContent = txt.slice(0, n); el.classList.toggle("caret", n > 0 && n < txt.length);
+    });
+    s.checks.forEach((c) => {
+      c.classList.toggle("hit", c.dataset.flag && l >= +c.dataset.flag);
+      c.classList.toggle("pass", c.dataset.pass && l >= +c.dataset.pass);
+    });
+  });
+  document.getElementById("idx").textContent = String(active + 1).padStart(2, "0") + " / " + String(scenes.length).padStart(2, "0");
+  // score count-up
+  const k = ease(clamp((t - 17.2 - 0.8) / 1.8, 0, 1)), v = Math.round(72 * k);
+  document.getElementById("scoreNum").textContent = v;
+  document.getElementById("pin").style.left = v + "%";
+};
+window.renderAt(0);
+</script>
