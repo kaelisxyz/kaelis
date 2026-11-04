@@ -1,0 +1,117 @@
+<!doctype html>
+<html lang="en">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Kaelis Tower</title>
+<meta name="description" content="One window for every wallet holding $KAEL, read live from Solana.">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter+Tight:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500&display=swap">
+<style>
+  :root { --paper: #fff; --ink: #0b0b0c; --mute: #7a7a7a; --rule: #d6d6d6; --lit: #f2c14e; --me: #2c6cf6;
+    --f-sans: "Inter Tight", "Helvetica Neue", Arial, system-ui, sans-serif; --f-mono: "JetBrains Mono", ui-monospace, Menlo, monospace;
+    --gut: max(16px, env(safe-area-inset-left, 0px)); color-scheme: light; }
+  * { box-sizing: border-box; }
+  html, body { background: var(--paper); color: var(--ink); }
+  body { margin: 0; font-family: var(--f-sans); line-height: 1.5; }
+  a { color: inherit; }
+  .tag { font-family: var(--f-mono); font-size: 11px; letter-spacing: .1em; text-transform: uppercase; }
+  .wrap { max-width: 980px; margin: 0 auto; padding: 0 var(--gut); }
+  header { border-bottom: 1px solid var(--rule); }
+  header .wrap { display: flex; justify-content: space-between; align-items: center; height: 60px; }
+  .logo { text-decoration: none; font-weight: 600; letter-spacing: .14em; }
+  .mark { display: flex; } .mark i { font-style: normal; }
+  .mark i:nth-child(even) { color: var(--paper); -webkit-text-stroke: 1px var(--ink); paint-order: stroke fill; }
+  .pill { display: inline-flex; align-items: center; border: 1px solid var(--ink); border-radius: 999px; padding: 8px 14px; text-decoration: none; background: var(--ink); color: var(--paper); font-family: var(--f-mono); font-size: 11px; letter-spacing: .1em; text-transform: uppercase; cursor: pointer; }
+  .pill.ghost { background: var(--paper); color: var(--ink); }
+  main { padding: 44px 0 64px; }
+  h1 { font-size: clamp(40px, 7vw, 84px); line-height: .92; letter-spacing: -.035em; font-weight: 500; margin: 14px 0; }
+  .lead { font-size: 18px; max-width: 48ch; margin: 0 0 18px; }
+  .state { display: inline-block; background: var(--ink); color: var(--paper); padding: 6px 10px; }
+  .stats { display: flex; flex-wrap: wrap; gap: 8px 24px; margin: 18px 0; font-family: var(--f-mono); font-size: 13px; }
+  .stats b { font-size: 22px; font-family: var(--f-sans); font-weight: 500; display: block; }
+  .tower { background: #0d0f14; padding: 18px; display: grid; grid-template-columns: repeat(auto-fill, minmax(14px, 1fr)); gap: 4px; border: 1px solid var(--ink); }
+  .tower i { aspect-ratio: 2 / 3; background: #1d212b; display: block; }
+  .tower i.on { background: var(--lit); box-shadow: 0 0 6px rgba(242,193,78,.6); }
+  .tower i.big { outline: 1px solid #fff6; }
+  .tower i.me { background: var(--me); box-shadow: 0 0 10px var(--me); }
+  form { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 22px; }
+  input { flex: 1 1 320px; min-width: 0; font-family: var(--f-mono); font-size: 14px; padding: 12px 14px; border: 1px solid var(--ink); border-radius: 0; }
+  .msg { min-height: 1.5em; margin-top: 10px; }
+  .note { font-size: 13px; color: var(--mute); }
+</style>
+<header><div class="wrap"><a class="logo" href="index.html"><b class="mark" aria-label="KAELIS"><i>K</i><i>A</i><i>E</i><i>L</i><i>I</i><i>S</i></b></a><a class="pill" href="index.html">Back to site</a></div></header>
+<main><div class="wrap">
+  <span class="tag state" id="state">Loading</span>
+  <h1>The Kaelis tower.</h1>
+  <p class="lead">One window for every wallet holding $KAEL, read live from Solana. Sell everything and your window goes dark at the next refresh.</p>
+  <div class="stats"><span><b id="sHolders">–</b>holders</span><span><b id="sTop">–</b>held by top 10</span><span><b id="sAt">–</b>last read</span></div>
+  <div class="tower" id="tower" aria-label="Tower windows"></div>
+  <form id="f" autocomplete="off"><label for="w" class="tag" style="position:absolute;left:-9999px">Wallet address</label><input id="w" placeholder="Your wallet address" spellcheck="false"><button class="pill" type="submit">Find my window</button></form>
+  <p class="msg" id="msg" role="status"></p>
+  <p class="note" id="note"></p>
+</div></main>
+<script src="js/kaelis-config.js"></script>
+<script src="js/kaelis-core.js"></script>
+<script>
+(function () {
+  "use strict";
+  const CFG = window.KAELIS_CONFIG || {}, K = window.KaelisCore, $ = (id) => document.getElementById(id);
+  const RPCS = CFG.rpcUrls || ["https://solana-rpc.publicnode.com"];
+  const mint = new URLSearchParams(location.search).get("mint") || CFG.kaelMint || "";
+  let holders = [];
+  async function rpc(method, params) {
+    let last; for (const u of RPCS) { try { const r = await fetch(u, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ jsonrpc: "2.0", id: 1, method, params }) }); const j = await r.json(); if (j.error) throw new Error(j.error.message); return j.result; } catch (e) { last = e; } } throw last;
+  }
+  // Windows are placed by wallet address, so each holder keeps the same spot between visits.
+  function draw(list, demo) {
+    const t = $("tower"), n = Math.max(120, Math.ceil(list.length / 12) * 12 + 12);
+    const sorted = list.slice().sort((a, b) => (a.owner || a.account || "").localeCompare(b.owner || b.account || ""));
+    t.innerHTML = "";
+    for (let i = 0; i < n; i++) {
+      const h = sorted[i], el = document.createElement("i");
+      if (h) { el.className = "on" + (h.share >= 0.01 ? " big" : ""); el.dataset.id = h.owner || h.account; el.title = demo ? "example" : (h.owner || h.account).slice(0, 4) + "…" + K.pct(h.share); }
+      t.appendChild(el);
+    }
+  }
+  async function load() {
+    if (!mint) {
+      $("state").textContent = "Goes live at launch";
+      $("note").textContent = "$KAEL has not launched yet, so these windows are an example. After launch this page reads every holder straight from the chain. Preview with any token: add ?mint=<address> to the link.";
+      draw(Array.from({ length: 41 }, (_, i) => ({ owner: "demo" + i, share: i < 3 ? 0.02 : 0.001 })), true);
+      return;
+    }
+    $("state").textContent = "Live · Solana";
+    let data = null;
+    try { const r = await fetch("api/holders?mint=" + mint); if (r.ok) data = await r.json(); } catch (e) {}
+    if (!data) {
+      // no backend: public RPC only gives the 20 largest accounts
+      const [sup, big] = await Promise.all([rpc("getTokenSupply", [mint]), rpc("getTokenLargestAccounts", [mint])]);
+      const supply = +sup.value.uiAmountString;
+      data = { count: null, complete: false, holders: big.value.map((a) => ({ account: a.address, amount: +a.uiAmountString, share: +a.uiAmountString / supply })) };
+    }
+    holders = data.holders.filter((h) => h.amount > 0);
+    draw(holders);
+    $("sHolders").textContent = data.count != null ? data.count.toLocaleString("en-US") : holders.length + "+";
+    $("sTop").textContent = K.pct(holders.slice(0, 10).reduce((t, h) => t + h.share, 0));
+    $("sAt").textContent = new Date().toISOString().slice(11, 16) + " UTC";
+    $("note").textContent = data.complete ? "Every holder is shown (up to 1,000 windows). Refreshes every 2 minutes." : "Showing the 20 largest token accounts from public RPC. The full tower appears once the Kaelis API runs with a Helius key.";
+  }
+  $("f").addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const w = $("w").value.trim(); $("msg").textContent = "";
+    document.querySelectorAll(".tower i.me").forEach((x) => x.classList.remove("me"));
+    if (!K.isAddress(w)) { $("msg").textContent = "That doesn't look like a Solana wallet address."; return; }
+    if (!mint) { $("msg").textContent = "Windows light up for real after $KAEL launches."; return; }
+    try {
+      const r = await rpc("getTokenAccountsByOwner", [w, { mint }, { encoding: "jsonParsed" }]);
+      const amt = r.value.reduce((t, a) => t + (+a.account.data.parsed.info.tokenAmount.uiAmountString || 0), 0);
+      if (!amt) { $("msg").textContent = "This wallet holds no $KAEL right now, so it has no window."; return; }
+      const el = document.querySelector(`.tower i[data-id="${w}"]`) || [...r.value].map((a) => document.querySelector(`.tower i[data-id="${a.pubkey}"]`)).find(Boolean);
+      if (el) { el.classList.add("me"); el.scrollIntoView({ block: "center", behavior: "smooth" }); }
+      $("msg").textContent = `This wallet holds ${amt.toLocaleString("en-US", { maximumFractionDigits: 2 })} tokens. ` + (el ? "Your window is the blue one." : "Your window is lit; it shows up on the full tower once the Kaelis API is on.");
+    } catch (err) { $("msg").textContent = "Could not reach Solana right now. Try again in a moment."; }
+  });
+  load().catch(() => { $("state").textContent = "Could not reach Solana"; });
+  if (mint) setInterval(() => load().catch(() => {}), 120000);
+})();
+</script>
+</html>

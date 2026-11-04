@@ -87,6 +87,22 @@
   .spin { display: inline-block; animation: spin 1s linear infinite; }
   @keyframes spin { to { transform: rotate(360deg); } }
   @media (max-width: 560px) { .num { font-size: 72px; } .top { grid-template-columns: 1fr; } .how td:nth-child(3), .how th:nth-child(3) { display: none; } }
+  .extra { list-style: none; margin: 0; padding: 0; font-size: 14px; display: grid; gap: 6px; }
+  .extra span { color: var(--mute); }
+  .lv { font-family: var(--f-mono); font-size: 10px; letter-spacing: .1em; text-transform: uppercase; padding: 2px 6px; border: 1px solid currentColor; font-weight: 400; margin-right: 4px; }
+  .lv.danger { color: var(--bad); } .lv.warn { color: var(--warn); }
+  .watch { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; border-top: 1px solid var(--rule); padding-top: 14px; }
+  .watch .note { flex: 1 1 100%; margin: 0; }
+  #watch[aria-pressed=true] { background: var(--ink); color: var(--paper); }
+  .alerts { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
+  .alerts li { border: 1px solid var(--bad); color: var(--bad); padding: 8px 10px; font-size: 14px; }
+  .alerts b { font-family: var(--f-mono); font-size: 11px; font-weight: 400; margin-right: 6px; }
+  .deep { border-top: 1px solid var(--rule); padding-top: 14px; display: grid; gap: 8px; }
+  .deephead { display: flex; justify-content: space-between; gap: 10px; }
+  .deep.danger .extra li { color: var(--bad); } .deep.warn .extra li { color: var(--warn); }
+  .wl { list-style: none; margin: 0; padding: 0; font-family: var(--f-mono); font-size: 12px; display: grid; gap: 2px; }
+  .wl li { display: grid; grid-template-columns: 1fr auto auto; gap: 10px; padding: 4px 0; border-bottom: 1px dashed var(--rule); }
+  .wl li a { text-decoration: none; } .wl li.linked { color: var(--bad); } .wl li span { color: var(--mute); }
   footer { padding: 24px 0 48px; border-top: 1px solid var(--rule); }
 </style>
 
@@ -123,7 +139,12 @@
           <div><div class="meter"><b></b><b></b><b></b><i id="pin" style="left:0"></i></div><span class="band" id="band">–</span></div>
         </div>
         <div class="summary"><b>SUMMARY · WRITTEN BY RULES FROM THE CHECKS BELOW</b><span id="sum"></span></div>
+        <div class="summary ai" id="ai" hidden><b>AI EXPLANATION · CHECKED AGAINST THE SCORE ABOVE</b><span id="aiText"></span></div>
         <ul class="checks" id="checks"></ul>
+        <div id="extra" hidden><p class="tag" style="margin:0 0 6px;color:var(--mute)">More flags from RugCheck · shown as evidence, not scored</p><ul class="extra" id="extraList"></ul></div>
+        <div class="deep" id="deep"><div class="deephead"><b class="tag">Wallet links · deep scan</b><span class="tag" id="deepState" style="color:var(--mute)">waiting</span></div><ul class="extra" id="deepList"></ul><ul class="wl" id="deepWallets"></ul></div>
+        <div class="watch"><button type="button" class="pill ghost" id="watch" aria-pressed="false">Watch this token</button><span class="tag" id="watchState" style="color:var(--mute)">Off</span><span class="note">Re-scans every 60 seconds while this tab is open and warns you if liquidity is pulled or authorities come back.</span></div>
+        <ul class="alerts" id="alerts" aria-live="assertive"></ul>
         <div class="facts" id="facts"></div>
         <div class="links" id="links"></div>
         <p class="note" id="meta"></p>
@@ -136,219 +157,167 @@
       <table>
         <thead><tr><th>Check</th><th>Weight</th><th>Rule</th></tr></thead>
         <tbody>
-          <tr><td>Sells are happening</td><td>25</td><td>Many buys but zero sells in 24h looks like a honeypot. Forces the score to at least 85.</td></tr>
-          <tr><td>Liquidity depth</td><td>20</td><td>Full risk under $5k in pools, none above $250k (log scale).</td></tr>
+          <tr><td>Sell test</td><td>25</td><td>We ask Jupiter for a real quote to buy with 0.1 SOL and sell straight back. If selling fails or loses 50% or more, it's a honeypot and the score is forced to at least 85. If there is no route, 24h trade history is used instead.</td></tr>
+          <tr><td>Liquidity depth</td><td>15</td><td>Full risk under $5k in pools, none above $250k (log scale).</td></tr>
           <tr><td>Top 10 holders</td><td>15</td><td>Share of supply in the 10 largest wallets, pools excluded. Linear from 30% to 80%.</td></tr>
-          <tr><td>LP locked or burned</td><td>15</td><td>From RugCheck when available. Share of pool tokens not locked.</td></tr>
+          <tr><td>LP locked or burned</td><td>15</td><td>From RugCheck. Share of pool tokens not locked.</td></tr>
           <tr><td>Mint authority</td><td>10</td><td>Full risk if someone can still mint new tokens.</td></tr>
-          <tr><td>Pool age</td><td>10</td><td>Full risk under 24 hours, none after 30 days.</td></tr>
+          <tr><td>Token extensions</td><td>10</td><td>Token-2022 controls: permanent delegate, non-transferable or frozen-by-default is full risk, a transfer hook is 70%, a transfer fee scales with its size.</td></tr>
+          <tr><td>Pool age</td><td>5</td><td>Full risk under 24 hours, none after 30 days.</td></tr>
           <tr><td>Freeze authority</td><td>5</td><td>Full risk if someone can freeze holders' tokens.</td></tr>
-        </tbody>
+          <tr><td>Wallet links (deep scan)</td><td>evidence</td><td>For the 10 largest wallets we look up the transaction that first funded each one. Wallets funded by the same source, or brand-new wallets holding a lot, are flagged with links to the transactions. Not added to the score yet.</td></tbody>
       </table>
-      <p class="note">Data sources: Solana public RPC, DexScreener and RugCheck. Everything runs in your browser. No wallet, no sign-in.</p>
+      <p class="note">Data sources: Solana RPC, Jupiter quotes, DexScreener and RugCheck. Quotes are only asked for, nothing is ever traded. No wallet, no sign-in. If the AI explanation is on, it only describes the checks and never changes the score.</p>
     </section>
   </div>
 </main>
 
 <footer><div class="wrap tag" style="display:flex;justify-content:space-between;flex-wrap:wrap;gap:12px"><span>Kaelis scanner beta · Not financial advice</span><a href="guide.html">Guide →</a></div></footer>
 
+<script src="js/kaelis-config.js"></script>
+<script src="js/kaelis-core.js"></script>
 <script>
 (function () {
   "use strict";
-  const RPCS = ["https://solana-rpc.publicnode.com", "https://api.mainnet-beta.solana.com"];
-  // pool and program authorities whose token accounts are liquidity, not holders
-  const POOL_OWNERS = new Set([
-    "5Q544fKrFoe6tsEbD7S8EmxGTJYAKtTVhAW5Q5pge4j1", // Raydium AMM v4 authority
-    "GpMZbSM2GgvTKHJirzeGfMFoaZ8UR2X7F4v8vHTvxFbL", // Raydium CPMM authority
-    "39azUYFWPz3VHgKCf3VChUwbpURdCHRxjWVowf5jUJjg", // pump.fun AMM global
-  ]);
-  const SYSTEM = "11111111111111111111111111111111";
-  const B58 = /^[1-9A-HJ-NP-Za-km-z]{32,44}$/;
+  const K = window.KaelisCore, CFG = window.KAELIS_CONFIG || {};
   const $ = (id) => document.getElementById(id);
-  const clamp = (v, a, b) => Math.min(b, Math.max(a, v));
-  const fmt = (n) => n == null || isNaN(n) ? "–" : n >= 1e9 ? "$" + (n / 1e9).toFixed(2) + "B" : n >= 1e6 ? "$" + (n / 1e6).toFixed(2) + "M" : n >= 1e3 ? "$" + (n / 1e3).toFixed(1) + "k" : "$" + n.toFixed(0);
-  const pct = (x) => (x * 100).toFixed(x < 0.1 ? 1 : 0) + "%";
   const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+  // apiBase "auto": use the Kaelis API on this same site if it answers (after deploy), otherwise scan in the browser.
+  let api = CFG.apiBase === "auto" ? null : (CFG.apiBase || "").replace(/\/$/, "") || null;
+  const apiReady = CFG.apiBase !== "auto" ? Promise.resolve() : fetch("api/health").then((r) => r.ok ? r.json() : null).then((j) => { if (j && j.ok) api = "."; }).catch(() => {});
+  let current = null, watchTimer = null, lastPulse = null;
 
-  async function rpc(method, params) {
-    let last;
-    for (const url of RPCS) {
+  // With a backend configured, the server scans (private RPC) and adds an AI explanation.
+  // Without one, or if it fails, the browser scans on its own with public data.
+  async function runScan(mint) {
+    await apiReady;
+    if (api) {
       try {
-        const r = await fetch(url, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ jsonrpc: "2.0", id: 1, method, params }) });
-        if (!r.ok) throw new Error("HTTP " + r.status);
+        const r = await fetch(api + "/api/scan?mint=" + encodeURIComponent(mint));
         const j = await r.json();
-        if (j.error) throw new Error(j.error.message || "RPC error");
-        return j.result;
-      } catch (e) { last = e; }
+        if (r.ok && j.data && j.result) return j;
+        if (j && j.userError) throw new Error(j.error);
+      } catch (e) { if (e && e.message && !/fetch|network|JSON|Unexpected/i.test(e.message)) throw e; }
     }
-    throw last;
-  }
-  async function getJSON(url) { const r = await fetch(url); if (!r.ok) throw new Error("HTTP " + r.status); return r.json(); }
-
-  async function gather(mint) {
-    const [acc, supply, largest, dex, rug] = await Promise.allSettled([
-      rpc("getAccountInfo", [mint, { encoding: "jsonParsed" }]),
-      rpc("getTokenSupply", [mint]),
-      rpc("getTokenLargestAccounts", [mint]),
-      getJSON("https://api.dexscreener.com/latest/dex/tokens/" + mint),
-      getJSON("https://api.rugcheck.xyz/v1/tokens/" + mint + "/report/summary"),
-    ]);
-    if (acc.status === "rejected") throw new Error("Could not reach the Solana network. Try again in a moment.");
-    const info = acc.value && acc.value.value;
-    if (!info) throw new Error("No account found at this address.");
-    const parsed = info.data && info.data.parsed;
-    if (!parsed || parsed.type !== "mint") throw new Error("This address is not a token mint. Paste the token's mint address.");
-    const d = { mint, program: info.owner, mintInfo: parsed.info };
-    d.supply = supply.status === "fulfilled" ? +supply.value.value.uiAmountString : null;
-    d.largest = largest.status === "fulfilled" ? largest.value.value : null;
-    d.pairs = dex.status === "fulfilled" ? (dex.value.pairs || []).filter((p) => p.chainId === "solana") : null;
-    d.rug = rug.status === "fulfilled" ? rug.value : null;
-    // resolve owners of the top holder accounts so pools can be excluded
-    if (d.largest && d.largest.length) {
-      try {
-        const top = d.largest.slice(0, 20);
-        const accs = await rpc("getMultipleAccounts", [top.map((a) => a.address), { encoding: "jsonParsed" }]);
-        const owners = accs.value.map((a) => a && a.data && a.data.parsed ? a.data.parsed.info.owner : null);
-        const ownerAccs = await rpc("getMultipleAccounts", [owners.map((o) => o || SYSTEM), { encoding: "base64", dataSlice: { offset: 0, length: 0 } }]);
-        const pairAddrs = new Set((d.pairs || []).map((p) => p.pairAddress));
-        d.holders = top.map((a, i) => {
-          const o = owners[i], oa = ownerAccs.value[i];
-          // a pool vault is owned by a known AMM authority, by the pair itself, or by a program-owned (non-wallet) account
-          const isPool = !o || POOL_OWNERS.has(o) || pairAddrs.has(o) || (oa && oa.owner !== SYSTEM);
-          return { owner: o, amount: +a.uiAmountString, pool: isPool };
-        });
-      } catch (e) { d.holders = null; }
-    }
-    return d;
+    const data = await K.gather(mint, { rpcUrls: CFG.rpcUrls });
+    return { data, result: K.evaluate(data), source: "browser" };
   }
 
-  function evaluate(d) {
-    const checks = [];
-    const add = (name, weight, sev, detail, opts = {}) => checks.push({ name, weight, sev, detail, ...opts });
-    const pairs = d.pairs;
-    // 1 sells
-    if (pairs && pairs.length) {
-      const b = pairs.reduce((s, p) => s + ((p.txns && p.txns.h24 && p.txns.h24.buys) || 0), 0);
-      const s = pairs.reduce((t, p) => t + ((p.txns && p.txns.h24 && p.txns.h24.sells) || 0), 0);
-      const hp = b >= 20 && s === 0;
-      const sev = hp ? 1 : b >= 20 && s / (b + s) < 0.05 ? 0.5 : 0;
-      add("Sells are happening", 25, sev, `${b} buys and ${s} sells in the last 24h.`, { hard: hp });
-    } else add("Sells are happening", 25, null, "No trading pool found, so there is no trade history to read.");
-    // 2 liquidity
-    if (pairs && pairs.length) {
-      const liq = pairs.reduce((t, p) => t + ((p.liquidity && p.liquidity.usd) || 0), 0);
-      const sev = liq <= 0 ? 1 : clamp(1 - (Math.log10(liq) - Math.log10(5e3)) / (Math.log10(2.5e5) - Math.log10(5e3)), 0, 1);
-      add("Liquidity depth", 20, sev, `${fmt(liq)} in ${pairs.length} pool${pairs.length > 1 ? "s" : ""}.`);
-      d.liq = liq;
-    } else add("Liquidity depth", 20, null, "No trading pool found on DexScreener.");
-    // 3 top holders
-    if (d.holders && d.supply) {
-      const wallets = d.holders.filter((h) => !h.pool).slice(0, 10);
-      const share = wallets.reduce((t, h) => t + h.amount, 0) / d.supply;
-      add("Top 10 holders", 15, clamp((share - 0.3) / 0.5, 0, 1), `The 10 largest wallets hold ${pct(share)} of supply (${((n) => n + (n === 1 ? " pool account" : " pool accounts"))(d.holders.filter((h) => h.pool).length)} excluded).`);
-      d.top10 = share;
-    } else add("Top 10 holders", 15, null, "Holder list unavailable right now.");
-    // 4 LP lock (RugCheck)
-    const lp = d.rug && (d.rug.lpLockedPct != null ? d.rug.lpLockedPct : null);
-    if (lp != null) add("LP locked or burned", 15, clamp(1 - lp / 100, 0, 1), `${lp.toFixed(0)}% of pool tokens are locked or burned (RugCheck).`);
-    else add("LP locked or burned", 15, null, "RugCheck data unavailable from this browser.");
-    // 5 mint authority
-    const ma = d.mintInfo.mintAuthority;
-    add("Mint authority", 10, ma ? 1 : 0, ma ? `Still set to ${ma.slice(0, 4)}…${ma.slice(-4)}, so new tokens can be created.` : "Revoked. No one can mint new tokens.");
-    // 6 pool age
-    if (pairs && pairs.length) {
-      const created = Math.min(...pairs.map((p) => p.pairCreatedAt || Infinity));
-      if (isFinite(created)) {
-        const days = (Date.now() - created) / 864e5;
-        add("Pool age", 10, clamp(1 - (days - 1) / 29, 0, 1), `Oldest pool is ${days < 1 ? Math.max(1, Math.round(days * 24)) + " hours" : Math.floor(days) + " days"} old.`);
-        d.ageDays = days;
-      } else add("Pool age", 10, null, "Pool creation time unknown.");
-    } else add("Pool age", 10, null, "No trading pool found.");
-    // 7 freeze authority
-    const fa = d.mintInfo.freezeAuthority;
-    add("Freeze authority", 5, fa ? 1 : 0, fa ? "Set. The authority can freeze holders' tokens." : "Revoked. No one can freeze your tokens.");
-
-    let score = checks.reduce((t, c) => t + (c.sev == null ? 0 : c.weight * c.sev), 0);
-    if (checks.some((c) => c.hard)) score = Math.max(85, score);
-    score = Math.round(Math.min(100, score));
-    return { checks, score };
+  function tokenName(d) {
+    const p = bestPair(d);
+    if (p) { const t = p.baseToken.address === d.mint ? p.baseToken : p.quoteToken; return `${t.name} ($${t.symbol})`; }
+    return (d.rug && d.rug.tokenMeta && d.rug.tokenMeta.name) || "Unknown token";
   }
+  function bestPair(d) { return (d.pairs || []).slice().sort((a, b) => ((b.liquidity && b.liquidity.usd) || 0) - ((a.liquidity && a.liquidity.usd) || 0))[0]; }
 
-  function summary(d, r) {
-    const hits = r.checks.filter((c) => c.sev != null && c.sev >= 0.5).sort((a, b) => b.weight * b.sev - a.weight * a.sev);
-    const na = r.checks.filter((c) => c.sev == null).length;
-    const parts = [];
-    if (r.checks.some((c) => c.hard)) parts.push("People are buying but nobody has sold in 24 hours, which is how honeypots look.");
-    const say = {
-      "Liquidity depth": "There is very little money in the pools, so prices can swing hard and exits can be costly.",
-      "Top 10 holders": "A few wallets hold a large share of the supply.",
-      "LP locked or burned": "Most pool tokens are not locked, so liquidity can be pulled.",
-      "Mint authority": "Someone can still create new tokens.",
-      "Pool age": "The pool is very new.",
-      "Freeze authority": "Someone can still freeze holders' tokens.",
-    };
-    hits.forEach((c) => { if (say[c.name]) parts.push(say[c.name]); });
-    if (!parts.length) parts.push("None of our checks found a known red flag.");
-    if (r.score < 40) parts.push("That is not a promise of safety.");
-    else if (r.score < 70) parts.push("Read the evidence before you do anything.");
-    else parts.push("Treat this as high risk.");
-    if (na) parts.push(`${na} check${na > 1 ? "s were" : " was"} unavailable, so the score may be lower than the real risk.`);
-    return parts.join(" ");
-  }
-
-  function render(d, r) {
-    const p = (d.pairs || []).slice().sort((a, b) => ((b.liquidity && b.liquidity.usd) || 0) - ((a.liquidity && a.liquidity.usd) || 0))[0];
-    const name = p ? `${p.baseToken.address === d.mint ? p.baseToken.name : p.quoteToken.name} ($${p.baseToken.address === d.mint ? p.baseToken.symbol : p.quoteToken.symbol})` : (d.rug && d.rug.tokenMeta && d.rug.tokenMeta.name) || "Unknown token";
-    $("tName").textContent = name;
+  function render(res) {
+    const d = res.data, r = res.result, p = bestPair(d);
+    $("tName").textContent = tokenName(d);
     $("tAddr").textContent = d.mint;
     $("score").firstChild.nodeValue = r.score;
     $("pin").style.left = r.score + "%";
-    const band = r.score >= 70 ? ["Dangerous", "var(--bad)"] : r.score >= 40 ? ["Suspicious", "var(--warn)"] : ["Low risk", "var(--ok)"];
+    const band = { dangerous: ["Dangerous", "var(--bad)"], suspicious: ["Suspicious", "var(--warn)"], low: ["Low risk", "var(--ok)"] }[r.band];
     $("band").textContent = band[0]; $("band").style.color = band[1];
-    $("sum").textContent = summary(d, r);
+    $("sum").textContent = K.summary(d, r);
+    if (res.explain) { $("ai").hidden = false; $("aiText").textContent = res.explain; } else $("ai").hidden = true;
     $("checks").innerHTML = r.checks.map((c) => {
       const cls = c.sev == null ? "na" : c.sev >= 0.5 ? "hit" : c.sev > 0 ? "warn" : "ok";
       const icon = { na: "?", hit: "✕", warn: "!", ok: "✓" }[cls];
       const pts = c.sev == null ? "n/a" : "+" + Math.round(c.weight * c.sev) + " / " + c.weight;
       return `<li class="${cls}"><i>${icon}</i><div><strong>${esc(c.name)}</strong><span class="d">${esc(c.detail)}</span></div><em>${pts}</em></li>`;
     }).join("");
+    const rr = r.rugcheckRisks || [];
+    $("extra").hidden = !rr.length;
+    $("extraList").innerHTML = rr.map((k) => `<li><b class="lv ${esc(k.level || "")}">${esc(k.level || "info")}</b> ${esc(k.name)}${k.description ? ` <span>· ${esc(k.description)}</span>` : ""}</li>`).join("");
+    const liq = (d.pairs || []).reduce((t, x) => t + ((x.liquidity && x.liquidity.usd) || 0), 0);
+    const j = d.jup || {};
     const facts = [
       ["Supply", d.supply != null ? Number(d.supply).toLocaleString("en-US", { maximumFractionDigits: 0 }) : "–"],
       ["Decimals", d.mintInfo.decimals],
-      ["Liquidity", fmt(d.liq)],
+      ["Liquidity", d.pairs && d.pairs.length ? K.usd(liq) : "–"],
       ["Price", p && p.priceUsd ? "$" + (+p.priceUsd).toPrecision(4) : "–"],
-      ["24h volume", p && p.volume ? fmt(p.volume.h24) : "–"],
+      ["24h volume", p && p.volume ? K.usd(p.volume.h24) : "–"],
+      ["Round trip 0.1 SOL", j.sellRoute ? K.pct(Math.max(0, 1 - j.loss)) + " back" : j.buyRoute === false ? "no route" : j.buyRoute ? "sell fails" : "–"],
       ["Token program", d.program === "TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb" ? "Token-2022" : "SPL Token"],
     ];
     $("facts").innerHTML = facts.map(([k, v]) => `<div><span>${k}</span><b>${esc(v)}</b></div>`).join("");
-    const links = [["Solscan", "https://solscan.io/token/" + d.mint], ["DexScreener", "https://dexscreener.com/solana/" + d.mint], ["RugCheck", "https://rugcheck.xyz/tokens/" + d.mint]];
+    const links = [["Solscan", "https://solscan.io/token/" + d.mint], ["DexScreener", "https://dexscreener.com/solana/" + d.mint], ["RugCheck", "https://rugcheck.xyz/tokens/" + d.mint], ["Jupiter", "https://jup.ag/swap/SOL-" + d.mint]];
     $("links").innerHTML = links.map(([t, u]) => `<a class="pill ghost" href="${u}" target="_blank" rel="noopener">${t} ↗</a>`).join("");
-    $("meta").textContent = "Scanned " + new Date().toUTCString() + " · rules v1 · open the links above to check the evidence yourself.";
-    $("outTitle").textContent = "Scan result · " + new Date().toISOString().slice(11, 16) + " UTC";
+    const when = new Date(d.fetchedAt || Date.now());
+    $("meta").textContent = `Scanned ${when.toUTCString()}${d.slot ? " · slot " + d.slot : ""} · rules v${r.rulesVersion} · ${res.source === "server" ? "Kaelis server" : "your browser"} · open the links above to check the evidence yourself.`;
+    $("outTitle").textContent = "Scan result · " + when.toISOString().slice(11, 16) + " UTC";
     $("out").hidden = false;
   }
+
+  let deepRun = 0;
+  async function deep(res) {
+    const run = ++deepRun, el = $("deep");
+    el.className = "deep"; $("deepList").innerHTML = ""; $("deepWallets").innerHTML = "";
+    if (!res.data.holders) { $("deepState").textContent = "holder list unavailable"; return; }
+    $("deepState").innerHTML = 'tracing funding of top wallets <span class="spin">◐</span>';
+    try {
+      const L = res.links || await K.linkWallets(res.data, { rpcUrls: CFG.rpcUrls });
+      if (run !== deepRun) return;
+      el.className = "deep " + L.level;
+      $("deepState").textContent = L.level === "danger" ? "linked wallets found" : L.level === "warn" ? "worth a look" : L.checked + " wallets checked";
+      $("deepList").innerHTML = L.lines.map((x) => `<li>${esc(x)}</li>`).join("");
+      const linked = new Set(); L.clusters.forEach((k) => k.wallets.forEach((w) => linked.add(w.owner)));
+      $("deepWallets").innerHTML = L.wallets.map((w) => `<li class="${linked.has(w.owner) ? "linked" : ""}"><a href="https://solscan.io/account/${esc(w.owner)}" target="_blank" rel="noopener">${esc(w.owner.slice(0, 6))}…${esc(w.owner.slice(-4))}</a><span>${w.funder ? `funded by <a href="https://solscan.io/tx/${esc(w.firstTx)}" target="_blank" rel="noopener">${esc(w.funder.slice(0, 4))}…${esc(w.funder.slice(-4))}</a>` : w.txCount >= 1000 ? "old, active wallet" : "–"}${w.fresh ? " · new" : ""}</span><b>${K.pct(w.share)}</b></li>`).join("");
+      if (L.level === "danger") $("sum").textContent += " Several top wallets were funded from the same source, which often means one person is behind them.";
+    } catch (e) { if (run === deepRun) $("deepState").textContent = "deep scan failed, try again later"; }
+  }
+
+  function setBusy(on) { const go = $("go"); go.disabled = on; go.innerHTML = on ? 'Scanning <span class="spin">◐</span>' : "Scan ↗"; }
 
   async function scan(mint) {
     mint = (mint || "").trim();
     $("err").textContent = "";
-    if (!B58.test(mint)) { $("err").textContent = "That doesn't look like a Solana address. Paste the token's mint address (32 to 44 characters)."; return; }
-    const go = $("go"); go.disabled = true; go.innerHTML = 'Scanning <span class="spin">◐</span>';
+    if (!K.isAddress(mint)) { $("err").textContent = "That doesn't look like a Solana address. Paste the token's mint address (32 to 44 characters)."; return; }
+    stopWatch();
+    setBusy(true);
     try {
-      const d = await gather(mint);
-      const r = evaluate(d);
-      render(d, r);
+      const res = await runScan(mint);
+      current = res; lastPulse = K.pulse(res.data);
+      render(res);
+      deep(res);
+      $("alerts").innerHTML = "";
       try { history.replaceState(null, "", "?mint=" + mint); } catch (e) {}
       $("out").scrollIntoView({ behavior: "smooth", block: "start" });
     } catch (e) {
       $("err").textContent = e.message || "Scan failed. Try again.";
-    } finally { go.disabled = false; go.textContent = "Scan ↗"; }
+    } finally { setBusy(false); }
   }
+
+  // Watch mode: re-scan every 60s while the tab is open and flag a rug as it happens.
+  function stopWatch() { if (watchTimer) clearInterval(watchTimer); watchTimer = null; $("watch").setAttribute("aria-pressed", "false"); $("watchState").textContent = "Off"; }
+  async function tick() {
+    if (!current) return;
+    try {
+      const res = await runScan(current.data.mint);
+      const now = K.pulse(res.data), alerts = K.compare(lastPulse, now);
+      const moved = res.result.score - current.result.score;
+      if (Math.abs(moved) >= 10) alerts.push(`Risk score moved from ${current.result.score} to ${res.result.score}.`);
+      current = res; lastPulse = now; render(res);
+      const t = new Date().toISOString().slice(11, 19) + " UTC";
+      $("watchState").textContent = "On · checked " + t;
+      if (alerts.length) {
+        $("alerts").insertAdjacentHTML("afterbegin", alerts.map((a) => `<li><b>${t}</b> ${esc(a)}</li>`).join(""));
+        try { if (window.Notification && Notification.permission === "granted") new Notification("Kaelis alert", { body: alerts[0] }); } catch (e) {}
+      }
+    } catch (e) { $("watchState").textContent = "On · last check failed, retrying"; }
+  }
+  $("watch").addEventListener("click", () => {
+    if (watchTimer) return stopWatch();
+    if (!current) return;
+    try { if (window.Notification && Notification.permission === "default") Notification.requestPermission(); } catch (e) {}
+    watchTimer = setInterval(tick, 60000);
+    $("watch").setAttribute("aria-pressed", "true"); $("watchState").textContent = "On · next check in 60s";
+  });
 
   $("f").addEventListener("submit", (e) => { e.preventDefault(); scan($("mint").value); });
   document.querySelectorAll(".examples button").forEach((b) => b.addEventListener("click", () => { $("mint").value = b.dataset.mint; scan(b.dataset.mint); }));
   const q = new URLSearchParams(location.search).get("mint");
   if (q) { $("mint").value = q; scan(q); }
-  window.KaelisScan = { gather, evaluate, summary };
 })();
 </script>
 </html>

@@ -1,6 +1,6 @@
-# Kaelis technology (v0.3 spec)
+# Kaelis technology (v0.4 spec)
 
-Status: plan plus demo. The website and Forge City run on example data. Nothing here is live yet, and nothing here is financial advice. Kaelis reports risk. It never predicts or promises profit.
+Status: the scanner (rules v1.1.0) and the holder tower are built and run on real Solana data. Proof-of-Build and Forge City still run on example data. Nothing here is financial advice. Kaelis reports risk. It never predicts or promises profit.
 
 ## 1. Principles
 
@@ -14,7 +14,7 @@ Status: plan plus demo. The website and Forge City run on example data. Nothing 
 ```
 Solana RPC / indexer ─┐
                       ├─> 01 Ingest ─> 02 Signals ─> 03 Score ─> 04 Explain ─┬─> Forge City
-GitHub API / webhooks ┘                                                     ├─> Alerts (Telegram, X)
+GitHub API / webhooks ┘                                                     ├─> Watch-mode alerts on the site
                                                                             └─> On-chain attestation
 ```
 
@@ -25,26 +25,33 @@ GitHub API / webhooks ┘                                                     �
 | 03 Score | Weighted sum of signals, plus hard flags | Rule set is versioned; every score records the version |
 | 04 Explain | LLM writes the summary from the evidence | Read-only; output is checked to contain no numbers that differ from the score |
 
-## 3. Scam scanner
+## 3. Scam scanner (live, rules v1.1.0)
 
-Input: a token mint address or ticker. Output: a score from 0 to 100, a band, evidence per flag and a summary.
+Code: `site/js/kaelis-core.js`. The same file runs in the browser (`scan.html`) and in the API (`api/scan.js`), so both always give the same score.
+
+Input: a token mint address. Output: a score from 0 to 100, a band, evidence per check, extra RugCheck flags, wallet links and a summary.
 
 | Check | Weight | Severity rule |
 |---|---|---|
-| Sell simulation fails (honeypot) | 25, hard flag | Simulated sell of a small amount reverts or loses over 50% to tax |
-| Liquidity not locked or burned | 20 | Share of LP tokens not in a lock or burn address |
-| Developer holds over 20% of supply | 15 | Linear from 10% to 40% of supply in creator-linked wallets |
-| Developer launched rugged tokens before | 15 | Prior tokens from the creator wallet or its funders that lost over 90% of liquidity in one transaction |
-| Mint authority active | 10 | 1 if the mint authority is set, else 0 |
-| Holders funded from one wallet | 10 | Share of top-100 holders whose first SOL came from the same source within a short window |
-| Freeze authority active | 5 | 1 if the freeze authority is set, else 0 |
+| Sell test | 25, hard flag | Jupiter quote: buy with 0.1 SOL, then quote selling it all back. No sell route, or a loss of 50% or more, is a hard flag. Severity is linear from 10% to 50% loss. With no route at all, 24h trade history is used (20+ buys and 0 sells is a hard flag). |
+| Liquidity depth | 15 | Full risk under $5k in pools, none above $250k, log scale (DexScreener) |
+| Top 10 holders | 15 | Share of supply in the 10 largest wallets, pool vaults excluded. Linear from 30% to 80% |
+| LP locked or burned | 15 | Share of pool tokens not locked (RugCheck) |
+| Mint authority | 10 | 1 if set |
+| Token extensions | 10 | Token-2022: permanent delegate, non-transferable or frozen-by-default 1; transfer hook 0.7; transfer fee 1 at 5%+, 0.5 at 1%+, else 0.2 |
+| Pool age | 5 | Full risk under 1 day, none after 30 days |
+| Freeze authority | 5 | 1 if set |
 
-- Score = sum of weight × severity, capped at 100. Weights add up to 100.
-- Hard flag: a failed sell forces the score to at least 85.
+- Score = sum of weight × severity, capped at 100. Weights add up to 100. A check that can't be read counts as unavailable and adds nothing; the summary says so.
+- Hard flag: a failed or very lossy sell forces the score to at least 85.
 - Bands: 0–39 low risk, 40–69 suspicious, 70–100 dangerous.
 - A low score means no known red flag was found. It is not a promise of safety.
 
-**Watch mode.** Scanned tokens are re-checked on new events. A rug is declared when over half of the pool liquidity leaves in one transaction, or when creator-linked wallets sell over half their balance within an hour. In Forge City the building collapses into the Scam Graveyard.
+**Wallet links (deep scan, evidence only).** For the 10 largest non-pool wallets, Kaelis reads each wallet's oldest transaction and the SOL transfer that funded it. Wallets with the same funder form a cluster. 20%+ of supply in clusters, or a cluster of 4+ wallets, is flagged as danger; 5%+ or brand-new wallets (under 7 days, under 50 transactions) holding 20%+ is a warning. Every wallet links to its funding transaction. Not scored yet; planned for rules v1.2 after real-token testing.
+
+**Watch mode.** On the scan page, "Watch this token" re-scans every 60 seconds while the tab is open and alerts when liquidity drops over 50%, when mint or freeze authority is turned back on, or when the score moves 10+ points.
+
+**AI explanation.** With `ANTHROPIC_API_KEY` set, the API sends the checks to Claude, which writes 3–5 plain sentences. Every number in the answer must already appear in the evidence; otherwise the answer is dropped and the rule-written summary is shown.
 
 ## 4. Proof-of-Build
 
@@ -59,22 +66,23 @@ Anti-cheat: minimum account age, repos with outside contributors, rate limits, a
 
 - An indexer snapshots every $KAEL token account every few minutes.
 - Wallets under a minimum balance are ignored, so empty wallets cannot light windows.
-- Window position = hash(wallet address) mod window count, with linear probing on collisions. It stays stable between visits.
+- Window position: holders are ordered by wallet address, so each wallet keeps its spot while the holder set is stable (live in `tower.html`). It stays stable between visits.
 - Selling everything turns the window off at the next snapshot.
 - Planned: big holders get a house in the holder district, shown by size tier, never by name.
 
 ## 6. Interfaces
 
 - **Forge City:** a Three.js view of the public state (builders, scanned tokens, holders).
-- **Bot:** Telegram and X. Reply with a token address and get the score, band and evidence.
-- **Public API:** `GET /v1/score/{mint}` returns score, band, flags, evidence links, rule version and block height.
+- **Scanner page:** `scan.html`, works without any account or key.
+- **Holder tower:** `tower.html`, one window per $KAEL holder, plus a wallet lookup.
+- **API (Vercel functions):** `GET /api/scan?mint=` (score, checks, evidence, wallet links, AI explanation, rule version, slot), `GET /api/holders?mint=` (holder list), `GET /api/health` (which keys are switched on).
 
 ## 7. Roadmap (no dates promised)
 
 | Phase | Scope |
 |---|---|
-| Now | Story site and Forge City demo with example data |
-| 1 | Scanner beta: free bot for 20–50 testers, rules published on GitHub |
+| Now | Scanner beta live on the site: sell test, wallet links, watch mode, AI explanation (with key) |
+| 1 | Real-token testing, wallet links added to the score (rules v1.2) |
 | 2 | Proof-of-Build beta: linking, weekly epochs, towers from real commits |
 | 3 | $KAEL launch: live holder windows, reward pool, on-chain attestations |
 | 4 | Open risk API and SDK for wallets and apps |

@@ -166,11 +166,12 @@
         <div class="bar tag"><span>01 · Scan a token · Live beta</span><i></i></div>
         <div class="body">
           <h2>Check a token before you buy.</h2>
-          <p class="what">Kaelis looks for seven known scam signs, like liquidity that can be pulled or a sell that fails, and gives a risk score.</p>
+          <p class="what">Kaelis runs eight checks, including a real sell test through Jupiter, looks for wallets funded by the same source, and gives a risk score.</p>
           <ol>
             <li>Copy the token's address.</li>
             <li>Paste it into the <a href="scan.html">Kaelis Scanner</a>.</li>
             <li>Get a score from 0 to 100, with proof for every warning.</li>
+            <li>Optional: press "Watch this token" and Kaelis re-checks it every minute and warns you if liquidity is pulled.</li>
           </ol>
           <div class="bands"><span>0–39 low</span><span>40–69 suspicious</span><span>70+ dangerous</span></div>
           <p class="eg">A low score means no known red flag was found. It is not a promise.</p>
@@ -190,13 +191,13 @@
         </div>
       </article>
       <article class="card">
-        <div class="bar tag"><span>03 · Hold · After launch</span><i></i></div>
+        <div class="bar tag"><span>03 · Hold · Live at launch</span><i></i></div>
         <div class="body">
           <h2>Light a window in the city.</h2>
-          <p class="what">Every wallet holding $KAEL lights one window in Forge City. Your window stays in the same place every visit.</p>
+          <p class="what">Every wallet holding $KAEL lights one window in the <a href="tower.html">Kaelis tower</a>, read live from the chain. Your window stays in the same place every visit.</p>
           <ol>
             <li>Hold $KAEL in your wallet.</li>
-            <li>Your window lights up within a few minutes.</li>
+            <li>Paste your wallet on the tower page to find your window.</li>
             <li>Sell everything and it turns off.</li>
           </ol>
           <p class="eg">No sign-up. Kaelis only reads public balances.</p>
@@ -215,7 +216,7 @@
         <div><span class="tag">03</span><b>Score</b><p>Same data, same score. Anyone can re-run it.</p></div>
         <div><span class="tag">04</span><b>Explain</b><p>An AI writes a plain summary. It can't change the score.</p></div>
       </div>
-      <p class="note">Status: the <a href="scan.html">Scanner beta</a> is live and reads real Solana data. Forge City and the Build and Hold demos still use example data. Next: a Telegram and X bot, then Proof-of-Build, then $KAEL with live holder windows. No dates promised.</p>
+      <p class="note">Status: the <a href="scan.html">Scanner beta</a> is live and reads real Solana data, with a sell test, wallet links and watch mode. The <a href="tower.html">holder tower</a> is built and switches on when $KAEL launches. Proof-of-Build and Forge City still use example data. No dates promised.</p>
     </div>
   </section>
   <section id="details">
@@ -258,14 +259,14 @@
 
       <div class="panel" role="tabpanel" id="t-scan" aria-labelledby="tb-scan">
         <ol class="steps">
-          <li><span>01</span><div><b>Resolve the token</b><p>Paste a mint address or ticker. Kaelis finds the mint, its pools and its creator wallet.</p></div></li>
+          <li><span>01</span><div><b>Resolve the token</b><p>Paste a mint address. Kaelis reads the mint, its pools and its largest holders.</p></div></li>
           <li><span>02</span><div><b>Run seven checks</b><p>Authorities, liquidity lock, holder concentration, developer history, a simulated sell and funding clusters. Each check returns a severity from 0 to 1 with the transactions that prove it.</p></div></li>
           <li><span>03</span><div><b>Score 0 to 100</b><p>Weights add up to 100. A failed sell simulation is a hard flag that forces the score to at least 85.</p></div></li>
           <li><span>04</span><div><b>Keep watching</b><p>Scanned tokens are re-checked. If over half the liquidity leaves in one transaction, or the developer dumps, Kaelis marks a rug and the building falls in Forge City.</p></div></li>
         </ol>
         <div class="spec">
-          <div class="kv"><span>Input</span><span>Token mint address or ticker</span></div>
-          <div class="kv"><span>Data</span><span>Solana RPC and indexer, DEX pool state, holder snapshot</span></div>
+          <div class="kv"><span>Input</span><span>Token mint address</span></div>
+          <div class="kv"><span>Data</span><span>Solana RPC, Jupiter quotes, DexScreener pools, RugCheck, first-funding transactions of the top wallets</span></div>
           <div class="kv"><span>Output</span><span>Score, band, the evidence for each flag, and a plain-language summary</span></div>
           <div class="kv"><span>Bands</span><span>0–39 low risk · 40–69 suspicious · 70–100 dangerous</span></div>
           <div class="kv"><span>Limits</span><span>A low score is not a promise of safety. It means none of the known red flags were found.</span></div>
@@ -306,7 +307,7 @@
           <li><span>01</span><div><b>Event-driven</b><p>New pools, large transfers and code pushes arrive as events. Kaelis acts on them in the order they happened.</p></div></li>
           <li><span>02</span><div><b>Rules decide, the model explains</b><p>Scores come only from the open rules. The language model gets the evidence and writes the summary, and it cannot change a number.</p></div></li>
           <li><span>03</span><div><b>Replayable</b><p>Every input is stored with its block height. Anyone can re-run a score from the public rules and get the same result.</p></div></li>
-          <li><span>04</span><div><b>Speaks where people are</b><p>Planned: the same results will drive Forge City, a Telegram and X bot, and a public API.</p></div></li>
+          <li><span>04</span><div><b>Speaks where people are</b><p>The scanner runs on this website today. Planned: the same results will drive Forge City and a public API.</p></div></li>
         </ol>
         <div class="spec">
           <div class="kv"><span>Rules</span><span>Open source and versioned. Every score names the rule version it used.</span></div>
@@ -318,12 +319,13 @@
       <div class="row-head"><span class="tag">[ Try the risk model ]</span><span class="tag hint">Fig. 02 — tick the red flags</span></div>
       <div class="calc">
         <div class="flags" id="flags">
-          <label><input type="checkbox" data-w="25" data-hard="1" data-t="sells fail"><span>Sell simulation fails (honeypot)</span><em>hard flag</em></label>
-          <label><input type="checkbox" data-w="20" data-t="liquidity can be pulled"><span>Liquidity is not locked or burned</span><em>+20</em></label>
-          <label><input type="checkbox" data-w="15" data-t="the developer holds a lot"><span>Developer holds over 20% of supply</span><em>+15</em></label>
-          <label><input type="checkbox" data-w="15" data-t="the developer has rugged before"><span>Developer wallet launched rugged tokens before</span><em>+15</em></label>
+          <label><input type="checkbox" data-w="25" data-hard="1" data-t="selling back fails"><span>Sell test fails (honeypot)</span><em>hard flag</em></label>
+          <label><input type="checkbox" data-w="15" data-t="pools hold very little money"><span>Liquidity under $5k</span><em>+15</em></label>
+          <label><input type="checkbox" data-w="15" data-t="a few wallets hold most of it"><span>Top 10 wallets hold over 80%</span><em>+15</em></label>
+          <label><input type="checkbox" data-w="15" data-t="liquidity can be pulled"><span>Pool tokens not locked or burned</span><em>+15</em></label>
           <label><input type="checkbox" data-w="10" data-t="new tokens can be minted"><span>Mint authority is still active</span><em>+10</em></label>
-          <label><input type="checkbox" data-w="10" data-t="holders look fake"><span>Many holders funded from one wallet</span><em>+10</em></label>
+          <label><input type="checkbox" data-w="10" data-t="the token can take or block your tokens"><span>Risky Token-2022 controls (delegate, hook, high fee)</span><em>+10</em></label>
+          <label><input type="checkbox" data-w="5" data-t="the pool is brand new"><span>Pool younger than a day</span><em>+5</em></label>
           <label><input type="checkbox" data-w="5" data-t="wallets can be frozen"><span>Freeze authority is still active</span><em>+5</em></label>
         </div>
         <div class="card meter" aria-live="polite">
@@ -335,13 +337,13 @@
         </div>
       </div>
 
-      <div class="row-head"><span class="tag">[ Stack ]</span><span class="tag hint">Planned</span></div>
-      <div class="stack"><span>Solana RPC + indexer</span><span>DEX pool readers</span><span>Sell simulation</span><span>Code repo webhooks</span><span>Postgres event log</span><span>Rules engine (TypeScript)</span><span>LLM explainer, read-only</span><span>Merkle distributor</span><span>Three.js Forge City</span><span>Telegram + X bot</span><span>Public API</span></div>
+      <div class="row-head"><span class="tag">[ Stack ]</span><span class="tag hint">Live and planned</span></div>
+      <div class="stack"><span>Solana RPC + indexer</span><span>DEX pool readers</span><span>Jupiter sell test</span><span>Wallet funding tracer</span><span>Code repo webhooks</span><span>Postgres event log</span><span>Rules engine (JavaScript, one file for site and API)</span><span>LLM explainer, read-only</span><span>Merkle distributor</span><span>Three.js Forge City</span><span>Public API</span></div>
 
       <div class="row-head"><span class="tag">[ Roadmap ]</span><span class="tag hint">No dates promised</span></div>
       <div class="road">
         <div><span class="st now">Now</span><b>Demo</b><p>Story site and Forge City with example data.</p></div>
-        <div><span class="st">Phase 1</span><b>Scanner beta</b><p>Live on the website now. Next: a free Telegram and X bot for testers.</p></div>
+        <div><span class="st">Phase 1</span><b>Scanner beta</b><p>Live on the website now: sell test, wallet links, watch mode and an AI explanation once the API key is set.</p></div>
         <div><span class="st">Phase 2</span><b>Proof-of-Build beta</b><p>Code account and wallet linking, weekly epochs, towers from real commits.</p></div>
         <div><span class="st">Phase 3</span><b>$KAEL launch</b><p>Live holder windows, the reward pool and on-chain attestations.</p></div>
         <div><span class="st">Phase 4</span><b>Open API</b><p>A risk API and SDK so wallets and apps can show Kaelis scores.</p></div>

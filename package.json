@@ -1,0 +1,12 @@
+{
+  "name": "kaelis",
+  "private": true,
+  "description": "Kaelis website and API",
+  "engines": { "node": ">=18" },
+  "scripts": {
+    "test": "node tests/core.test.js"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^1.5.0"
+  }
+}
