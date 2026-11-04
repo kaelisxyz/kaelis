@@ -126,7 +126,7 @@
   .clock { transition: opacity .4s; }
   body.at-hero .clock { opacity: 0; }
 
-  /* header: tiny logo left, reality switch centre, clock and buy right */
+  /* header: Built / Blueprint switch, guide, X and buy on the right */
   .topbar { position: fixed; z-index: 5; top: 0; left: 0; right: 0; display: grid; grid-template-columns: 1fr auto 1fr; align-items: start; gap: 12px;
     padding: calc(14px + env(safe-area-inset-top, 0px)) var(--gut) 12px; transition: opacity .3s, background .3s; }
   .topbar.solid { background: color-mix(in srgb, var(--paper) 88%, transparent); backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px); }
@@ -135,11 +135,10 @@
   .mark i { display: inline; position: static; width: auto; height: auto; border: 0; background: none; font-style: normal; color: var(--ink); }
   .mark i:nth-child(even) { color: var(--paper); -webkit-text-stroke: 1px var(--ink); paint-order: stroke fill; }
   .logo span { font-family: var(--f-mono); font-size: 10px; font-weight: 400; letter-spacing: .1em; color: var(--mute); }
-  .reality { justify-self: center; display: grid; justify-items: center; gap: 6px; background: none; border: 0; padding: 0; cursor: pointer; color: var(--ink); font: inherit; }
-  .reality .pill { border: 1px solid var(--ink); border-radius: 999px; padding: 7px 14px; font-family: var(--f-mono); font-size: 10.5px; letter-spacing: .12em; text-transform: uppercase; background: var(--paper); transition: background .25s, color .25s; }
-  .reality:hover .pill { background: var(--ink); color: var(--paper); }
-  .reality svg { width: 22px; height: 22px; }
-  .reality .state { font-family: var(--f-mono); font-size: 9px; letter-spacing: .12em; color: var(--mute); text-transform: uppercase; }
+  .reality { display: inline-flex; border: 1px solid var(--ink); border-radius: 999px; padding: 2px; gap: 2px; background: var(--paper); cursor: pointer; font: inherit; color: var(--ink); }
+  .reality span { font-family: var(--f-mono); font-size: 10px; letter-spacing: .1em; text-transform: uppercase; line-height: 1; padding: 7px 10px; border-radius: 999px; transition: background .25s, color .25s; }
+  .reality span:first-child, .reality[aria-pressed="true"] span:last-child { background: var(--ink); color: var(--paper); }
+  .reality[aria-pressed="true"] span:first-child { background: none; color: var(--ink); }
   .topright { justify-self: end; display: flex; align-items: center; gap: 14px; }
   .clock { font-family: var(--f-mono); font-size: 10px; letter-spacing: .1em; text-transform: uppercase; color: var(--mute); text-align: right; line-height: 1.5; font-variant-numeric: tabular-nums; }
   .clock b { color: var(--ink); font-weight: 500; }
@@ -149,7 +148,7 @@
   .topright nav a:not(.btn):hover { text-decoration: underline; text-underline-offset: 3px; }
   .btn.sm { padding: 8px 13px; }
   @media (max-width: 899px) { .hide-sm { display: none !important; } }
-  @media (max-width: 520px) { .reality .state { display: none; } .logo span { display: none; } }
+  @media (max-width: 520px) { .reality span { padding: 7px 8px; } }
 
   /* Keep text and 3D apart: text column on the left (desktop) or at the bottom (phone) */
   @media (min-width: 900px) {
@@ -218,12 +217,11 @@
 
 <header class="topbar">
   <span aria-hidden="true"></span>
-  <button class="reality" id="reality" type="button" aria-pressed="false">
-    <span class="pill">Change reality</span>
-  </button>
+  <span aria-hidden="true"></span>
   <div class="topright">
     <div class="clock hide-sm" aria-hidden="true">Block time<br><b id="clock">UTC 00:00</b></div>
     <nav aria-label="Main">
+      <button class="reality" id="reality" type="button" aria-pressed="false" aria-label="View: built or blueprint" title="Switch between the built city and its blueprint"><span>Built</span><span>Blueprint</span></button>
       <a class="hide-sm" href="guide.html">Guide</a>
       <a class="xlink" href="#" aria-label="Kaelis on X" title="Kaelis on X"><svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg></a>
       <a class="btn sm" href="#forge">Buy</a>
