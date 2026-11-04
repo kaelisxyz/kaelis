@@ -201,6 +201,11 @@
   .tech { display: grid; gap: 28px; }
   .tech h2 { font-size: clamp(36px, 5.4vw, 84px); line-height: .92; max-width: 14ch; }
   .tech .intro { font-size: 18px; max-width: 52ch; color: var(--ink); }
+  .guide { margin: 0; border: 1px solid var(--ink); background: var(--paper, #fff); }
+  .guide .bar { display: flex; justify-content: space-between; align-items: center; gap: 12px; background: var(--ink); color: #fff; padding: 8px 12px; font-family: var(--f-mono); font-size: 11px; letter-spacing: .08em; text-transform: uppercase; }
+  .guide .bar i { width: 10px; height: 10px; border: 1px solid currentColor; display: inline-block; }
+  .guide video { display: block; width: 100%; aspect-ratio: 16 / 9; height: auto; background: #f4f4f1; }
+  .guide .meta { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 6px 16px; padding: 10px 12px; font-family: var(--f-mono); font-size: 11px; border-top: 1px solid var(--ink); }
   .arch { border: 1px solid var(--ink); padding: 18px; overflow-x: auto; }
   .arch svg { display: block; width: 100%; min-width: 760px; height: auto; color: var(--ink); font-family: var(--f-mono); }
   .arch .cap { display: flex; justify-content: space-between; gap: 12px; margin-bottom: 10px; }
@@ -382,6 +387,15 @@
       <div class="row-head"><span class="tag">[ How Kaelis works · v0.3 spec ]</span><span class="tag hint">Plan + demo · example data</span></div>
       <h2 id="techTitle">One agent. Three jobs. Every answer shows its evidence.</h2>
       <p class="intro">Kaelis reads two public sources, the chain and GitHub. Fixed, open-source rules turn that data into scores. A language model only explains the result in plain words. It can never change a score.</p>
+
+      <figure class="guide" id="guide">
+        <div class="bar"><span>Video guide — the tech behind this site</span><i aria-hidden="true"></i></div>
+        <video controls preload="metadata" playsinline poster="media/kaelis-tech-guide.jpg" aria-label="Video guide: how the Kaelis site and Forge City are built">
+          <source src="media/kaelis-tech-guide.mp4" type="video/mp4">
+          <source src="media/kaelis-tech-guide.webm" type="video/webm">
+        </video>
+        <figcaption class="meta"><span>Three.js · instancing · textures · scroll timeline · Kaelis Core</span><span>2:05 · no sound</span></figcaption>
+      </figure>
 
       <div class="arch">
         <div class="cap"><span class="tag">Fig. 01 — Kaelis Core pipeline</span><span class="tag hint">Each stage is logged and replayable</span></div>
