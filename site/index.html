@@ -129,6 +129,9 @@
     padding: calc(14px + env(safe-area-inset-top, 0px)) var(--gut) 12px; transition: opacity .3s, background .3s; }
   .topbar.solid { background: color-mix(in srgb, var(--paper) 88%, transparent); backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px); }
   .logo { font-family: var(--f-logo); font-weight: 600; font-size: 15px; letter-spacing: .14em; color: var(--ink); text-decoration: none; display: grid; gap: 2px; }
+  .mark { font-weight: inherit; display: flex; }
+  .mark i { display: inline; position: static; width: auto; height: auto; border: 0; background: none; font-style: normal; color: var(--ink); }
+  .mark i:nth-child(even) { color: var(--paper); -webkit-text-stroke: 1px var(--ink); paint-order: stroke fill; }
   .logo span { font-family: var(--f-mono); font-size: 10px; font-weight: 400; letter-spacing: .1em; color: var(--mute); }
   .reality { justify-self: center; display: grid; justify-items: center; gap: 6px; background: none; border: 0; padding: 0; cursor: pointer; color: var(--ink); font: inherit; }
   .reality .pill { border: 1px solid var(--ink); border-radius: 999px; padding: 7px 14px; font-family: var(--f-mono); font-size: 10.5px; letter-spacing: .12em; text-transform: uppercase; background: var(--paper); transition: background .25s, color .25s; }
@@ -268,7 +271,7 @@
 <div class="paper" aria-hidden="true"></div>
 
 <header class="topbar">
-  <a class="logo" href="#chaos">KAELIS<span>$KAEL · /26</span></a>
+  <a class="logo" href="#chaos"><b class="mark" aria-label="KAELIS"><i>K</i><i>A</i><i>E</i><i>L</i><i>I</i><i>S</i></b><span>$KAEL · /26</span></a>
   <button class="reality" id="reality" type="button" aria-pressed="false">
     <span class="pill">Change reality</span>
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1" aria-hidden="true"><circle cx="12" cy="12" r="10"/><ellipse cx="12" cy="12" rx="4.5" ry="10"/><path d="M2 12h20M4 6.5h16M4 17.5h16"/></svg>
@@ -277,6 +280,7 @@
   <div class="topright">
     <div class="clock hide-sm" aria-hidden="true">Block time<br><b id="clock">UTC 00:00</b></div>
     <nav aria-label="Main">
+      <a class="hide-sm" href="guide.html">Guide</a>
       <a class="hide-sm" href="#tech">Tech</a>
       <a class="hide-sm" href="#token">Token</a>
       <a class="hide-sm" href="#forge-city">Forge City</a>
@@ -387,6 +391,7 @@
       <div class="row-head"><span class="tag">[ How Kaelis works · v0.3 spec ]</span><span class="tag hint">Plan + demo · example data</span></div>
       <h2 id="techTitle">One agent. Three jobs. Every answer shows its evidence.</h2>
       <p class="intro">Kaelis reads two public sources, the chain and GitHub. Fixed, open-source rules turn that data into scores. A language model only explains the result in plain words. It can never change a score.</p>
+      <p><a class="btn" href="guide.html">New here? Read the plain-language guide →</a></p>
 
       <figure class="guide" id="guide">
         <div class="bar"><span>Video guide — the tech behind this site</span><i aria-hidden="true"></i></div>
@@ -551,7 +556,7 @@
       <div class="toast" id="toast2" role="status"></div>
     </div>
     <footer class="foot">
-      <span class="logo">KAELIS<span>$KAEL · 2026 · Demo with example data</span></span>
+      <span class="logo"><b class="mark" aria-label="KAELIS"><i>K</i><i>A</i><i>E</i><i>L</i><i>I</i><i>S</i></b><span>$KAEL · 2026 · Demo with example data</span></span>
       <span class="links"><a href="#chaos">[ ] Top</a><a href="#" aria-disabled="true">X</a><a href="#" aria-disabled="true">Discord</a><a href="#" aria-disabled="true">Telegram</a><a href="#" aria-disabled="true">GitHub</a></span>
     </footer>
   </div>
@@ -649,8 +654,11 @@ let storyPaused = false;
     for (let i = pts.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [pts[i], pts[j]] = [pts[j], pts[i]]; }
     if (!pts.length) return;
     // the wordmark is built from towers: one tower per filled cell of a coarse grid over the letters
+    // letter edges, so every other letter can be built in black or white
+    const word = "KAELIS", left = 600 - g.measureText(word).width / 2, edges = [];
+    for (let i = 1; i < word.length; i++) edges.push(left + g.measureText(word.slice(0, i)).width);
     const STEP = 11, cells = [];
-    for (let y = STEP / 2; y < c.height; y += STEP) for (let x = STEP / 2; x < c.width; x += STEP) if (data[(Math.floor(y) * c.width + Math.floor(x)) * 4 + 3] > 140) cells.push([(x / c.width - 0.5) * 16, (y / c.height - 0.5) * 4]);
+    for (let y = STEP / 2; y < c.height; y += STEP) for (let x = STEP / 2; x < c.width; x += STEP) if (data[(Math.floor(y) * c.width + Math.floor(x)) * 4 + 3] > 140) cells.push([(x / c.width - 0.5) * 16, (y / c.height - 0.5) * 4, edges.filter(e => x > e).length]);
     buildTowers(cells, (STEP / c.width) * 16);
     textReady = true;
     introStart = performance.now();
@@ -755,11 +763,13 @@ let storyPaused = false;
       normalMap: NRM.concrete, normalScale: new THREE.Vector2(0.6, 0.6), roughness: 0.85, metalness: 0.05, transparent: true });
     const mesh = new THREE.InstancedMesh(geo, mat, n);
     const tint = new THREE.Color();
-    const data = cells.map(([u, v], i) => {
+    const data = cells.map(([u, v, letter], i) => {
       // taller towers toward the middle of each stroke, a few spires
       const r = Math.random();
       const h = (0.6 + Math.pow(r, 2.2) * 2.2 + (r > 0.97 ? 1.4 : 0)) * cell * 1.05;
-      tint.setHSL(0.08, 0.06 + Math.random() * 0.08, 0.72 + Math.random() * 0.2);
+      // two-tone wordmark: K, E, I in black stone, A, L, S in white stone
+      if (letter % 2 === 0) tint.setHSL(0.08, 0.02, 0.05 + Math.random() * 0.04);
+      else tint.setRGB(1.25, 1.25, 1.25);
       mesh.setColorAt(i, tint);
       return { u, v, h, d: Math.random() };
     });
@@ -825,7 +835,7 @@ let storyPaused = false;
     T.mat.map = bp > 0.5 ? null : T.mapRef;
     if (T.lastBp !== (bp > 0.5)) { T.lastBp = bp > 0.5; T.mat.needsUpdate = true; }
     T.lmat.uniforms.uColor.value.copy(INK).lerp(BLUE, bp);
-    T.lmat.uniforms.uAlpha.value = lerp(0.18, 0.95, bp) * Math.min(1, rise * 2);
+    T.lmat.uniforms.uAlpha.value = lerp(0.45, 0.95, bp) * Math.min(1, rise * 2);
     T.slab.material.opacity = 0.9 * Math.min(1, rise * 2) * (1 - bp);
   }
 

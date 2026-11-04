@@ -1,0 +1,353 @@
+<!doctype html>
+<html lang="en" data-lang="en">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Kaelis Guide</title>
+<meta name="description" content="Kaelis explained in plain words: what it checks, how a risk score is made, and what is live today.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter+Tight:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500&display=swap">
+<style>
+  /* Public guide to the Kaelis tech. Same paper look as the home page, written for people who don't code. */
+  :root {
+    --paper: #ffffff; --ink: #0b0b0c; --mute: #7a7a7a; --rule: #d6d6d6; --grid: rgba(0,0,0,.06); --tint: #f4f4f1;
+    --ok: #2f8f5b; --warn: #c88a12; --bad: #c4452c;
+    --f-sans: "Inter Tight", "Helvetica Neue", Arial, system-ui, sans-serif;
+    --f-mono: "JetBrains Mono", ui-monospace, Menlo, monospace;
+    --gut: max(16px, env(safe-area-inset-left, 0px));
+    color-scheme: light;
+  }
+  * { box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  html, body { background: var(--paper); color: var(--ink); }
+  body { margin: 0; font-family: var(--f-sans); font-size: 17px; line-height: 1.55;
+    background-image: linear-gradient(var(--grid) 1px, transparent 1px), linear-gradient(90deg, var(--grid) 1px, transparent 1px);
+    background-size: 100% 240px, 25% 100%; }
+  html[data-lang="en"] [lang="id"], html[data-lang="id"] [lang="en"] { display: none !important; }
+  a { color: inherit; }
+  .mono, .tag { font-family: var(--f-mono); font-size: 11px; letter-spacing: .1em; text-transform: uppercase; }
+  .wrap { max-width: 1180px; margin: 0 auto; padding: 0 var(--gut); }
+
+  header { position: sticky; top: 0; z-index: 5; background: rgba(255,255,255,.92); backdrop-filter: blur(6px); border-bottom: 1px solid var(--rule); }
+  header .wrap { display: flex; align-items: center; justify-content: space-between; gap: 12px; height: 60px; }
+  .logo { display: flex; align-items: baseline; gap: 10px; text-decoration: none; font-weight: 600; letter-spacing: .14em; font-size: 15px; }
+  .mark { display: flex; }
+  .mark i { font-style: normal; }
+  .mark i:nth-child(even) { color: var(--paper); -webkit-text-stroke: 1px var(--ink); paint-order: stroke fill; }
+  .right { display: flex; align-items: center; gap: 10px; }
+  .pill { display: inline-flex; align-items: center; gap: 8px; border: 1px solid var(--ink); border-radius: 999px; padding: 8px 14px; text-decoration: none; background: var(--paper); color: var(--ink); cursor: pointer; font: inherit; }
+  .pill.dark { background: var(--ink); color: var(--paper); }
+  .lang { display: inline-flex; border: 1px solid var(--ink); border-radius: 999px; overflow: hidden; }
+  .lang button { border: 0; background: none; padding: 7px 11px; cursor: pointer; font-family: var(--f-mono); font-size: 11px; letter-spacing: .1em; color: var(--ink); }
+  .lang button[aria-pressed="true"] { background: var(--ink); color: var(--paper); }
+
+  section { padding: 72px 0; border-bottom: 1px solid var(--rule); }
+  .hero { padding: 64px 0 56px; }
+  .hero h1 { font-size: clamp(48px, 9vw, 132px); line-height: .9; letter-spacing: -.035em; font-weight: 500; margin: 18px 0 24px; }
+  .hero .lead { font-size: clamp(19px, 2.2vw, 26px); line-height: 1.35; max-width: 34ch; margin: 0 0 28px; }
+  .status { display: inline-flex; gap: 10px; align-items: center; border: 1px dashed var(--ink); padding: 8px 12px; }
+  .status b { width: 8px; height: 8px; border-radius: 50%; background: var(--warn); }
+  h2 { font-size: clamp(32px, 4.6vw, 64px); line-height: .95; letter-spacing: -.03em; font-weight: 500; margin: 12px 0 18px; max-width: 18ch; }
+  .intro { font-size: 19px; max-width: 56ch; margin: 0 0 36px; }
+  .label { display: inline-block; background: var(--ink); color: var(--paper); padding: 6px 10px; }
+
+  .grid { display: grid; gap: 20px; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); }
+  .card { border: 1px solid var(--ink); background: var(--paper); position: relative; }
+  .card .bar { display: flex; justify-content: space-between; align-items: center; background: var(--ink); color: var(--paper); padding: 8px 12px; }
+  .card .bar i { width: 10px; height: 10px; border: 1px solid currentColor; }
+  .card .body { padding: 18px 18px 20px; }
+  .card h3 { font-size: 24px; line-height: 1.1; font-weight: 500; margin: 0 0 10px; letter-spacing: -.01em; }
+  .card p { margin: 0 0 10px; }
+  .card .eg { font-family: var(--f-mono); font-size: 12px; color: var(--mute); margin: 0; }
+
+  .problem { display: grid; gap: 20px; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); }
+  .problem div { border-top: 2px solid var(--ink); padding-top: 14px; }
+  .problem b { display: block; font-size: 42px; font-weight: 500; letter-spacing: -.03em; line-height: 1; margin-bottom: 8px; }
+
+  ol.steps { list-style: none; padding: 0; margin: 0; display: grid; gap: 0; counter-reset: s; border-top: 1px solid var(--ink); }
+  ol.steps li { counter-increment: s; display: grid; grid-template-columns: 64px 1fr; gap: 14px; padding: 18px 0; border-bottom: 1px solid var(--rule); }
+  ol.steps li::before { content: "0" counter(s); font-family: var(--f-mono); font-size: 13px; padding-top: 4px; }
+  ol.steps strong { display: block; font-size: 21px; font-weight: 500; margin-bottom: 2px; }
+
+  .two { display: grid; gap: 32px; grid-template-columns: 1fr 1fr; align-items: start; }
+  @media (max-width: 860px) { .two { grid-template-columns: 1fr; } }
+
+  /* example scan */
+  .scan .body { display: grid; gap: 14px; }
+  .scan .top { display: flex; justify-content: space-between; align-items: end; gap: 12px; }
+  .scan .score { font-size: 72px; line-height: .9; font-weight: 500; letter-spacing: -.04em; }
+  .scan .score small { font-size: 18px; color: var(--mute); letter-spacing: 0; }
+  .band { font-family: var(--f-mono); font-size: 11px; letter-spacing: .1em; text-transform: uppercase; padding: 6px 10px; border: 1px solid currentColor; color: var(--bad); }
+  .meter { position: relative; height: 10px; display: grid; grid-template-columns: 40fr 30fr 31fr; gap: 2px; }
+  .meter span:nth-child(1) { background: var(--ok); } .meter span:nth-child(2) { background: var(--warn); } .meter span:nth-child(3) { background: var(--bad); }
+  .meter em { position: absolute; top: -6px; bottom: -6px; width: 3px; background: var(--ink); left: 78%; }
+  .scale { display: flex; justify-content: space-between; font-family: var(--f-mono); font-size: 10px; color: var(--mute); }
+  .flags { list-style: none; padding: 0; margin: 0; border-top: 1px solid var(--rule); }
+  .flags li { display: flex; justify-content: space-between; gap: 12px; padding: 9px 0; border-bottom: 1px solid var(--rule); font-size: 15px; }
+  .flags li span:last-child { font-family: var(--f-mono); font-size: 12px; white-space: nowrap; }
+  .flags li.off { color: var(--mute); }
+  .summary { background: var(--tint); padding: 12px 14px; font-size: 15px; }
+  .summary b { font-family: var(--f-mono); font-size: 10px; letter-spacing: .1em; display: block; margin-bottom: 4px; }
+
+  .bands { display: grid; grid-template-columns: repeat(3, 1fr); gap: 2px; margin-top: 20px; }
+  .bands div { padding: 14px; color: #fff; }
+  .bands div:nth-child(1) { background: var(--ok); } .bands div:nth-child(2) { background: var(--warn); } .bands div:nth-child(3) { background: var(--bad); }
+  .bands b { display: block; font-family: var(--f-mono); font-size: 12px; margin-bottom: 4px; }
+  @media (max-width: 560px) { .bands { grid-template-columns: 1fr; } }
+
+  .trust { display: grid; gap: 0; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); border-top: 1px solid var(--ink); border-left: 1px solid var(--ink); }
+  .trust div { padding: 20px; border-right: 1px solid var(--ink); border-bottom: 1px solid var(--ink); }
+  .trust h3 { margin: 10px 0 6px; font-size: 22px; font-weight: 500; }
+  .trust p { margin: 0; }
+
+  .legend { display: grid; gap: 14px; }
+  .legend div { display: grid; grid-template-columns: 54px 1fr; gap: 14px; align-items: center; }
+  .legend svg { width: 54px; height: 54px; }
+
+  .road { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 0; border-top: 1px solid var(--ink); }
+  .road div { padding: 16px 16px 18px 0; border-bottom: 1px solid var(--rule); }
+  .road .now { position: relative; }
+  .road .now::before { content: ""; position: absolute; top: -1px; left: 0; right: 16px; height: 4px; background: var(--ink); }
+  .road b { display: block; font-family: var(--f-mono); font-size: 12px; letter-spacing: .1em; margin: 10px 0 6px; }
+
+  details { border-bottom: 1px solid var(--rule); }
+  details:first-of-type { border-top: 1px solid var(--ink); }
+  summary { cursor: pointer; list-style: none; display: flex; justify-content: space-between; gap: 16px; padding: 18px 0; font-size: 21px; font-weight: 500; }
+  summary::-webkit-details-marker { display: none; }
+  summary::after { content: "+"; font-family: var(--f-mono); font-weight: 400; }
+  details[open] summary::after { content: "–"; }
+  details p { margin: 0 0 18px; max-width: 64ch; }
+
+  .video video { display: block; width: 100%; aspect-ratio: 16/9; background: var(--tint); }
+  .note { font-size: 14px; color: var(--mute); max-width: 70ch; }
+  footer { padding: 40px 0 60px; }
+  footer .wrap { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 16px; }
+  @media (max-width: 560px) { .hide-sm { display: none; } section { padding: 56px 0; } }
+</style>
+
+<header>
+  <div class="wrap">
+    <a class="logo" href="index.html"><b class="mark" aria-label="KAELIS"><i>K</i><i>A</i><i>E</i><i>L</i><i>I</i><i>S</i></b><span class="mono hide-sm" style="color:var(--mute)">Guide</span></a>
+    <div class="right">
+      <div class="lang" role="group" aria-label="Language">
+        <button type="button" data-set="en" aria-pressed="true">EN</button><button type="button" data-set="id" aria-pressed="false">ID</button>
+      </div>
+      <a class="pill dark mono" href="index.html"><span lang="en">Back to site</span><span lang="id">Ke website</span></a>
+    </div>
+  </div>
+</header>
+
+<main>
+  <!-- 0 · hero -->
+  <section class="hero">
+    <div class="wrap">
+      <span class="tag label"><span lang="en">[ Kaelis guide · 5 minute read ]</span><span lang="id">[ Panduan Kaelis · baca 5 menit ]</span></span>
+      <h1><span lang="en">Kaelis,<br>explained.</span><span lang="id">Kaelis,<br>dijelaskan.</span></h1>
+      <p class="lead">
+        <span lang="en">Kaelis is an agent that checks crypto tokens for scams and rewards people who actually build. Here is how it works, in plain words.</span>
+        <span lang="id">Kaelis adalah agent yang ngecek token crypto dari scam, dan ngasih reward ke orang yang beneran build. Ini cara kerjanya, pake bahasa simpel.</span>
+      </p>
+      <div class="status mono"><b></b><span lang="en">Status: demo with example data. Nothing here is financial advice.</span><span lang="id">Status: demo pakai data contoh. Bukan saran keuangan.</span></div>
+    </div>
+  </section>
+
+  <!-- 1 · problem -->
+  <section>
+    <div class="wrap">
+      <span class="tag"><span lang="en">01 · The problem</span><span lang="id">01 · Masalahnya</span></span>
+      <h2><span lang="en">New tokens appear every minute. Most people can't tell which ones are traps.</span><span lang="id">Token baru muncul tiap menit. Kebanyakan orang gak bisa bedain mana yang jebakan.</span></h2>
+      <div class="problem">
+        <div><b>Rug</b><span lang="en">The creator pulls the money out of the trading pool and the price drops to almost zero in one move.</span><span lang="id">Pembuat token narik uang dari pool trading, harga langsung jatuh hampir nol dalam satu transaksi.</span></div>
+        <div><b>Honeypot</b><span lang="en">You can buy the token but you can't sell it, or selling costs you most of what you put in.</span><span lang="id">Lu bisa beli tokennya tapi gak bisa jual, atau pas jual hampir semua uang lu kepotong.</span></div>
+        <div><b><span lang="en">Unpaid builders</span><span lang="id">Builder gak dibayar</span></b><span lang="en">The people writing real code rarely get rewarded, while hype gets all the attention.</span><span lang="id">Orang yang nulis kode beneran jarang dapet reward, yang dapet perhatian malah hype.</span></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 2 · three jobs -->
+  <section>
+    <div class="wrap">
+      <span class="tag"><span lang="en">02 · What Kaelis does</span><span lang="id">02 · Apa yang Kaelis lakuin</span></span>
+      <h2><span lang="en">One agent, three jobs.</span><span lang="id">Satu agent, tiga tugas.</span></h2>
+      <div class="grid">
+        <article class="card"><div class="bar tag"><span>Scam scanner</span><i></i></div><div class="body">
+          <h3><span lang="en">Checks a token before you buy</span><span lang="id">Ngecek token sebelum lu beli</span></h3>
+          <p><span lang="en">Paste a token address. Kaelis runs seven checks and gives a risk score from 0 to 100, with proof for every warning.</span><span lang="id">Tempel alamat token. Kaelis jalanin tujuh pengecekan dan kasih skor risiko 0 sampai 100, lengkap sama bukti tiap peringatan.</span></p>
+          <p class="eg"><span lang="en">Example: "82 / dangerous: liquidity not locked"</span><span lang="id">Contoh: "82 / bahaya: likuiditas gak dikunci"</span></p>
+        </div></article>
+        <article class="card"><div class="bar tag"><span>Proof-of-Build</span><i></i></div><div class="body">
+          <h3><span lang="en">Rewards real code</span><span lang="id">Reward buat kode beneran</span></h3>
+          <p><span lang="en">Builders link GitHub and a wallet. Each week, merged work on public repos earns build points and a share of a reward pool.</span><span lang="id">Builder sambungin GitHub sama wallet. Tiap minggu, kerjaan yang di-merge di repo publik dapet poin build dan bagian dari reward pool.</span></p>
+          <p class="eg"><span lang="en">Example: 12 merged PRs this week → tower grows 1 floor</span><span lang="id">Contoh: 12 PR di-merge minggu ini → tower naik 1 lantai</span></p>
+        </div></article>
+        <article class="card"><div class="bar tag"><span>Holder light</span><i></i></div><div class="body">
+          <h3><span lang="en">Holders light up the city</span><span lang="id">Holder nyalain kota</span></h3>
+          <p><span lang="en">Every wallet holding $KAEL lights one window in Forge City. Sell everything and your window turns off.</span><span lang="id">Tiap wallet yang pegang $KAEL nyalain satu jendela di Forge City. Jual semua, jendela lu mati.</span></p>
+          <p class="eg"><span lang="en">Example: 4,120 holders → 4,120 lit windows</span><span lang="id">Contoh: 4.120 holder → 4.120 jendela nyala</span></p>
+        </div></article>
+      </div>
+    </div>
+  </section>
+
+  <!-- 3 · how a scan works -->
+  <section>
+    <div class="wrap two">
+      <div>
+        <span class="tag"><span lang="en">03 · How a scan works</span><span lang="id">03 · Cara scan bekerja</span></span>
+        <h2><span lang="en">From address to answer in four steps.</span><span lang="id">Dari alamat ke jawaban dalam empat langkah.</span></h2>
+        <ol class="steps">
+          <li><div><strong><span lang="en">Read</span><span lang="id">Baca</span></strong><span lang="en">Kaelis reads public data about the token from the blockchain: who created it, who holds it, where the money sits.</span><span lang="id">Kaelis baca data publik token dari blockchain: siapa yang bikin, siapa yang pegang, uangnya disimpen di mana.</span></div></li>
+          <li><div><strong><span lang="en">Check</span><span lang="id">Cek</span></strong><span lang="en">Seven fixed checks look for known scam patterns, such as a test sell that fails or a creator holding a huge share.</span><span lang="id">Tujuh pengecekan tetap nyari pola scam yang udah dikenal, misalnya tes jual yang gagal atau pembuat yang pegang porsi gede banget.</span></div></li>
+          <li><div><strong><span lang="en">Score</span><span lang="id">Skor</span></strong><span lang="en">Each check has a weight. Kaelis adds them up into a score from 0 to 100. The same data always gives the same score.</span><span lang="id">Tiap cek punya bobot. Kaelis jumlahin jadi skor 0 sampai 100. Data yang sama selalu kasih skor yang sama.</span></div></li>
+          <li><div><strong><span lang="en">Explain</span><span lang="id">Jelasin</span></strong><span lang="en">An AI writes a short summary in plain words. It reads the result but can never change the score.</span><span lang="id">AI nulis ringkasan singkat pake bahasa biasa. AI cuma baca hasilnya, gak bisa ngubah skornya.</span></div></li>
+        </ol>
+      </div>
+      <article class="card scan" aria-label="Example scan result">
+        <div class="bar tag"><span lang="en">Example scan · not a real token</span><span lang="id">Contoh scan · bukan token asli</span><i></i></div>
+        <div class="body">
+          <div class="top"><div class="score">78<small> / 100</small></div><span class="band"><span lang="en">Dangerous</span><span lang="id">Bahaya</span></span></div>
+          <div><div class="meter"><span></span><span></span><span></span><em></em></div><div class="scale"><span>0</span><span>40</span><span>70</span><span>100</span></div></div>
+          <ul class="flags">
+            <li><span lang="en">Liquidity not locked</span><span lang="id">Likuiditas gak dikunci</span><span>+20</span></li>
+            <li><span lang="en">Creator holds 34% of supply</span><span lang="id">Pembuat pegang 34% supply</span><span>+12</span></li>
+            <li><span lang="en">Creator's last 3 tokens were rugged</span><span lang="id">3 token terakhir pembuatnya di-rug</span><span>+15</span></li>
+            <li><span lang="en">Can still mint new tokens</span><span lang="id">Masih bisa nyetak token baru</span><span>+10</span></li>
+            <li><span lang="en">Holders funded from one wallet</span><span lang="id">Holder dimodalin dari satu wallet</span><span>+8</span></li>
+            <li><span lang="en">Can freeze wallets</span><span lang="id">Bisa ngebekuin wallet</span><span>+5</span></li>
+            <li class="off"><span lang="en">Test sell works</span><span lang="id">Tes jual berhasil</span><span>+0</span></li>
+          </ul>
+          <div class="summary"><b>AI SUMMARY</b><span lang="en">The pool money can be pulled out at any time, and the same creator has rugged three tokens before. Treat this as high risk.</span><span lang="id">Uang di pool bisa ditarik kapan aja, dan pembuat yang sama udah nge-rug tiga token sebelumnya. Anggap ini risiko tinggi.</span></div>
+        </div>
+      </article>
+    </div>
+    <div class="wrap">
+      <div class="bands">
+        <div><b>0–39</b><span lang="en">Low risk. No known red flag found. Not a promise of safety.</span><span lang="id">Risiko rendah. Gak ketemu tanda bahaya yang dikenal. Bukan jaminan aman.</span></div>
+        <div><b>40–69</b><span lang="en">Suspicious. Read the evidence before you do anything.</span><span lang="id">Mencurigakan. Baca buktinya dulu sebelum ngapa-ngapain.</span></div>
+        <div><b>70–100</b><span lang="en">Dangerous. Several scam patterns match.</span><span lang="id">Bahaya. Beberapa pola scam cocok.</span></div>
+      </div>
+      <p class="note"><span lang="en">If the test sell fails (a honeypot), the score jumps to at least 85 no matter what else is found.</span><span lang="id">Kalau tes jual gagal (honeypot), skornya langsung minimal 85 apapun hasil cek lainnya.</span></p>
+    </div>
+  </section>
+
+  <!-- 4 · why trust it -->
+  <section>
+    <div class="wrap">
+      <span class="tag"><span lang="en">04 · Why you can check it</span><span lang="id">04 · Kenapa bisa dipercaya</span></span>
+      <h2><span lang="en">Rules decide. AI only explains.</span><span lang="id">Aturan yang mutusin. AI cuma ngejelasin.</span></h2>
+      <p class="intro"><span lang="en">Many "AI scanners" are a black box. Kaelis is built so anyone can check the work.</span><span lang="id">Banyak "AI scanner" itu kotak hitam. Kaelis dibikin supaya siapa aja bisa ngecek kerjaannya.</span></p>
+      <div class="trust">
+        <div><span class="tag">01</span><h3><span lang="en">Open rules</span><span lang="id">Aturan terbuka</span></h3><p><span lang="en">Every check and every weight will be published on GitHub.</span><span lang="id">Semua cek dan bobotnya bakal dipublish di GitHub.</span></p></div>
+        <div><span class="tag">02</span><h3><span lang="en">Proof for every flag</span><span lang="id">Bukti tiap peringatan</span></h3><p><span lang="en">Each warning links to the exact transactions or wallets behind it.</span><span lang="id">Tiap peringatan ada link ke transaksi atau wallet yang jadi buktinya.</span></p></div>
+        <div><span class="tag">03</span><h3><span lang="en">Same input, same score</span><span lang="id">Input sama, skor sama</span></h3><p><span lang="en">Every score records the data and rule version used, so anyone can re-run it and get the same number.</span><span lang="id">Tiap skor nyimpen data dan versi aturan yang dipake, jadi siapa aja bisa ulang dan dapet angka yang sama.</span></p></div>
+        <div><span class="tag">04</span><h3><span lang="en">Public data only</span><span lang="id">Cuma data publik</span></h3><p><span lang="en">Kaelis reads the blockchain and GitHub. It never asks for your keys, your funds or trading access.</span><span lang="id">Kaelis cuma baca blockchain dan GitHub. Gak pernah minta private key, dana, atau akses trading lu.</span></p></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 5 · proof of build -->
+  <section>
+    <div class="wrap two">
+      <div>
+        <span class="tag"><span lang="en">05 · Proof-of-Build</span><span lang="id">05 · Proof-of-Build</span></span>
+        <h2><span lang="en">Write code, grow a tower.</span><span lang="id">Nulis kode, tower lu tumbuh.</span></h2>
+        <p class="intro"><span lang="en">Rewards go to work other people can see and use, not to whoever makes the most noise.</span><span lang="id">Reward buat kerjaan yang bisa dilihat dan dipake orang lain, bukan buat yang paling rame.</span></p>
+      </div>
+      <ol class="steps">
+        <li><div><strong><span lang="en">Link</span><span lang="id">Sambungin</span></strong><span lang="en">Connect GitHub (read-only) and sign a message with your wallet. One GitHub account, one wallet.</span><span lang="id">Sambungin GitHub (cuma baca) dan tanda tangan pesan pake wallet. Satu akun GitHub, satu wallet.</span></div></li>
+        <li><div><strong><span lang="en">Build</span><span lang="id">Build</span></strong><span lang="en">Only merged work on public repos counts. Copy-paste and tiny spam commits are filtered out.</span><span lang="id">Cuma kerjaan yang di-merge di repo publik yang dihitung. Copy-paste dan commit spam kecil-kecil difilter.</span></div></li>
+        <li><div><strong><span lang="en">Score the week</span><span lang="id">Hitung per minggu</span></strong><span lang="en">Points come from merged changes, reviews and real usage of the repo, with caps so nobody can farm it.</span><span lang="id">Poin dari perubahan yang di-merge, review, dan pemakaian repo yang beneran, ada batasnya biar gak bisa di-farming.</span></div></li>
+        <li><div><strong><span lang="en">Claim</span><span lang="id">Klaim</span></strong><span lang="en">The weekly result is posted on-chain. Builders claim their share, and their tower in Forge City gains a floor.</span><span lang="id">Hasil mingguan diposting on-chain. Builder klaim bagiannya, dan tower mereka di Forge City nambah satu lantai.</span></div></li>
+      </ol>
+    </div>
+  </section>
+
+  <!-- 6 · forge city -->
+  <section>
+    <div class="wrap two">
+      <div>
+        <span class="tag">06 · Forge City</span>
+        <h2><span lang="en">The data, as a city you can walk through.</span><span lang="id">Datanya, jadi kota yang bisa lu jelajahi.</span></h2>
+        <p class="intro"><span lang="en">Forge City is a 3D view of everything Kaelis tracks. You don't need to read a single number to see what's going on.</span><span lang="id">Forge City itu tampilan 3D dari semua yang Kaelis pantau. Gak perlu baca angka buat ngerti apa yang terjadi.</span></p>
+        <a class="pill" href="index.html#forge-city"><span lang="en">Open Forge City →</span><span lang="id">Buka Forge City →</span></a>
+      </div>
+      <div class="legend">
+        <div><svg viewBox="0 0 54 54" aria-hidden="true"><rect x="17" y="6" width="20" height="44" fill="none" stroke="currentColor"/><path d="M22 14h4M28 14h4M22 22h4M28 22h4M22 30h4M28 30h4M22 38h4M28 38h4" stroke="currentColor"/></svg><p><b><span lang="en">Tower = a builder.</span><span lang="id">Tower = satu builder.</span></b> <span lang="en">Taller means more verified work.</span><span lang="id">Makin tinggi, makin banyak kerjaan yang terverifikasi.</span></p></div>
+        <div><svg viewBox="0 0 54 54" aria-hidden="true"><rect x="12" y="20" width="30" height="30" fill="none" stroke="currentColor"/><rect x="18" y="26" width="6" height="6" fill="currentColor"/><rect x="30" y="26" width="6" height="6" fill="none" stroke="currentColor"/><rect x="18" y="38" width="6" height="6" fill="none" stroke="currentColor"/><rect x="30" y="38" width="6" height="6" fill="currentColor"/></svg><p><b><span lang="en">Lit window = a holder.</span><span lang="id">Jendela nyala = satu holder.</span></b> <span lang="en">Each $KAEL wallet lights one window.</span><span lang="id">Tiap wallet $KAEL nyalain satu jendela.</span></p></div>
+        <div><svg viewBox="0 0 54 54" aria-hidden="true"><rect x="16" y="14" width="22" height="36" fill="none" stroke="currentColor" stroke-dasharray="3 3"/><path d="M14 6l26 10" stroke="currentColor"/></svg><p><b><span lang="en">Scanned token = a building.</span><span lang="id">Token yang di-scan = satu gedung.</span></b> <span lang="en">Its colour shows the risk band.</span><span lang="id">Warnanya nunjukin level risiko.</span></p></div>
+        <div><svg viewBox="0 0 54 54" aria-hidden="true"><path d="M10 48h34M14 48l6-14 6 6 4-12 8 20" fill="none" stroke="currentColor"/></svg><p><b><span lang="en">Collapse = a rug.</span><span lang="id">Runtuh = rug.</span></b> <span lang="en">When a token is rugged, its building falls into the Scam Graveyard.</span><span lang="id">Kalau token di-rug, gedungnya runtuh ke Scam Graveyard.</span></p></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 7 · what's live -->
+  <section>
+    <div class="wrap">
+      <span class="tag"><span lang="en">07 · What's live today</span><span lang="id">07 · Yang udah jalan sekarang</span></span>
+      <h2><span lang="en">Honest status. No dates promised.</span><span lang="id">Status jujur. Gak janji tanggal.</span></h2>
+      <div class="road">
+        <div class="now"><b><span lang="en">NOW</span><span lang="id">SEKARANG</span></b><span lang="en">This website and Forge City demo, with example data.</span><span lang="id">Website ini dan demo Forge City, pakai data contoh.</span></div>
+        <div><b><span lang="en">PHASE 1</span><span lang="id">FASE 1</span></b><span lang="en">Scanner beta: a free bot for 20–50 testers. Rules published on GitHub.</span><span lang="id">Beta scanner: bot gratis buat 20–50 tester. Aturan dipublish di GitHub.</span></div>
+        <div><b><span lang="en">PHASE 2</span><span lang="id">FASE 2</span></b><span lang="en">Proof-of-Build beta: linking, weekly scores, towers from real commits.</span><span lang="id">Beta Proof-of-Build: sambungin akun, skor mingguan, tower dari commit asli.</span></div>
+        <div><b><span lang="en">PHASE 3</span><span lang="id">FASE 3</span></b><span lang="en">$KAEL launch: live holder windows and the reward pool.</span><span lang="id">Launch $KAEL: jendela holder live dan reward pool.</span></div>
+        <div><b><span lang="en">PHASE 4</span><span lang="id">FASE 4</span></b><span lang="en">Open API so wallets and apps can show Kaelis scores.</span><span lang="id">API terbuka supaya wallet dan aplikasi lain bisa nampilin skor Kaelis.</span></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 8 · faq -->
+  <section>
+    <div class="wrap">
+      <span class="tag">08 · FAQ</span>
+      <h2><span lang="en">Questions people ask.</span><span lang="id">Pertanyaan yang sering muncul.</span></h2>
+      <details><summary><span lang="en">Does Kaelis tell me what to buy?</span><span lang="id">Kaelis nyuruh gua beli apa?</span></summary><p><span lang="en">No. Kaelis reports risk. It never predicts prices or promises profit. A low score only means no known red flag was found.</span><span lang="id">Nggak. Kaelis cuma ngelaporin risiko. Gak pernah nebak harga atau janji profit. Skor rendah cuma artinya gak ketemu tanda bahaya yang dikenal.</span></p></details>
+      <details><summary><span lang="en">Do I need to connect my wallet to scan?</span><span lang="id">Harus connect wallet buat scan?</span></summary><p><span lang="en">No. A scan only needs the token's address. Kaelis never asks for private keys or permission to move funds.</span><span lang="id">Nggak. Scan cuma butuh alamat token. Kaelis gak pernah minta private key atau izin mindahin dana.</span></p></details>
+      <details><summary><span lang="en">Can the AI be tricked into a good score?</span><span lang="id">AI-nya bisa diakalin biar skornya bagus?</span></summary><p><span lang="en">The AI doesn't make the score. Fixed rules do, and the AI's text is checked so it can't contain numbers that differ from the score.</span><span lang="id">Yang bikin skor bukan AI, tapi aturan tetap. Teks dari AI juga dicek supaya gak ada angka yang beda dari skornya.</span></p></details>
+      <details><summary><span lang="en">Which blockchain?</span><span lang="id">Pakai blockchain apa?</span></summary><p><span lang="en">The plan is Solana, because several checks (mint and freeze authority) are Solana features. This is not final yet.</span><span lang="id">Rencananya Solana, karena beberapa cek (mint dan freeze authority) itu fitur Solana. Belum final.</span></p></details>
+      <details><summary><span lang="en">How can someone fake Proof-of-Build?</span><span lang="id">Gimana kalau orang curang di Proof-of-Build?</span></summary><p><span lang="en">Only merged work on public repos counts, with daily caps, minimum account age, outside-contributor checks and manual review of the top earners each week.</span><span lang="id">Cuma kerjaan yang di-merge di repo publik yang dihitung, ada batas harian, umur akun minimal, cek kontributor luar, dan review manual buat yang dapet paling banyak tiap minggu.</span></p></details>
+      <details><summary><span lang="en">Is any of this live?</span><span lang="id">Udah ada yang live?</span></summary><p><span lang="en">Not yet. The website and Forge City run on example data. See the status above.</span><span lang="id">Belum. Website dan Forge City masih pakai data contoh. Lihat status di atas.</span></p></details>
+    </div>
+  </section>
+
+  <!-- 9 · video -->
+  <section>
+    <div class="wrap two">
+      <div>
+        <span class="tag"><span lang="en">09 · Behind the site</span><span lang="id">09 · Di balik website</span></span>
+        <h2><span lang="en">How the website itself is built.</span><span lang="id">Gimana website ini dibikin.</span></h2>
+        <p class="intro"><span lang="en">A two-minute video on the 3D engine, the city and the workflow behind this site. No sound needed.</span><span lang="id">Video dua menit soal engine 3D, kotanya, dan cara kerja di balik website ini. Gak perlu suara.</span></p>
+      </div>
+      <figure class="card video" style="margin:0">
+        <div class="bar tag"><span>Video · 2:05</span><i></i></div>
+        <video controls preload="metadata" playsinline poster="media/kaelis-tech-guide.jpg" aria-label="Video: how the Kaelis site is built">
+          <source src="media/kaelis-tech-guide.mp4" type="video/mp4">
+          <source src="media/kaelis-tech-guide.webm" type="video/webm">
+        </video>
+      </figure>
+    </div>
+  </section>
+</main>
+
+<footer>
+  <div class="wrap mono">
+    <span><span lang="en">Kaelis · Demo with example data · Not financial advice</span><span lang="id">Kaelis · Demo pakai data contoh · Bukan saran keuangan</span></span>
+    <a href="index.html#tech"><span lang="en">Full tech spec →</span><span lang="id">Spesifikasi lengkap →</span></a>
+  </div>
+</footer>
+
+<script>
+  (function () {
+    var root = document.documentElement, btns = document.querySelectorAll(".lang button");
+    function set(l) {
+      root.setAttribute("data-lang", l); root.lang = l;
+      btns.forEach(function (b) { b.setAttribute("aria-pressed", String(b.dataset.set === l)); });
+      try { localStorage.setItem("kaelis-lang", l); } catch (e) {}
+    }
+    var saved = null;
+    try { saved = localStorage.getItem("kaelis-lang"); } catch (e) {}
+    var q = new URLSearchParams(location.search).get("lang");
+    set(q === "id" || q === "en" ? q : saved || ((navigator.language || "").slice(0, 2) === "id" ? "id" : "en"));
+    btns.forEach(function (b) { b.addEventListener("click", function () { set(b.dataset.set); }); });
+  })();
+</script>
+</html>
