@@ -198,7 +198,7 @@
   .foot { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 12px 24px; align-items: center; border-top: 1px solid var(--ink); padding-top: 16px; }
   .foot .logo { font-size: 13px; }
   /* "Try it": a tiny, example-data simulation of the three Kaelis jobs, right after the landing screen */
-  .sim { position: relative; z-index: 2; min-height: 100svh; display: grid; place-items: center; padding: 12vh var(--gut); box-sizing: border-box; }
+  .sim { display: grid; }
   .sim .card { max-width: 46rem; width: 100%; }
   .sim .tabs { display: flex; flex-wrap: wrap; gap: 6px; }
   .sim .tabs button { font-family: var(--f-mono); font-size: 10.5px; letter-spacing: .1em; text-transform: uppercase; padding: 8px 12px; border-radius: 999px; border: 1px solid var(--ink); background: var(--paper); color: var(--ink); cursor: pointer; }
@@ -292,49 +292,6 @@
     </div>
   </section>
 
-  <section class="sim" id="try" aria-labelledby="tryTitle">
-    <div class="card">
-      <div class="tag" id="tryTitle">Try it · Kaelis in 10 seconds</div>
-      <div class="tabs" role="tablist" aria-label="Kaelis jobs">
-        <button type="button" role="tab" id="st-scan" aria-controls="sp-scan" aria-selected="true">01 Scan a token</button>
-        <button type="button" role="tab" id="st-build" aria-controls="sp-build" aria-selected="false" tabindex="-1">02 Build</button>
-        <button type="button" role="tab" id="st-hold" aria-controls="sp-hold" aria-selected="false" tabindex="-1">03 Hold</button>
-      </div>
-
-      <div class="pane" id="sp-scan" role="tabpanel" aria-labelledby="st-scan">
-        <p>Pick a token and press scan. Kaelis reads the chain, runs seven checks and explains the result.</p>
-        <div class="row" role="group" aria-label="Example tokens">
-          <button type="button" class="tok" data-tok="safu" aria-pressed="true">$SAFU</button>
-          <button type="button" class="tok" data-tok="moon" aria-pressed="false">$MOON</button>
-          <button type="button" class="tok" data-tok="rugme" aria-pressed="false">$RUGME</button>
-          <button type="button" class="btn go" id="scanGo">Scan ↗</button>
-        </div>
-        <div class="stages" aria-hidden="true"><span>Read</span><span>Check</span><span>Score</span><span>Explain</span></div>
-        <ul class="checks" id="simChecks"></ul>
-        <div class="result">
-          <div class="num" id="simNum">–<small> / 100</small></div>
-          <div><div class="meter"><b></b><b></b><b></b><i id="simPin"></i></div><span class="band" id="simBand">Waiting for a scan</span></div>
-        </div>
-        <div class="say" aria-live="polite"><b>AI SUMMARY</b><span id="simSay">Press scan to see Kaelis at work.</span></div>
-      </div>
-
-      <div class="pane" id="sp-build" role="tabpanel" aria-labelledby="st-build" hidden>
-        <p>Builders earn by shipping real code. Merged work is verified, and your tower grows a floor.</p>
-        <div class="city" id="simCity" aria-hidden="true"></div>
-        <div class="row"><span class="stat">Your tower · <b id="simFloors">3</b> floors · <b id="simPts">0</b> build points</span><button type="button" class="btn go" id="buildGo">Ship code ↗</button></div>
-        <div class="say" aria-live="polite"><b>KAELIS</b><span id="buildSay">Press ship code to merge a change.</span></div>
-      </div>
-
-      <div class="pane" id="sp-hold" role="tabpanel" aria-labelledby="st-hold" hidden>
-        <p>Every wallet holding $KAEL lights one window in Forge City. Sell everything and it turns off.</p>
-        <div class="win" id="simWin" aria-hidden="true"></div>
-        <div class="row"><span class="stat"><b id="simHolders">41</b> holders · <b id="simLit">41</b> lit windows</span><button type="button" class="btn go" id="holdGo">Hold $KAEL ↗</button></div>
-        <div class="say" aria-live="polite"><b>KAELIS</b><span id="holdSay">Press hold to light your window.</span></div>
-      </div>
-
-      <div class="more"><span class="hint">Simulation with example data</span><a class="hint" href="guide.html">How it works → Guide</a></div>
-    </div>
-  </section>
 
   <section class="beat right" id="block">
     <div class="card">
@@ -410,6 +367,50 @@
       </div>
     </div>
 
+
+    <div class="sim" id="try">
+      <div class="card">
+        <div class="tag">Try it · Simulation</div>
+        <div class="tabs" role="tablist" aria-label="Kaelis jobs">
+          <button type="button" role="tab" id="st-scan" aria-controls="sp-scan" aria-selected="true">01 Scan a token</button>
+          <button type="button" role="tab" id="st-build" aria-controls="sp-build" aria-selected="false" tabindex="-1">02 Build</button>
+          <button type="button" role="tab" id="st-hold" aria-controls="sp-hold" aria-selected="false" tabindex="-1">03 Hold</button>
+        </div>
+
+        <div class="pane" id="sp-scan" role="tabpanel" aria-labelledby="st-scan">
+          <p>Pick a token and press scan. Kaelis reads the chain, runs seven checks and explains the result.</p>
+          <div class="row" role="group" aria-label="Example tokens">
+            <button type="button" class="tok" data-tok="safu" aria-pressed="true">$SAFU</button>
+            <button type="button" class="tok" data-tok="moon" aria-pressed="false">$MOON</button>
+            <button type="button" class="tok" data-tok="rugme" aria-pressed="false">$RUGME</button>
+            <button type="button" class="btn go" id="scanGo">Scan ↗</button>
+          </div>
+          <div class="stages" aria-hidden="true"><span>Read</span><span>Check</span><span>Score</span><span>Explain</span></div>
+          <ul class="checks" id="simChecks"></ul>
+          <div class="result">
+            <div class="num" id="simNum">–<small> / 100</small></div>
+            <div><div class="meter"><b></b><b></b><b></b><i id="simPin"></i></div><span class="band" id="simBand">Waiting for a scan</span></div>
+          </div>
+          <div class="say" aria-live="polite"><b>AI SUMMARY</b><span id="simSay">Press scan to see Kaelis at work.</span></div>
+        </div>
+
+        <div class="pane" id="sp-build" role="tabpanel" aria-labelledby="st-build" hidden>
+          <p>Builders earn by shipping real code. Merged work is verified, and your tower grows a floor.</p>
+          <div class="city" id="simCity" aria-hidden="true"></div>
+          <div class="row"><span class="stat">Your tower · <b id="simFloors">3</b> floors · <b id="simPts">0</b> build points</span><button type="button" class="btn go" id="buildGo">Ship code ↗</button></div>
+          <div class="say" aria-live="polite"><b>KAELIS</b><span id="buildSay">Press ship code to merge a change.</span></div>
+        </div>
+
+        <div class="pane" id="sp-hold" role="tabpanel" aria-labelledby="st-hold" hidden>
+          <p>Every wallet holding $KAEL lights one window in Forge City. Sell everything and it turns off.</p>
+          <div class="win" id="simWin" aria-hidden="true"></div>
+          <div class="row"><span class="stat"><b id="simHolders">41</b> holders · <b id="simLit">41</b> lit windows</span><button type="button" class="btn go" id="holdGo">Hold $KAEL ↗</button></div>
+          <div class="say" aria-live="polite"><b>KAELIS</b><span id="holdSay">Press hold to light your window.</span></div>
+        </div>
+
+        <div class="more"><span class="hint">Simulation with example data</span><a class="hint" href="guide.html">How it works → Guide</a></div>
+    </div>
+    </div>
 
     <div class="marquee" aria-hidden="true"><span>Forged by builders <b></b> Awakened by the chain <b></b> Every holder lights a window <b></b> Every rug gets caught <b></b> Forged by builders <b></b> Awakened by the chain <b></b></span></div>
 
