@@ -8,6 +8,14 @@ Guideline skill: `docs/skills/crypto-web-pro/SKILL.md`.
 - Accent (ember) `#ff8a3d`, support (signal) `#8fe3ff`, warn `#ffc24a`, danger `#ff4d5e`
 - Type: Space Mono for UI labels and numbers (tabular), Syne / system sans for headings
 
+## Home page (site/index.html), since 2026-11-04
+- Look modelled on sutera.ch (user asked for it): white paper, faint 4-column drafting grid with + crosshairs, black ink type.
+- Fonts: Inter Tight (big statements, uppercase hero), JetBrains Mono (tiny uppercase labels), Bitter 300 + Bruno Ace in blueprint mode.
+- Cards are "windows": black title bar with label and close box, 1px border, chamfered bottom-right corner. Buttons are outline pills.
+- "Change reality" toggle in the header flips html[data-reality] between real (ink on paper, realistic 3D) and blueprint (cobalt #344DBB, 3D eases to blue line art and a blue ground grid). Remembered in localStorage.
+- Accents: ember #E88150, mint #59E7CA. The 3D story keeps its beats; additive glow is gone (it vanishes on white).
+- Forge City (embedded at the end) stays the dark twilight city.
+
 ## Forge City (site/city.html)
 - Look: twilight CGI city. Sky gradient navy to teal with a warm horizon band; environment map dimmed to 29% so it never lights the scene.
 - Lights: one key light (moon, blue-white, low and lateral) with shadows, weak hemisphere fill, Kaelis point light with a tight 12-unit falloff. Street lamps are sprites and ground pools, not real lights.
