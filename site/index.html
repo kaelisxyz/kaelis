@@ -217,7 +217,7 @@
 <div class="paper" aria-hidden="true"></div>
 
 <header class="topbar">
-  <a class="logo" href="#chaos"><b class="mark" aria-label="KAELIS"><i>K</i><i>A</i><i>E</i><i>L</i><i>I</i><i>S</i></b></a>
+  <span aria-hidden="true"></span>
   <button class="reality" id="reality" type="button" aria-pressed="false">
     <span class="pill">Change reality</span>
   </button>
@@ -911,19 +911,20 @@ let storyPaused = false;
       m.visible = appear > 0.01;
 
       const glow = 0.15 + hit * (i === 0 ? 2 : 0) + toCity * (0.25 + 0.35 * (0.5 + 0.5 * Math.sin(time * 1.3 + i * 1.7)));
-      m.material.emissiveIntensity = glow * 0.25 * (1 - bp);
+      m.material.emissiveIntensity = glow * 0.25 * (1 - bp * 0.5);
       const sig = smooth(3.3, 4.3, s) * ((i * 7) % 3 === 0 ? 1 : 0.35);
       m.material.emissive.copy(EMBER).lerp(SIGNAL, sig);
-      m.material.color.copy(STONE).lerp(WHITE, bp);
+      m.material.color.copy(STONE).lerp(BLUE, bp * 0.35);
       c.edges.material.color.copy(INK).lerp(BLUE, bp);
-      c.edges.material.opacity = lerp(0.7 - toCity * 0.45, 0.95, bp);
-      // facade skin fades in as the block lands; lit windows pick up the story's ember -> signal tint
-      const skin = smooth(0.55, 1, toCity) * (1 - bp);
+      c.edges.material.opacity = lerp(0.7 - toCity * 0.45, 0.6, bp);
+      // facade skin fades in as the block lands (both realities); lit windows pick up the story's ember -> signal tint
+      const skin = smooth(0.55, 1, toCity);
       c.facade.visible = skin > 0.01;
       if (c.facade.visible) {
         const fm = c.facade.material;
         fm[0].opacity = fm[2].opacity = skin;
-        fm[0].emissive.setRGB(1, 0.92, 0.8).lerp(SIGNAL, sig * 0.4);
+        fm[0].emissive.setRGB(1, 0.92, 0.8).lerp(SIGNAL, sig * 0.4).lerp(WHITE, bp);
+        fm[0].color.setRGB(1, 1, 1).lerp(BLUE, bp * 0.45);
         fm[0].emissiveIntensity = 0.7 + 0.12 * Math.sin(time * 0.7 + i);
       }
 
