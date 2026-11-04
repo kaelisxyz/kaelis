@@ -15,6 +15,7 @@ Guideline skill: `docs/skills/crypto-web-pro/SKILL.md`.
 - Buildings: plain textured walls (concrete / brick / curtain wall) with real geometry: hollow extruded window frames, dark reflective panes, lit panes (MeshBasicMaterial, per-instance colour), sills, pilasters, floor ledges. All instanced per building. `dressFacade(...).update(h)` hides floors above the current height.
 - Street level: glowing shopfront, sign, awning, light spill, fire escape, trees, benches, bins, hydrants, cars (looping), people (strolling).
 - One orchestrated motion each: build = crane + scaffold + floors rising with sparks; demolition = shudder, dust, debris, red flash, sink.
+- Textures (site/textures, all CC0): blue-hour graded HDRI used ONLY as envMap on glass (lighting the whole scene with it washes the city out); normal maps on concrete/brick/glass walls and asphalt.
 - Mobile: no SSAO, wider FOV, panels stack. Everything is demo data; never promise profits.
 
 ## Rules
