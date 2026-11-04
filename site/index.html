@@ -197,6 +197,9 @@
   .band .big:hover span { transform: translate(8px, -8px); }
   .foot { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 12px 24px; align-items: center; border-top: 1px solid var(--ink); padding-top: 16px; }
   .foot .logo { font-size: 13px; }
+  .xlink { display: inline-grid; place-items: center; width: 30px; height: 30px; color: var(--ink); }
+  .xlink svg { width: 16px; height: 16px; }
+  .xlink:hover { opacity: .6; }
   .foot .links { display: flex; flex-wrap: wrap; gap: 8px; }
   .foot .links a { font-family: var(--f-mono); font-size: 10px; letter-spacing: .1em; text-transform: uppercase; color: var(--ink); text-decoration: none; border: 1px solid var(--ink); border-radius: 999px; padding: 6px 11px; }
   .foot .links a:hover { background: var(--ink); color: var(--paper); }
@@ -276,8 +279,6 @@
   <a class="logo" href="#chaos"><b class="mark" aria-label="KAELIS"><i>K</i><i>A</i><i>E</i><i>L</i><i>I</i><i>S</i></b><span>$KAEL · /26</span></a>
   <button class="reality" id="reality" type="button" aria-pressed="false">
     <span class="pill">Change reality</span>
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1" aria-hidden="true"><circle cx="12" cy="12" r="10"/><ellipse cx="12" cy="12" rx="4.5" ry="10"/><path d="M2 12h20M4 6.5h16M4 17.5h16"/></svg>
-    <span class="state" id="realityState">Reality: built</span>
   </button>
   <div class="topright">
     <div class="clock hide-sm" aria-hidden="true">Block time<br><b id="clock">UTC 00:00</b></div>
@@ -286,6 +287,7 @@
       <a class="hide-sm" href="#tech">Tech</a>
       <a class="hide-sm" href="#token">Token</a>
       <a class="hide-sm" href="#forge-city">Forge City</a>
+      <a class="xlink" href="#" aria-label="Kaelis on X" title="Kaelis on X"><svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg></a>
       <a class="btn sm" href="#forge">Buy</a>
     </nav>
   </div>
@@ -555,7 +557,6 @@
     </div>
     <footer class="foot">
       <span class="logo"><b class="mark" aria-label="KAELIS"><i>K</i><i>A</i><i>E</i><i>L</i><i>I</i><i>S</i></b><span>$KAEL · 2026 · Demo with example data</span></span>
-      <span class="links"><a href="#chaos">[ ] Top</a><a href="#" aria-disabled="true">X</a><a href="#" aria-disabled="true">Discord</a><a href="#" aria-disabled="true">Telegram</a><a href="#" aria-disabled="true">GitHub</a></span>
     </footer>
   </div>
 </section>
@@ -1265,11 +1266,10 @@ let storyPaused = false;
 <script>
 // "Change reality": flips the page between built (ink on paper) and blueprint (cobalt line art). Remembered per viewer.
 (function () {
-  const root = document.documentElement, btn = document.getElementById("reality"), state = document.getElementById("realityState");
+  const root = document.documentElement, btn = document.getElementById("reality");
   function apply(mode) {
     root.dataset.reality = mode;
     btn.setAttribute("aria-pressed", mode === "blueprint");
-    state.textContent = mode === "blueprint" ? "Reality: blueprint" : "Reality: built";
     window.dispatchEvent(new CustomEvent("kaelis-reality", { detail: mode }));
     try { localStorage.setItem("kaelis-reality", mode); } catch (e) {}
   }
