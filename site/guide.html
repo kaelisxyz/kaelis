@@ -129,6 +129,8 @@
   }
   .tech { --f-head: var(--f-sans); --mint: #59e7ca; --soft: #121212; }
   .tech h3 { margin-bottom: 0; }
+  .flow.two { grid-template-columns: 1fr 1fr; } @media (max-width: 600px) { .flow.two { grid-template-columns: 1fr; } }
+  .mcpcfg { font-family: var(--f-mono, ui-monospace, Menlo, monospace); font-size: 13px; background: #0b0b0c; color: #f4f4f1; padding: 14px 16px; overflow-x: auto; white-space: pre; margin: 8px 0 10px; }
 </style>
 
 <header>
@@ -217,6 +219,20 @@
         <div><span class="tag">04</span><b>Explain</b><p>An AI writes a plain summary. It can't change the score.</p></div>
       </div>
       <p class="note">Status: the <a href="scan.html">Scanner beta</a> is live and reads real Solana data, with a sell test, wallet links and watch mode. The <a href="tower.html">holder tower</a> is built and switches on when $KAEL launches. Proof-of-Build and Forge City still use example data. No dates promised.</p>
+    </div>
+  </section>
+  <section id="agents">
+    <div class="wrap">
+      <span class="tag">For AI agents</span>
+      <h3>Let your agent ask Kaelis before it buys.</h3>
+      <p class="lead" style="max-width:56ch">Kaelis runs as an MCP server, so trading bots and AI assistants (Claude, Cursor, Eliza, Solana Agent Kit) can check a token right before a swap. Same rules and score as the scanner.</p>
+      <div class="flow two">
+        <div><span class="tag">Tool</span><b>check_before_buy</b><p>Returns allow true or false. Blocks a dangerous score (70+) or a failed sell test. You can set your own limit.</p></div>
+        <div><span class="tag">Tool</span><b>scan_token</b><p>The full scan: score, band, evidence for all 8 checks, wallet links and links to check it yourself.</p></div>
+      </div>
+      <p class="note" style="margin-top:18px">Add Kaelis to your MCP client:</p>
+      <pre class="mcpcfg" id="mcpcfg">{ "mcpServers": { "kaelis": { "type": "http", "url": "/mcp" } } }</pre>
+      <p class="note" id="mcpnote">Read-only. Kaelis never trades and never sees your keys. A low score is not a promise of safety.</p>
     </div>
   </section>
   <section id="details">
@@ -384,6 +400,15 @@
   }
   boxes.forEach((b) => b.addEventListener("change", calc));
   calc();
+})();
+</script>
+<script>
+(function () {
+  var pre = document.getElementById("mcpcfg"); if (!pre) return;
+  pre.textContent = JSON.stringify({ mcpServers: { kaelis: { type: "http", url: location.origin + "/mcp" } } }, null, 2);
+  fetch("api/health").then(function (r) { return r.ok ? r.json() : null; }).then(function (j) {
+    if (!j || !j.mcp) document.getElementById("mcpnote").textContent = "The MCP address works once the site runs on the Kaelis server (after launch). Read-only. Kaelis never trades and never sees your keys.";
+  }).catch(function () {});
 })();
 </script>
 </html>

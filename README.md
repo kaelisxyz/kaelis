@@ -15,7 +15,8 @@ Kaelis is an AI agent born from the blockchain. Developers ("Forgers") build a n
 | `site/guide.html` | How to use Kaelis, plus the full tech details |
 | `site/js/kaelis-core.js` | The rules engine. One file used by the site and the API |
 | `site/js/kaelis-config.js` | The one file to edit at launch (`kaelMint`) |
-| `api/` | Vercel functions: `/api/scan`, `/api/holders`, `/api/health` |
+| `api/` | API handlers: `/api/scan`, `/api/holders`, `/api/health`, and `/mcp` (MCP server for AI agents) |
+| `server.js` | Node server that serves `site/` and the API (Railway runs it) |
 | `tests/` | `npm test`, runs offline with mocked data |
 | `site/clay-alt.html` | Alternative minimal clay-style design (not chosen) |
 | `site/models/` | Drop `kaelis.glb` / `hammer.glb` here to replace the simple shapes on the home page |
@@ -46,6 +47,7 @@ python3 -m http.server 8000
    - `SCAN_RATE_PER_MIN`: scans per minute per visitor (default 20).
 3. Settings > Networking > Generate Domain (or add your own domain).
 4. Open `/api/health` to see which parts are on. Every push to `main` redeploys.
+5. AI agents connect to `https://<your domain>/mcp` (MCP over HTTP). Tools: `check_before_buy`, `scan_token`.
 
 Run the same server locally: `npm install && npm start`, then open http://localhost:3000.
 

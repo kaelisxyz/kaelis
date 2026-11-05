@@ -88,6 +88,14 @@ function world(kind) {
   assert.strictEqual((await get("/api/health")).status, 200);
   assert.strictEqual((await get("/api/scan?mint=nope")).status, 400);
   assert.strictEqual((await get("/../package.json")).status, 404);
+  const post = (u, body) => new Promise((res, rej) => { const rq = require("http").request(base + u, { method: "POST", headers: { "content-type": "application/json" } }, (r) => { let b = ""; r.on("data", (c) => (b += c)); r.on("end", () => res({ status: r.statusCode, body: b ? JSON.parse(b) : null })); }); rq.on("error", rej); rq.end(JSON.stringify(body)); });
+  const init = await post("/mcp", { jsonrpc: "2.0", id: 1, method: "initialize", params: { protocolVersion: "2025-06-18" } });
+  assert.strictEqual(init.body.result.serverInfo.name, "kaelis");
+  const list = await post("/mcp", { jsonrpc: "2.0", id: 2, method: "tools/list" });
+  assert.deepStrictEqual(list.body.result.tools.map((t) => t.name), ["scan_token", "check_before_buy"]);
+  const bad = await post("/mcp", { jsonrpc: "2.0", id: 3, method: "tools/call", params: { name: "check_before_buy", arguments: { mint: "x" } } });
+  assert.strictEqual(bad.body.result.isError, true);
+  assert.strictEqual((await post("/mcp", { jsonrpc: "2.0", method: "notifications/initialized" })).status, 202);
   server.close();
-  console.log("ok - server.js serves the site and the API");
+  console.log("ok - server.js serves the site, the API and the MCP endpoint");
 })().catch((e) => { console.error(e); process.exit(1); });

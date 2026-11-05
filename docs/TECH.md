@@ -75,6 +75,7 @@ Anti-cheat: minimum account age, repos with outside contributors, rate limits, a
 - **Forge City:** a Three.js view of the public state (builders, scanned tokens, holders).
 - **Scanner page:** `scan.html`, works without any account or key.
 - **Holder tower:** `tower.html`, one window per $KAEL holder, plus a wallet lookup.
+- **MCP server for AI agents:** `POST /mcp` (Streamable HTTP, stateless). Tools `check_before_buy` (allow true/false, blocks score above `max_score`, default 69, or any hard flag) and `scan_token` (full evidence). Same engine as the site, read-only.
 - **API (server.js on Railway):** `GET /api/scan?mint=` (score, checks, evidence, wallet links, AI explanation, rule version, slot), `GET /api/holders?mint=` (holder list), `GET /api/health` (which keys are switched on).
 
 ## 7. Roadmap (no dates promised)

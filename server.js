@@ -10,6 +10,7 @@ const API = {
   "/api/scan": require("./api/scan.js"),
   "/api/holders": require("./api/holders.js"),
   "/api/health": require("./api/health.js"),
+  "/mcp": require("./api/mcp.js"),
 };
 const TYPES = {
   ".html": "text/html; charset=utf-8", ".js": "text/javascript; charset=utf-8", ".css": "text/css; charset=utf-8",
