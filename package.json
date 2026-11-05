@@ -2,8 +2,11 @@
   "name": "kaelis",
   "private": true,
   "description": "Kaelis website and API",
-  "engines": { "node": ">=18" },
+  "engines": {
+    "node": ">=18"
+  },
   "scripts": {
+    "start": "node server.js",
     "test": "node tests/core.test.js"
   },
   "dependencies": {

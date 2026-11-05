@@ -75,3 +75,19 @@ function world(kind) {
   });
   console.log(`\n${n} tests passed`);
 })().catch((e) => { console.error(e); process.exit(1); });
+
+// server.js: static files + API routes on one port (what Railway runs)
+(async () => {
+  await new Promise((r) => setTimeout(r, 300));
+  const server = require("../server.js");
+  await new Promise((r) => server.listen(0, r));
+  const base = "http://127.0.0.1:" + server.address().port;
+  const get = (u) => new Promise((res, rej) => require("http").get(base + u, (r) => { let b = ""; r.on("data", (c) => (b += c)); r.on("end", () => res({ status: r.statusCode, type: r.headers["content-type"], body: b })); }).on("error", rej));
+  const home = await get("/"); assert.strictEqual(home.status, 200); assert.ok(home.type.startsWith("text/html"));
+  assert.strictEqual((await get("/scan")).status, 200);
+  assert.strictEqual((await get("/api/health")).status, 200);
+  assert.strictEqual((await get("/api/scan?mint=nope")).status, 400);
+  assert.strictEqual((await get("/../package.json")).status, 404);
+  server.close();
+  console.log("ok - server.js serves the site and the API");
+})().catch((e) => { console.error(e); process.exit(1); });

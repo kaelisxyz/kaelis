@@ -34,16 +34,22 @@ python3 -m http.server 8000
 # then open http://localhost:8000/
 ```
 
-## Put it online (Vercel, free)
+## Put it online (Railway)
 
-1. Import this repo on vercel.com. Framework: Other. Leave build settings empty; `vercel.json` already serves `site/` and the `api/` functions.
-2. Optional keys in Project > Settings > Environment Variables (see `.env.example`):
+`server.js` serves `site/` and the API (`/api/scan`, `/api/holders`, `/api/health`) from one Node process. No extra packages besides the Anthropic SDK.
+
+1. railway.com > New Project > Deploy from GitHub repo > `kaelisxyz/kaelis`. Railway runs `npm install` and `npm start` (see `railway.json`).
+2. Variables tab, all optional (see `.env.example`):
    - `HELIUS_RPC_URL`: private Solana RPC from helius.dev (free tier). Faster scans and the full holder list.
-   - `ANTHROPIC_API_KEY`: turns on the AI explanation (console.anthropic.com). `KAELIS_MODEL` picks the model.
+   - `ANTHROPIC_API_KEY`: turns on the AI explanation. `KAELIS_MODEL` picks the model.
    - `KAEL_MINT`: the $KAEL mint after launch.
-3. Open `/api/health` to see which parts are on.
+   - `SCAN_RATE_PER_MIN`: scans per minute per visitor (default 20).
+3. Settings > Networking > Generate Domain (or add your own domain).
+4. Open `/api/health` to see which parts are on. Every push to `main` redeploys.
 
-Without any key the site still works: the scanner runs in the visitor's browser on free public data. After launch, also put the mint in `site/js/kaelis-config.js` (`kaelMint`).
+Run the same server locally: `npm install && npm start`, then open http://localhost:3000.
+
+Without any key the site still works: the scanner runs in the visitor's browser on free public data. After launch, also put the mint in `site/js/kaelis-config.js` (`kaelMint`). `vercel.json` is kept in case you ever move to Vercel.
 
 ## Test
 
