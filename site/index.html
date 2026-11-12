@@ -663,10 +663,12 @@ let LAB_Y = 26;
     const a = (i / 12) * Math.PI * 2, b = new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.12, 0.7, 10), metalMat); b.position.set(Math.cos(a) * 6.9, 0.95, Math.sin(a) * 6.9); core.add(b);
     const cap = new THREE.Mesh(new THREE.CylinderGeometry(0.105, 0.105, 0.08, 10), new THREE.MeshBasicMaterial({ color: new THREE.Color(2, 1.5, 1) })); cap.position.set(Math.cos(a) * 6.9, 1.25, Math.sin(a) * 6.9); core.add(cap);
   }
+  for (const [ri, ro, k] of [[9.0, 9.14, 0.9], [13.6, 13.7, 0.6], [18.4, 18.56, 0.75], [22.6, 22.68, 0.5]]) { const rg = new THREE.Mesh(new THREE.RingGeometry(ri, ro, 160), new THREE.MeshBasicMaterial({ color: new THREE.Color("#ffb86a").multiplyScalar(k) })); rg.rotation.x = -Math.PI / 2; rg.position.y = 0.05; core.add(rg); }
+  for (let i = 0; i < 16; i++) { const a = (i / 16) * Math.PI * 2, sp = new THREE.Mesh(new THREE.PlaneGeometry(0.06, 13.4), new THREE.MeshBasicMaterial({ color: new THREE.Color("#ffb86a").multiplyScalar(0.4) })); sp.rotation.x = -Math.PI / 2; sp.rotation.z = -a + Math.PI / 2; sp.position.set(Math.cos(a) * 15.8, 0.05, Math.sin(a) * 15.8); core.add(sp); }
   const g = new THREE.Group(); g.position.y = 0.6; g.rotation.y = 0.32; city.add(g);
   // old masonry with warm lamplight in the windows: the only amber building in a cool city
   const mat = facadeMat("office", 55, 1.7, 0.8); mat.emissive = new THREE.Color(1.0, 0.68, 0.36);
-  const spill = new THREE.PointLight(0xffa050, 260, 34, 1.7); spill.position.set(0, 5, 0); core.add(spill); // lamplight spilling onto the plaza
+  const spill = new THREE.PointLight(0xffa050, 260, 34, 1.7); spill.position.set(0, 5, 0); core.add(spill); core.userData.spill = spill; // lamplight spilling onto the plaza
   const pod = new THREE.Mesh(wallsGeo(7.6, FLOOR * 4, 7.6, 70, BAY * 8, FLOOR * 2.4), shopMat); pod.position.y = FLOOR * 2; g.add(pod);
   const podRoof = new THREE.Mesh(new THREE.BoxGeometry(7.8, 0.2, 7.8), stoneSlab); podRoof.position.y = FLOOR * 4; g.add(podRoof);
   let y = FLOOR * 4;
@@ -812,56 +814,109 @@ const roomParts = {};
   for (let i = 0; i < 5; i++) { const a = (i / 5) * Math.PI * 2, leg = new THREE.Mesh(new THREE.BoxGeometry(0.05, 0.04, 0.34), chairMat); leg.position.set(Math.sin(a) * 0.16, 0.04, Math.cos(a) * 0.16); leg.rotation.y = a; chair.add(leg); }
 }
 
-// ---------------------------------------------------------------- the robot (Kaelis at work)
-// White shell, one mint eye in a dark visor (Kaelis' eye), glowing ear rings, antenna with an ember tip.
+// ---------------------------------------------------------------- the ghosts (one per room, the staff of Kaelis Labs)
+// A sheet ghost floating at the desk: scalloped hem that sways, hollow eyes with a lit pupil, sleeves that end in wisps.
+// Each room dresses it differently (dressGhost): goggles, hood and lantern, top hat and monocle, apron and visor.
+const GHOSTS = {
+  scanner:  { name: "The Assayer",   body: "#e9e2d0", glow: "#bfe6d8", k: 0.32, eye: "#59e7ca", line: null },
+  watch:    { name: "The Archivist", body: "#cdbb98", glow: "#b08a50", k: 0.36, eye: "#ffb347", line: "Everything I tested is still here." },
+  markets:  { name: "The Broker",    body: "#d9d6cd", glow: "#9a8f7a", k: 0.3,  eye: "#f2cf7a", line: "Stocks get the same test." },
+  builders: { name: "The Smith",     body: "#6f5c4e", glow: "#ff7a33", k: 0.7,  eye: "#ff8a4d", line: "Show me what you built." },
+};
 const robot = (() => {
-  const shell = new THREE.MeshStandardMaterial({ color: 0xb9ad96, roughness: 0.5, metalness: 0.12 }); // aged ivory
-  const joint = new THREE.MeshStandardMaterial({ color: 0x7d6a4c, roughness: 0.4, metalness: 0.75 }); // brass
-  const dark = new THREE.MeshStandardMaterial({ color: 0x0a0c14, roughness: 0.15, metalness: 0.4 });
-  const mint = new THREE.MeshStandardMaterial({ color: 0x0a1a16, emissive: 0x59e7ca, emissiveIntensity: 1.6 });
+  const sheet = new THREE.MeshStandardMaterial({ color: 0xe9e2d0, emissive: 0xbfe6d8, emissiveIntensity: 0.32, roughness: 0.85, transparent: true, opacity: 0.88, side: THREE.DoubleSide });
+  const hollow = new THREE.MeshBasicMaterial({ color: 0x050403 });
+  const eyeMat = new THREE.MeshStandardMaterial({ color: 0x0a1a16, emissive: 0x59e7ca, emissiveIntensity: 1.6 });
+  const brass = new THREE.MeshStandardMaterial({ color: 0x8a6f3c, roughness: 0.35, metalness: 0.85 });
+  const cloth = new THREE.MeshStandardMaterial({ color: 0x2a1d12, roughness: 0.95, side: THREE.DoubleSide });
+  const black = new THREE.MeshStandardMaterial({ color: 0x0b0a09, roughness: 0.6 });
   const R = new THREE.Group(); R.position.set(0, 0, -0.22); // faces -Z (the desk)
+  const hips = new THREE.Group(); hips.position.y = 0.7; R.add(hips);
 
-  const hips = new THREE.Group(); hips.position.y = 0.62; R.add(hips);
-  const pelvis = new THREE.Mesh(new THREE.SphereGeometry(0.17, 24, 16), joint); pelvis.scale.set(1.25, 0.7, 1); hips.add(pelvis);
-  const torso = new THREE.Mesh(new THREE.CapsuleGeometry(0.2, 0.26, 8, 20), shell); torso.position.y = 0.3; torso.scale.set(1.1, 1, 0.85); hips.add(torso);
-  const chest = new THREE.Mesh(new THREE.BoxGeometry(0.16, 0.05, 0.02), mint); chest.position.set(0, 0.38, -0.175); hips.add(chest);
+  // the sheet: a lathe with a scalloped hem; the lower half sways on the CPU (a few hundred vertices)
+  const SEG = 40, prof = [[0.37, -0.5], [0.34, -0.36], [0.31, -0.18], [0.3, 0.02], [0.29, 0.24], [0.25, 0.42], [0.19, 0.55], [0.12, 0.64]].map(([r, y]) => new THREE.Vector2(r, y));
+  const sg = new THREE.LatheGeometry(prof, SEG), sp = sg.attributes.position;
+  for (let i = 0; i < sp.count; i++) { const y = sp.getY(i), a = Math.atan2(sp.getZ(i), sp.getX(i)), w = clamp((0.05 - y) / 0.55, 0, 1); sp.setY(i, y + Math.sin(a * 7) * 0.07 * w * w); }
+  const base = sp.array.slice(); sg.computeVertexNormals();
+  const shroud = new THREE.Mesh(sg, sheet); hips.add(shroud);
+  const inner = new THREE.PointLight(0xbfe6d8, 0.9, 3.2, 2); inner.position.y = 0.2; hips.add(inner);
 
   const neck = new THREE.Group(); neck.position.y = 0.62; hips.add(neck);
   const head = new THREE.Group(); head.position.y = 0.2; neck.add(head);
-  const skull = new THREE.Mesh(new THREE.SphereGeometry(0.23, 40, 28), shell); skull.scale.set(1.08, 0.95, 1); head.add(skull);
-  const visor = new THREE.Mesh(new THREE.SphereGeometry(0.205, 40, 20, Math.PI * 1.12, Math.PI * 0.76, Math.PI * 0.3, Math.PI * 0.4), dark);
-  visor.scale.set(1.13, 1, 1.07); head.add(visor);
-  const eyeRing = new THREE.Mesh(new THREE.TorusGeometry(0.07, 0.012, 10, 40), mint); eyeRing.position.set(0, 0.01, -0.222); head.add(eyeRing);
-  const eye = new THREE.Mesh(new THREE.CircleGeometry(0.045, 32), mint); eye.position.set(0, 0.01, -0.223); eye.rotation.y = Math.PI; head.add(eye);
+  const skull = new THREE.Mesh(new THREE.SphereGeometry(0.24, 40, 28), sheet); skull.scale.set(1.05, 1, 1); head.add(skull);
   for (const s of [-1, 1]) {
-    const ear = new THREE.Mesh(new THREE.CylinderGeometry(0.075, 0.075, 0.05, 28), shell); ear.rotation.z = Math.PI / 2; ear.position.x = s * 0.25; head.add(ear);
-    const ring = new THREE.Mesh(new THREE.TorusGeometry(0.06, 0.012, 8, 32), mint); ring.rotation.y = Math.PI / 2; ring.position.x = s * 0.278; head.add(ring);
+    const socket = new THREE.Mesh(new THREE.SphereGeometry(0.058, 20, 14), hollow); socket.scale.set(0.85, 1.25, 0.3); socket.position.set(s * 0.088, 0.03, -0.218); socket.rotation.y = s * 0.3; head.add(socket);
+    const pupil = new THREE.Mesh(new THREE.SphereGeometry(0.02, 14, 10), eyeMat); pupil.position.set(s * 0.09, 0.02, -0.235); head.add(pupil);
   }
-  const ant = new THREE.Mesh(new THREE.CylinderGeometry(0.01, 0.014, 0.18, 8), joint); ant.position.set(0.08, 0.27, 0); ant.rotation.z = -0.25; head.add(ant);
-  const antTip = new THREE.Mesh(new THREE.SphereGeometry(0.03, 12, 12), new THREE.MeshStandardMaterial({ color: 0x2a0f05, emissive: 0xff8a4d, emissiveIntensity: 2.5 }));
-  antTip.position.set(0.105, 0.36, 0); head.add(antTip);
+  const mouth = new THREE.Mesh(new THREE.SphereGeometry(0.035, 16, 12), hollow); mouth.scale.set(0.9, 1.3, 0.3); mouth.position.set(0, -0.1, -0.228); head.add(mouth);
+  const antTip = new THREE.Mesh(new THREE.SphereGeometry(0.022, 12, 12), new THREE.MeshStandardMaterial({ color: 0x2a0f05, emissive: 0xff8a4d, emissiveIntensity: 2.5 }));
+  antTip.position.set(0.3, 0.3, 0.05); head.add(antTip); // a small ember that follows it around
 
-  // arms: shoulder -> elbow -> hand, posed over the keyboard
+  // sleeves: shoulder -> elbow -> a wisp instead of a hand
   const arms = [];
   for (const s of [-1, 1]) {
-    const shoulder = new THREE.Group(); shoulder.position.set(s * 0.29, 0.5, 0); hips.add(shoulder);
-    shoulder.add(new THREE.Mesh(new THREE.SphereGeometry(0.075, 16, 12), joint));
-    const upper = new THREE.Mesh(new THREE.CapsuleGeometry(0.05, 0.2, 6, 12), shell); upper.position.y = -0.15; shoulder.add(upper);
-    const elbow = new THREE.Group(); elbow.position.y = -0.29; shoulder.add(elbow);
-    elbow.add(new THREE.Mesh(new THREE.SphereGeometry(0.055, 14, 10), joint));
-    const fore = new THREE.Mesh(new THREE.CapsuleGeometry(0.045, 0.2, 6, 12), shell); fore.position.y = -0.14; elbow.add(fore);
-    const hand = new THREE.Mesh(new THREE.SphereGeometry(0.06, 14, 10), joint); hand.scale.set(1, 0.7, 1.2); hand.position.y = -0.3; elbow.add(hand);
+    const shoulder = new THREE.Group(); shoulder.position.set(s * 0.25, 0.47, 0); hips.add(shoulder);
+    const upper = new THREE.Mesh(new THREE.CapsuleGeometry(0.065, 0.18, 6, 12), sheet); upper.position.y = -0.14; shoulder.add(upper);
+    const elbow = new THREE.Group(); elbow.position.y = -0.28; shoulder.add(elbow);
+    const fore = new THREE.Mesh(new THREE.ConeGeometry(0.075, 0.4, 16), sheet); fore.rotation.x = Math.PI; fore.position.y = -0.17; elbow.add(fore);
     arms.push({ s, shoulder, elbow });
   }
-  // legs: thighs forward on the seat, shins down
-  for (const s of [-1, 1]) {
-    const thigh = new THREE.Mesh(new THREE.CapsuleGeometry(0.075, 0.26, 6, 12), shell); thigh.rotation.x = Math.PI / 2; thigh.position.set(s * 0.12, -0.02, -0.2); hips.add(thigh);
-    const shin = new THREE.Mesh(new THREE.CapsuleGeometry(0.065, 0.32, 6, 12), shell); shin.position.set(s * 0.12, -0.27, -0.4); hips.add(shin);
-    const foot = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.06, 0.2), joint); foot.position.set(s * 0.12, -0.52, -0.45); hips.add(foot);
+
+  // what each one wears
+  const acc = {};
+  { // The Assayer: brass goggles
+    const h = new THREE.Group(); acc.scanner = [h]; head.add(h);
+    for (const s of [-1, 1]) { const rim = new THREE.Mesh(new THREE.TorusGeometry(0.078, 0.016, 10, 36), brass); rim.position.set(s * 0.09, 0.03, -0.232); rim.rotation.y = s * 0.3; h.add(rim); }
+    const strap = new THREE.Mesh(new THREE.TorusGeometry(0.25, 0.014, 8, 48), cloth); strap.rotation.x = Math.PI / 2; strap.position.y = 0.03; h.add(strap);
+  }
+  { // The Archivist: a deep hood and a hand lantern
+    const h = new THREE.Group(), b = new THREE.Group(); acc.watch = [h, b]; head.add(h); hips.add(b);
+    const hood = new THREE.Mesh(new THREE.SphereGeometry(0.285, 36, 20, 0, Math.PI * 2, 0, Math.PI * 0.62), cloth); hood.rotation.x = 0.55; hood.position.set(0, 0.02, 0.03); h.add(hood);
+    const peak = new THREE.Mesh(new THREE.ConeGeometry(0.13, 0.3, 20), cloth); peak.position.set(0, 0.27, 0.2); peak.rotation.x = 0.9; h.add(peak);
+    const cage = new THREE.Mesh(new THREE.CylinderGeometry(0.055, 0.055, 0.14, 6, 1, true), new THREE.MeshStandardMaterial({ color: 0x8a6f3c, metalness: 0.85, roughness: 0.35, wireframe: true }));
+    const flame = new THREE.Mesh(new THREE.SphereGeometry(0.03, 12, 10), new THREE.MeshBasicMaterial({ color: new THREE.Color("#ffb347").multiplyScalar(3) }));
+    const cap = new THREE.Mesh(new THREE.ConeGeometry(0.07, 0.05, 6), brass); cap.position.y = 0.095;
+    const lamp = new THREE.PointLight(0xffa850, 2.2, 3.5, 2);
+    const lan = new THREE.Group(); lan.add(cage, flame, cap, lamp); lan.position.set(0.5, 0.42, -0.2); b.add(lan); acc.lantern = lan;
+  }
+  { // The Broker: top hat, monocle, bow tie
+    const h = new THREE.Group(), b = new THREE.Group(); acc.markets = [h, b]; head.add(h); hips.add(b);
+    const hat = new THREE.Group(); hat.rotation.z = -0.1; h.add(hat);
+    const brim = new THREE.Mesh(new THREE.CylinderGeometry(0.27, 0.27, 0.02, 36), black); brim.position.y = 0.2; hat.add(brim);
+    const crown = new THREE.Mesh(new THREE.CylinderGeometry(0.165, 0.155, 0.27, 36), black); crown.position.y = 0.34; hat.add(crown);
+    const band = new THREE.Mesh(new THREE.CylinderGeometry(0.162, 0.16, 0.045, 36), brass); band.position.y = 0.235; hat.add(band);
+    const mono = new THREE.Mesh(new THREE.TorusGeometry(0.075, 0.012, 10, 36), brass); mono.position.set(0.09, 0.03, -0.236); mono.rotation.y = 0.3; h.add(mono);
+    for (const s of [-1, 1]) { const wing = new THREE.Mesh(new THREE.ConeGeometry(0.055, 0.12, 4), black); wing.rotation.z = s * Math.PI / 2; wing.position.set(s * 0.06, 0.6, -0.2); wing.scale.z = 0.4; b.add(wing); }
+  }
+  { // The Smith: leather apron, visor pushed up
+    const h = new THREE.Group(), b = new THREE.Group(); acc.builders = [h, b]; head.add(h); hips.add(b);
+    const leather = new THREE.MeshStandardMaterial({ color: 0x3b2413, roughness: 0.8, side: THREE.DoubleSide });
+    const apron = new THREE.Mesh(new THREE.CylinderGeometry(0.3, 0.335, 0.62, 24, 1, true, Math.PI - 0.95, 1.9), leather); apron.position.y = 0.1; b.add(apron);
+    const bib = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.3, 0.2, 20, 1, true, Math.PI - 0.6, 1.2), leather); bib.position.y = 0.5; b.add(bib);
+    const visor = new THREE.Mesh(new THREE.SphereGeometry(0.255, 30, 12, Math.PI * 1.15, Math.PI * 0.7, Math.PI * 0.2, Math.PI * 0.16), black); visor.scale.set(1.06, 1, 1.02); h.add(visor);
+    const strap = new THREE.Mesh(new THREE.TorusGeometry(0.25, 0.016, 8, 48), leather); strap.rotation.x = Math.PI / 2 - 0.25; strap.position.y = 0.13; h.add(strap);
   }
   room.add(R);
-  return { R, hips, head, neck, arms, eyeMat: mint, antTip };
+  return { R, hips, head, neck, arms, eyeMat, antTip, sheet, inner, acc, sp, base };
 })();
+function dressGhost(id) {
+  const key = GHOSTS[id] ? id : "scanner", g = GHOSTS[key], r = robot;
+  r.sheet.color.set(g.body); r.sheet.emissive.set(g.glow); r.sheet.emissiveIntensity = g.k; r.inner.color.set(g.glow);
+  r.eyeMat.emissive.set(g.eye);
+  for (const k of Object.keys(GHOSTS)) (r.acc[k] || []).forEach((o) => (o.visible = k === key));
+  roomParts.chair.visible = false; // ghosts do not sit
+  r.R.position.set(...(key === "watch" ? [0.5, 0.95, -1.5] : key === "markets" ? [0.6, 0.8, -1.5] : [0, 0, -0.22])); // by the shelf, by the board, or at the desk
+}
+function swayGhost(t) {
+  const { sp, base } = robot, m = reduce ? 0.25 : 1;
+  for (let i = 0; i < sp.count; i++) {
+    const x = base[i * 3], y = base[i * 3 + 1], z = base[i * 3 + 2], w = clamp((0.25 - y) / 0.75, 0, 1), a = Math.atan2(z, x), k = 1 + Math.sin(t * 2.1 + a * 3 + y * 6) * 0.09 * w * w * m;
+    sp.setXYZ(i, x * k, y + Math.sin(t * 2.6 + a * 5) * 0.03 * w * w * m, z * k + Math.sin(t * 1.3 + y * 4) * 0.05 * w * w * m);
+  }
+  sp.needsUpdate = true;
+  if (robot.acc.lantern) robot.acc.lantern.position.y = 0.42 + Math.sin(t * 1.7) * 0.03 * m;
+  robot.antTip.position.set(Math.cos(t * 0.9) * 0.34, 0.26 + Math.sin(t * 1.9) * 0.06, Math.sin(t * 0.9) * 0.34);
+}
 
 // Kaelis core model (same GLB as the home page) for the plaza
 new GLTFLoader().setMeshoptDecoder(MeshoptDecoder).load("models/kaelis.glb", (g) => {
@@ -1432,6 +1487,7 @@ function dressRoom(id) {
   board.visible = id === "markets"; shelfTubes.visible = id !== "markets";
   if (id === "markets") drawBoard();
   if (id === "watch" || id === "scanner") paintShelf();
+  dressGhost(id);
 }
 function viewOf(id) {
   if (id === "watch" || id === "markets") return small
@@ -1440,7 +1496,7 @@ function viewOf(id) {
   return ROOM_VIEW;
 }
 
-// ---------------------------------------------------------------- the robot speaks, and only then asks
+// ---------------------------------------------------------------- the ghost speaks, and only then asks
 const greetS = { k: 0, target: 0, on: false, run: 0 };
 let skips = [];
 const wait = (ms) => new Promise((res) => { const id = setTimeout(done, ms); function done() { clearTimeout(id); skips = skips.filter((f) => f !== done); res(); } skips.push(done); });
@@ -1503,7 +1559,7 @@ async function enterRoom(id) {
   const p0 = camera.position.clone();
   await tween(1100, (k) => { camera.position.lerpVectors(p0, view.pos, k); camera.lookAt(controls.target); });
   controls.enabled = true; busy = false;
-  if (id === "scanner") greet(); else openPanel(id);
+  if (id === "scanner") greet(); else { openPanel(id); say(GHOSTS[id].line, 4500); greetS.target = 1; } // the others look up from their work and stay with you
 }
 const enterTower = enterRoom, switchTower = enterRoom;
 async function exitTower() {
@@ -1540,7 +1596,7 @@ function animateRobot(t, dt) {
   robo.look += (scan * typing - robo.look) * Math.min(1, dt * 3);
   r.neck.rotation.y = robo.look * (1 - greetS.k) - greetS.k * 0.8 + (robo.cheer > 0 ? Math.sin(robo.cheer * 12) * 0.25 : 0);
   r.neck.rotation.x = -0.12 + Math.sin(t * 1.3) * 0.02 * typing;
-  r.hips.position.y = 0.62 + Math.sin(t * 2) * 0.006 * typing;
+  r.hips.position.y = 0.7 + Math.sin(t * 1.4) * 0.04 * (reduce ? 0.2 : 1); r.hips.rotation.z = Math.sin(t * 0.9) * 0.035 * (reduce ? 0 : 1); swayGhost(t);
   // arms: typing, the right one slams the button, both go up on a cheer
   r.arms.forEach(({ s, shoulder, elbow }) => {
     const tap = Math.sin(t * 14 + (s > 0 ? 0 : 1.7)) * 0.06 * typing;
@@ -1558,7 +1614,7 @@ function animateRobot(t, dt) {
 
 
 // =================================================================== FX (the fun layer)
-const fx = { pulses: [], stars: [], lastPulse: 0, pulsedScan: 0, intro: reduce ? 1 : 0, spin: 0, alarm: 0, coin: 0, glitchAt: 0 };
+const fx = { glow: reduce ? 1 : 0, pulses: [], stars: [], lastPulse: 0, pulsedScan: 0, intro: reduce ? 1 : 0, spin: 0, alarm: 0, coin: 0, glitchAt: 0 };
 
 // --- shockwave rings from the core across the plaza
 const pulseGeo = new THREE.RingGeometry(0.92, 1, 128);
@@ -1599,6 +1655,17 @@ sweepCone.geometry.translate(0, -SWEEP_LEN / 2, 0); sweepCone.rotation.z = SWEEP
 const sweepSpot = new THREE.Mesh(new THREE.CircleGeometry(1.5, 48), new THREE.MeshBasicMaterial({ color: new THREE.Color("#fff1dc").multiplyScalar(0.25), transparent: true, opacity: 0.6, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide }));
 sweepSpot.rotation.x = -Math.PI / 2; sweepCone.visible = false; // the searchlight read as fake in a realistic city
 
+// --- two slow searchlights from the crown of Kaelis Labs
+const search = new THREE.Group(); search.position.y = LAB_Y - 3.2; core.add(search);
+const searchMats = [];
+for (const s of [0, Math.PI]) {
+  const m = new THREE.ShaderMaterial({ transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, side: THREE.DoubleSide, uniforms: { uK: { value: 0 } },
+    vertexShader: "varying vec2 vUv; void main(){ vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position,1.); }",
+    fragmentShader: "uniform float uK; varying vec2 vUv; void main(){ float a = pow(vUv.y, 1.5) * (0.35 + 0.65 * abs(sin(vUv.x * 3.14159))) * uK; gl_FragColor = vec4(vec3(1.0, 0.78, 0.5) * a, a); }" });
+  const c = new THREE.Mesh(new THREE.ConeGeometry(5.5, 80, 28, 1, true), m); c.geometry.translate(0, -40, 0);
+  const arm = new THREE.Group(); arm.rotation.y = s; c.rotation.z = Math.PI / 2 + 0.5; arm.add(c); search.add(arm); searchMats.push(m);
+}
+
 // --- the absurd one: a $KAEL blimp circling the city with a scrolling neon banner
 const blimp = new THREE.Group(); city.add(blimp);
 {
@@ -1626,17 +1693,17 @@ TOWERS.forEach((tw) => { tw.group.scale.y = reduce ? 1 : 0.001; tw.beamMat.unifo
 async function intro() {
   if (reduce) return;
   controls.enabled = false;
-  const p1 = camera.position.clone(), q1 = controls.target.clone(), p0 = new THREE.Vector3(6, 150, 18);
-  camera.position.copy(p0);
-  const rise = tween(3200, (k) => {
-    TOWERS.forEach((tw, i) => {
-      const local = clamp((k - 0.25 - i * 0.12) / 0.4, 0, 1), back = 1 + 2.2 * Math.pow(local - 1, 3) + 1.2 * Math.pow(local - 1, 2);
-      tw.group.scale.y = Math.max(0.001, local < 1 ? back : 1);
-      tw.beamMat.uniforms.uK.value = 0.6 * clamp((k - 0.55 - i * 0.1) / 0.25, 0, 1);
-    });
+  const p1 = camera.position.clone(), q1 = controls.target.clone();
+  const r1 = Math.hypot(p1.x, p1.z), a1 = Math.atan2(p1.z, p1.x), up = new THREE.Vector3(0, 1, 0);
+  const at = (k) => { const a = a1 + (1 - k) * 1.15, r = r1 * lerp(2.5, 1, k); return camera.position.set(Math.cos(a) * r, lerp(66, p1.y, k), Math.sin(a) * r); };
+  at(0); camera.lookAt(q1);
+  const rise = tween(4600, (k) => {
+    TOWERS[0].group.scale.y = 1;
+    fx.glow = clamp((k - 0.3) / 0.45, 0, 1);                       // the building wakes floor by floor of light
+    TOWERS[0].beamMat.uniforms.uK.value = 0.2 * clamp((k - 0.7) / 0.25, 0, 1);
   });
-  await tween(3200, (k) => { camera.position.lerpVectors(p0, p1, k); camera.lookAt(q1); });
-  await rise; fx.intro = 1; cityPulse("#f1e2c8", 0.5); controls.enabled = true;
+  await tween(4600, (k) => { at(k); camera.lookAt(q1); });
+  await rise; fx.glow = 1; fx.intro = 1; cityPulse("#ffb86a", 1.1); controls.enabled = true;
 }
 
 // --- room extras: steam, keyboard data, holo coin, alarm beacon
@@ -1680,7 +1747,7 @@ function celebrate(ls) {
 function updateCityFX(t, dt) {
   const m = reduce ? 0 : 1;
   // auto pulse every 6 s, and a big coloured one after each new scan
-  if (t - fx.lastPulse > 12 && fx.intro) { fx.lastPulse = t; cityPulse("#f1e2c8", 0.25); } // a faint idle heartbeat; colour only means something after a scan
+  if (t - fx.lastPulse > 9 && fx.intro) { fx.lastPulse = t; cityPulse("#ffb86a", 0.5); } // a faint idle heartbeat; colour only means something after a scan
   if (state.lastScan && state.lastScan.at !== fx.pulsedScan && fx.intro) { fx.pulsedScan = state.lastScan.at; cityPulse(riskColor(state.lastScan.result.score), 1.6); byId.scanner.flare = 1; }
   fx.pulses.forEach((p) => {
     if (p.age > 3) { p.m.visible = false; return; }
@@ -1719,6 +1786,9 @@ function updateCityFX(t, dt) {
   const sa = sweep.rotation.y;
   _a.set(Math.sin(SWEEP_TILT) * SWEEP_LEN, 0, 0).applyAxisAngle(new THREE.Vector3(0, 1, 0), sa); sweepSpot.position.set(_a.x, 0.08, _a.z);
   sweepCone.material.opacity = 0.4 + Math.sin(t * 0.8) * 0.05;
+  // the tower's light: windows, plaza spill, searchlights all follow fx.glow (0 while dark, 1 when lit)
+  core.userData.spill.intensity = 260 * fx.glow * (1 + (m ? Math.sin(t * 0.9) * 0.05 : 0));
+  search.rotation.y = t * 0.12 * (m || 0.2); searchMats.forEach((sm) => (sm.uniforms.uK.value = 0.16 * fx.glow));
   // blimp
   const ba = t * 0.045 * (m || 0.2) + 1, R = 62;
   blimp.position.set(Math.cos(ba) * R, 38 + Math.sin(t * 0.4) * 1.2 * m, Math.sin(ba) * R);
@@ -1732,7 +1802,7 @@ function updateCityFX(t, dt) {
     if (fx.intro) tw.beamMat.uniforms.uK.value = lerp(tw.beamMat.uniforms.uK.value, (on ? 0.45 : 0.2) + (tw.flare || 0) * 1.2, 0.1);
     if (tw.av) tw.av.material.opacity = Math.sin(t * 2.1 + i * 1.7) > 0.55 ? 1 : 0.06;
     tw.flare = Math.max(0, (tw.flare || 0) - dt * 0.5);
-    if (i === 0) tw.mats[0].emissiveIntensity = 1.7 + (m ? Math.sin(t * 0.7) * 0.04 : 0) + (on ? 0.35 : 0);
+    if (i === 0) tw.mats[0].emissiveIntensity = fx.glow * 1.7 + (m ? Math.sin(t * 0.7) * 0.04 : 0) + (on ? 0.35 : 0);
   });
 }
 
@@ -1848,7 +1918,7 @@ function frame() {
   await checkHealth(); await Promise.all([loadHolders(), loadBuilders(), loadMarkets(), loadFilings()]); await loadShelf(); refreshLabels();
   setInterval(async () => { await Promise.all([loadMarkets(), loadFilings(), loadShelf()]); refreshLabels(); if (current === "markets") drawBoard(); if (current === "watch") drawScreens("watch"); if (current === "markets") drawScreens("markets"); }, 5 * 60000);
   const q = new URLSearchParams(location.search).get("tower");
-  if (q && ROMAN[q]) { TOWERS[0].group.scale.y = 1; TOWERS[0].beamMat.uniforms.uK.value = 0.2; fx.intro = 1; enterRoom(q); }
+  if (q && ROMAN[q]) { fx.glow = 1; TOWERS[0].group.scale.y = 1; TOWERS[0].beamMat.uniforms.uK.value = 0.2; fx.intro = 1; enterRoom(q); }
   else intro();
 })();
 </script>

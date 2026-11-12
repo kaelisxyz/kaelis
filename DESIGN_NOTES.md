@@ -85,3 +85,8 @@ Guideline skill: `docs/skills/crypto-web-pro/SKILL.md`.
 - Oil paint = Kuwahara ShaderPass (`paint`) + canvas weave, enabled only inside; pixel ratio drops to 1 inside to pay for it. HTML text stays crisp.
 - Colour rule inside: amber and brass only; mint is Kaelis's eye; green / yellow / red appear only as a verdict.
 - Rooms II–IV still use the old desk-and-monitors content with the new names; they get their own interiors next.
+
+## Ghost staff and the lit intro (2026-11-12)
+- The robot is gone. Each room has its own sheet ghost (`GHOSTS`, `dressGhost`, `swayGhost` in site/index.html): The Assayer (bone white, mint eyes, brass goggles), The Archivist (parchment, hood, hand lantern, floats by the shelf), The Broker (top hat, monocle, bow tie, floats by the board), The Smith (soot and ember, leather apron, visor). Same rig as before (`robot` object), so typing, cheer, alarm and greeting still work. No chair.
+- Ghosts outside the Assay Room turn to the visitor and say one line.
+- Intro: camera arcs in over the skyline (never top-down); the tower lights up via `fx.glow`; brass plaza rings and two searchlights from the crown.
