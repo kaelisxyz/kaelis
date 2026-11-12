@@ -12,3 +12,4 @@
 | Notepads (baked into `lab_furn.webp`) | Clean lab | Poly Haven, Ulan Cabanilla, https://polyhaven.com/a/office_notepads | CC0 |
 | Style studies (not shipped, not in git) | `tools/3d/work/` | Poly Haven textures and furniture | CC0 |
 | Clean corridor | `site/models/hall.glb`, `site/media/hall_shell.webp` | Made for Kaelis in Blender, light baked by `tools/3d/bake_hall.py` | Project-owned |
+| Staff characters (four) | `site/models/staff-*.glb` | Made for Kaelis, `tools/3d/suit_staff.py` (Blender cloth solver) | Project-owned |
