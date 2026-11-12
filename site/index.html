@@ -1291,12 +1291,12 @@ async function watchTick() {
 function startWatch() { clearInterval(state.watch.timer); state.watch.timer = setInterval(watchTick, 60000); }
 
 // =================================================================== MOVING BETWEEN CITY AND ROOM
-const CITY_VIEW = small ? { pos: new THREE.Vector3(58, 40, 73), target: new THREE.Vector3(0, 31, 0) } : { pos: new THREE.Vector3(50, 27, 60), target: new THREE.Vector3(0, 21.5, 0) };
+const CITY_VIEW = small ? { pos: new THREE.Vector3(49.7, 38, 62.6), target: new THREE.Vector3(0, 31, 0) } : { pos: new THREE.Vector3(44.8, 26, 53.8), target: new THREE.Vector3(0, 21.5, 0) }; // ground radius 80 and 70: inside the low-rise ring (LOW = 84 and 74), so no building is ever between the camera and the tower
 const ROOM_VIEW = small
   ? { pos: new THREE.Vector3(1.2, 3.3, 4.7), target: new THREE.Vector3(-0.15, 0.55, -0.7) } // phone: robot + screens sit above the bottom sheet
   : { pos: new THREE.Vector3(3.6, 2.2, 3.5), target: new THREE.Vector3(-0.7, 1.35, -1.05) }; // desktop: robot and the whole tank sit left of the panel
 function setCityControls() {
-  controls.minDistance = 24; controls.maxDistance = small ? 108 : 84; controls.minPolarAngle = 0.35; controls.maxPolarAngle = 1.38;
+  controls.minDistance = 24; controls.maxDistance = small ? 83 : 73; controls.minPolarAngle = 0.35; controls.maxPolarAngle = 1.38;
   controls.autoRotate = !reduce; controls.autoRotateSpeed = 0.35;
 }
 function setRoomControls() {
@@ -1822,7 +1822,7 @@ async function intro() {
   controls.enabled = false;
   const p1 = camera.position.clone(), q1 = controls.target.clone();
   const r1 = Math.hypot(p1.x, p1.z), a1 = Math.atan2(p1.z, p1.x), up = new THREE.Vector3(0, 1, 0);
-  const at = (k) => { const a = a1 + (1 - k) * 1.15, r = r1 * lerp(1.6, 1, k); return camera.position.set(Math.cos(a) * r, lerp(p1.y + 9, p1.y, k), Math.sin(a) * r); };
+  const at = (k) => { const a = a1 + (1 - k) * 1.15, r = r1 * lerp(0.78, 1, k); return camera.position.set(Math.cos(a) * r, lerp(p1.y + 9, p1.y, k), Math.sin(a) * r); };
   at(0); camera.lookAt(q1);
   const rise = tween(4600, (k) => {
     TOWERS[0].group.scale.y = 1;
