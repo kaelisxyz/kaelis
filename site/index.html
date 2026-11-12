@@ -407,6 +407,10 @@ composer.addPass(renderPass); composer.addPass(bloom); composer.addPass(new Outp
 
 // ---------------------------------------------------------------- texture helpers
 const srgb = (t) => { t.colorSpace = THREE.SRGBColorSpace; return t; };
+// Assets for the inside of the building are fetched as soon as the page opens. `waitFor` wraps a loader callback and
+// registers it; `warm` resolves when all of them are in, their textures are on the GPU and the shaders are compiled.
+const preload = [], preTex = [];
+const waitFor = (fn) => { let done; preload.push(new Promise((r) => (done = r))); return (...a) => { try { if (fn) fn(...a); } finally { done(); } }; };
 function canvasTex(w, h, draw) { const c = document.createElement("canvas"); c.width = w; c.height = h; draw(c.getContext("2d"), w, h); return srgb(new THREE.CanvasTexture(c)); }
 function rand(seed) { let s = seed >>> 0; return () => ((s = (s * 1664525 + 1013904223) >>> 0) / 4294967296); }
 
@@ -831,13 +835,13 @@ const roomParts = {};
 const LAB_GAIN = 1 / 0.6;
 {
   const tl = new THREE.TextureLoader();
-  const atlas = (n) => { const t = tl.load("media/" + n + ".webp"); t.flipY = false; t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = 8; return new THREE.MeshBasicMaterial({ map: t, color: new THREE.Color(LAB_GAIN, LAB_GAIN, LAB_GAIN) }); };
+  const atlas = (n) => { const t = tl.load("media/" + n + ".webp", waitFor()); preTex.push(t); t.flipY = false; t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = 8; return new THREE.MeshBasicMaterial({ map: t, color: new THREE.Color(LAB_GAIN, LAB_GAIN, LAB_GAIN) }); };
   const mats = { lab_shell: atlas("lab_shell"), lab_furn: atlas("lab_furn"),
     lab_glass: new THREE.MeshStandardMaterial({ color: 0xdff2f0, transparent: true, opacity: 0.16, roughness: 0.05, metalness: 0.1, depthWrite: false }) };
-  new GLTFLoader().setMeshoptDecoder(MeshoptDecoder).load("models/lab.glb", (g) => {
+  new GLTFLoader().setMeshoptDecoder(MeshoptDecoder).load("models/lab.glb", waitFor((g) => {
     g.scene.traverse((o) => { if (o.isMesh) o.material = mats[o.material.name] || mats.lab_furn; });
     room.add(g.scene);
-  });
+  }));
   // a soft contact shadow under whoever floats here
   const blob = new THREE.Mesh(new THREE.CircleGeometry(0.75, 40), new THREE.MeshBasicMaterial({ transparent: true, depthWrite: false, opacity: 0.5,
     map: canvasTex(128, 128, (g) => { const r = g.createRadialGradient(64, 64, 4, 64, 64, 62); r.addColorStop(0, "rgba(20,24,28,.75)"); r.addColorStop(1, "rgba(20,24,28,0)"); g.fillStyle = r; g.fillRect(0, 0, 128, 128); }) }));
@@ -871,7 +875,7 @@ const robot = (() => {
       .replace("#include <alphahash_fragment>", `
         { vec2 sc = vSheet - 0.5; float rr = length(sc) * 3.4, an = atan(sc.y, sc.x);        // the flat cloth was 3.4 m across
           float fray = gn(vec2(an * 16., rr * 9.)) * 0.2 + gn(vec2(an * 46., rr * 30.)) * 0.07; // worn, uneven hem
-          diffuseColor.a *= smoothstep(uEdge + 0.02, uEdge - 0.2, rr + fray);
+          diffuseColor.a *= smoothstep(uEdge - 0.06, uEdge - 0.1, rr + fray);
           vec3 hp = vObj - uHead;
           if (hp.z < -0.06 && abs(hp.y) < 0.2) {                                              // the face: two eyes and a mouth are holes
             float eye = length(vec2(abs(hp.x) - 0.072, hp.y - 0.05) / vec2(0.036, 0.052));
@@ -951,15 +955,17 @@ function dressGhost(id) {
   r.U.uHead.value.set(...g.head); r.U.uEdge.value = g.edge; r.head.position.set(...g.head); r.head.scale.setScalar(g.hs);
   r.eyeMat.emissive.set(g.eye); r.now = key;
   for (const k of Object.keys(GHOSTS)) { (r.acc[k] || []).forEach((o) => (o.visible = k === key)); if (r.models[k]) r.models[k].visible = k === key; }
-  if (!r.models[key]) { r.models[key] = new THREE.Group(); r.hips.add(r.models[key]);
-    new GLTFLoader().setMeshoptDecoder(MeshoptDecoder).load("models/ghost-" + g.file + ".glb", (m) => {
-      m.scene.updateMatrixWorld(true);
-      m.scene.traverse((o) => { if (o.isMesh) { o.material = r.sheet; o.frustumCulled = false; o.userData.q = o.matrixWorld.clone(); } });
-      r.models[key].add(m.scene); useGhost(key);
-    }); }
   useGhost(key);
   roomParts.chair.visible = false; // ghosts do not sit
-  r.R.position.set(...(key === "watch" ? [-0.5, small ? 1.2 : 0.75, small ? -1.7 : -1.3] : key === "markets" ? [-0.4, small ? 1.2 : 0.8, small ? -1.7 : -1.2] : [0, 0, -0.22])); // by the shelf, by the board, or at the bench
+  r.R.position.set(...(key === "watch" ? [-0.3, 0.95, -2.15] : key === "markets" ? [-0.2, 0.75, -2.15] : [0, 0, -0.22])); // by the shelf, by the board, or at the bench
+}
+for (const key of Object.keys(GHOSTS)) { // all four sheets are fetched up front, hidden until their room is entered
+  const grp = new THREE.Group(); grp.visible = key === "scanner"; robot.models[key] = grp; robot.hips.add(grp);
+  new GLTFLoader().setMeshoptDecoder(MeshoptDecoder).load("models/ghost-" + GHOSTS[key].file + ".glb", waitFor((m) => {
+    m.scene.updateMatrixWorld(true);
+    m.scene.traverse((o) => { if (o.isMesh) { o.material = robot.sheet; o.frustumCulled = false; o.userData.q = o.matrixWorld.clone(); } });
+    grp.add(m.scene); useGhost(key);
+  }));
 }
 function useGhost(key) { // each model is quantized on its own: hand the shader that model's scale
   if (robot.now !== key || !robot.models[key]) return;
@@ -1275,13 +1281,13 @@ function startWatch() { clearInterval(state.watch.timer); state.watch.timer = se
 const CITY_VIEW = small ? { pos: new THREE.Vector3(48, 34, 60), target: new THREE.Vector3(0, 13, 0) } : { pos: new THREE.Vector3(37, 23, 44), target: new THREE.Vector3(0, 13.5, 0) };
 const ROOM_VIEW = small
   ? { pos: new THREE.Vector3(1.2, 3.3, 4.7), target: new THREE.Vector3(-0.15, 0.55, -0.7) } // phone: robot + screens sit above the bottom sheet
-  : { pos: new THREE.Vector3(3.5, 2.15, 2.9), target: new THREE.Vector3(-0.75, 1.45, -1.05) }; // desktop: robot and the whole tank sit left of the panel
+  : { pos: new THREE.Vector3(3.6, 2.2, 3.5), target: new THREE.Vector3(-0.7, 1.35, -1.05) }; // desktop: robot and the whole tank sit left of the panel
 function setCityControls() {
   controls.minDistance = 22; controls.maxDistance = small ? 92 : 70; controls.minPolarAngle = 0.35; controls.maxPolarAngle = 1.38;
   controls.autoRotate = !reduce; controls.autoRotateSpeed = 0.35;
 }
 function setRoomControls() {
-  controls.minDistance = 1.6; controls.maxDistance = 5.2; controls.minPolarAngle = 0.5; controls.maxPolarAngle = 1.5;
+  controls.minDistance = 1.6; controls.maxDistance = 12; // the walls stop the camera (see the clamp below), not a distance limit controls.minPolarAngle = 0.5; controls.maxPolarAngle = 1.5;
   controls.minAzimuthAngle = -1.1; controls.maxAzimuthAngle = 1.1; controls.autoRotate = false;
 }
 function tween(ms, fn) {
@@ -1350,9 +1356,9 @@ const HALL_FROM = 2.6, HALL_REST = -0.3;
   // the old plank walls, tiles, pipes and hanging lamps step aside for the baked hall (tools/3d/bake_hall.py)
   for (const o of hall.children.slice(hall0)) { const gp = o.geometry && o.geometry.parameters, t = o.geometry && o.geometry.type;
     if (o.isPointLight || t === "CylinderGeometry" || t === "ConeGeometry" || t === "SphereGeometry" || t === "TorusGeometry" || (t === "PlaneGeometry" && Math.max(gp.width, gp.height) >= 3)) o.visible = false; }
-  { const t = new THREE.TextureLoader().load("media/hall_shell.webp"); t.flipY = false; t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = 8;
+  { const t = new THREE.TextureLoader().load("media/hall_shell.webp", waitFor()); preTex.push(t); t.flipY = false; t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = 8;
     const m = new THREE.MeshBasicMaterial({ map: t, color: new THREE.Color(1 / 0.6, 1 / 0.6, 1 / 0.6) });
-    new GLTFLoader().setMeshoptDecoder(MeshoptDecoder).load("models/hall.glb", (g) => { g.scene.traverse((o) => { if (o.isMesh) o.material = m; }); hall.add(g.scene); }); }
+    new GLTFLoader().setMeshoptDecoder(MeshoptDecoder).load("models/hall.glb", waitFor((g) => { g.scene.traverse((o) => { if (o.isMesh) o.material = m; }); hall.add(g.scene); })); }
 }
 const HALL_MIN = -11.2, HALL_MAX = 2.6;
 const walk = { keys: {}, hold: 0, push: 0, v: 0, last: 0, near: null }; // input -> speed along the corridor
@@ -1412,7 +1418,7 @@ const tankParts = {};
   // holo ring above the tank: the readout (white while idle, the verdict colour after a test)
   const cv = document.createElement("canvas"); cv.width = 1024; cv.height = 128;
   const tex = srgb(new THREE.CanvasTexture(cv)); tex.wrapS = THREE.RepeatWrapping;
-  const holo = new THREE.Mesh(new THREE.CylinderGeometry(0.66, 0.56, 0.36, 48, 1, true), new THREE.MeshBasicMaterial({ map: tex, transparent: true, side: THREE.DoubleSide, depthWrite: false })); // ink on glass: additive light vanishes on white
+  const holo = new THREE.Mesh(new THREE.CylinderGeometry(0.66, 0.56, 0.36, 48, 1, true), new THREE.MeshBasicMaterial({ map: tex, transparent: true, depthWrite: false })); // ink on glass, outer face only: additive light vanishes on white
   holo.position.y = Y0 + H + 0.62; g.add(holo);
   // thick cables from the base across the floor, and one up to the ceiling
   const cable = (pts, r = 0.045) => { const m = new THREE.Mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(pts.map((p) => new THREE.Vector3(...p))), 24, r, 8), conduit); g.add(m); };
@@ -1581,8 +1587,8 @@ function dressRoom(id) {
 }
 function viewOf(id) {
   if (id === "watch" || id === "markets") return small
-    ? { pos: new THREE.Vector3(0.4, 3.6, 5.6), target: new THREE.Vector3(-0.4, 1.7, -3.2) }
-    : { pos: new THREE.Vector3(2.7, 2.4, 3.9), target: new THREE.Vector3(-1.0, 2.25, -3.2) }; // faces the shelf / the board
+    ? { pos: new THREE.Vector3(0.4, 3.0, 4.9), target: new THREE.Vector3(-0.2, -1.2, -3.2) } // phone: aimed low so the shelf sits in the strip above the sheet
+    : { pos: new THREE.Vector3(2.6, 3.1, 4.8), target: new THREE.Vector3(-0.7, 1.45, -3.0) }; // stands back by the door, faces the shelf / the board
   return ROOM_VIEW;
 }
 
@@ -1607,8 +1613,18 @@ async function greet() {
 
 // ---------------------------------------------------------------- moving: city -> corridor -> room
 let busy = false, savedCity = null;
+controls.addEventListener("change", () => { // indoors the camera stays inside the lab's walls
+  if (scene !== room) return; const q = camera.position;
+  q.x = clamp(q.x, -5.2, 5.2); q.y = clamp(q.y, 0.5, 3.75); q.z = clamp(q.z, -2.4, 4.95);
+});
+const warm = (async () => {
+  await Promise.race([Promise.all(preload), new Promise((r) => setTimeout(r, 20000))]); // a slow network must not lock the door forever
+  for (const t of preTex) if (t.image) renderer.initTexture(t);
+  try { await renderer.compileAsync(hall, camera); await renderer.compileAsync(room, camera); } catch (e) { /* older GPUs: compile on first frame instead */ }
+})();
 function setScene(s) {
-  scene = s; renderPass.scene = s; setBloom(s === city ? "city" : "lab");
+  scene = s; camera.fov = innerWidth / innerHeight < 0.8 ? 58 : s === city ? 40 : 54; camera.updateProjectionMatrix(); // one lens per place, whatever path led here
+  renderPass.scene = s; setBloom(s === city ? "city" : "lab");
   paint.enabled = false; // the clean lab is shown as it is
   const pr = s === city ? BASE_PR : 1; renderer.setPixelRatio(pr); composer.setPixelRatio(pr); resize();
   document.body.classList.toggle("inside", s !== city); document.body.classList.toggle("in-hall", s === hall);
@@ -1623,7 +1639,7 @@ async function enterLab() {
   const p0 = camera.position.clone(), q0 = controls.target.clone(), fov0 = camera.fov;
   const p1 = p0.clone().setY(0).normalize().multiplyScalar(12).setY(2.4), q1 = new THREE.Vector3(0, 2.2, 0);
   await tween(1300, (k) => { camera.position.lerpVectors(p0, p1, k); controls.target.lerpVectors(q0, q1, k); camera.lookAt(controls.target); camera.fov = fov0 + Math.pow(k, 3) * 30; camera.updateProjectionMatrix(); });
-  await fade(true);
+  await fade(true); await warm;
   current = null; $("panel").hidden = true; setScene(hall);
   Object.assign(hc, { x: 0, z: HALL_FROM, lx: 0, lz: -6 }); updateHall(0);
   await fade(false);
@@ -1646,7 +1662,7 @@ async function enterRoom(id) {
       if (k > 0.5 && !lit) { lit = true; fade(true); } });                                                                                                                          // and you step through into it
     hc.walk = 0;
   }
-  await fade(true);
+  await fade(true); await warm;
   for (const k of ROOMS) doorPiv[k].rotation.y = 0;
   greetS.run++; greetS.target = 0; greetS.on = false; skipGreet(); say(null);
   current = id; $("panel").hidden = true; setScene(room);
@@ -1975,7 +1991,7 @@ function resize() {
   const w = innerWidth, h = innerHeight;
   renderer.setSize(w, h, false); composer.setSize(w, h);
   bloom.resolution.set(w * (small ? 0.5 : 0.75), h * (small ? 0.5 : 0.75));
-  camera.aspect = w / h; camera.fov = w / h < 0.8 ? 58 : 40; camera.updateProjectionMatrix();
+  camera.aspect = w / h; camera.fov = w / h < 0.8 ? 58 : scene === city ? 40 : 54; // a wider lens indoors camera.updateProjectionMatrix();
   renderer.getDrawingBufferSize(paint.uniforms.uRes.value);
 }
 addEventListener("resize", resize); resize();
