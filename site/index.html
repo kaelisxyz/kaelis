@@ -126,6 +126,7 @@
   body.in-hall .pad { display: flex; }
   .pad button { width: 52px; height: 52px; border: 1px solid var(--ink); background: var(--paper, #efeee9); color: var(--ink); font-size: 16px; cursor: pointer; touch-action: none; user-select: none; -webkit-user-select: none; }
   .pad button:active { background: var(--ink); color: var(--paper, #efeee9); }
+  body.inside .hint { color: #4a5058; } /* dark ink on the white lab */
   .hint { position: fixed; left: 50%; transform: translateX(-50%); bottom: 96px; z-index: 4; color: var(--mute); pointer-events: none; text-align: center; }
 
   /* inside a tower: info + actions */
@@ -851,7 +852,7 @@ const GHOSTS = {
   scanner:  { name: "The Assayer",   file: "assayer",   head: [0, 1.70, -0.10], hs: 0.977, edge: 1.62, body: "#f3f2ee", glow: "#59e7ca", k: 0.22, eye: "#59e7ca", line: null },
   watch:    { name: "The Archivist", file: "archivist", head: [0, 1.26, -0.20], hs: 1.023, edge: 1.34, body: "#e6dfcd", glow: "#ffc98a", k: 0.18, eye: "#ffb347", line: "Everything I tested is still here." },
   markets:  { name: "The Broker",    file: "broker",    head: [0, 1.56, 0.0],   hs: 1.0,   edge: 1.50, body: "#dfe4ec", glow: "#9cc8ff", k: 0.2,  eye: "#7fd6ff", line: "Stocks get the same test." },
-  builders: { name: "The Smith",     file: "smith",     head: [0, 1.62, 0.0],   hs: 1.07,  edge: 1.66, body: "#4f545b", glow: "#ff7a33", k: 0.55, eye: "#ff8a4d", line: "Show me what you built." },
+  builders: { name: "The Smith",     file: "smith",     head: [0, 1.62, 0.0],   hs: 1.07,  edge: 1.66, body: "#2c2f34", sheen: 0.15, glow: "#ff7a33", k: 0.7, eye: "#ff8a4d", line: "Show me what you built." },
 };
 const robot = (() => {
   const U = { uQ: { value: new THREE.Matrix4() }, uS: { value: 1 }, uT: { value: 0 }, uGlow: { value: new THREE.Color("#59e7ca") }, uRim: { value: 0.22 }, uHead: { value: new THREE.Vector3(0, 1.7, -0.1) }, uEdge: { value: 1.62 } };
@@ -925,11 +926,11 @@ const robot = (() => {
   }
   { // The Broker: a headset with a boom mic, and a dark tie
     const h = new THREE.Group(); acc.markets = [h]; head.add(h);
-    const band = new THREE.Mesh(new THREE.TorusGeometry(0.245, 0.012, 8, 40, Math.PI), dark); band.position.y = 0.02; h.add(band);
-    for (const s of [-1, 1]) { const cup = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.06, 0.04, 24), dark); cup.rotation.z = Math.PI / 2; cup.position.set(s * 0.235, 0.02, 0); h.add(cup);
-      const pad = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.05, 0.045, 24), steel); pad.rotation.z = Math.PI / 2; pad.position.set(s * 0.238, 0.02, 0); h.add(pad); }
-    const boom = new THREE.Mesh(new THREE.CylinderGeometry(0.005, 0.005, 0.24, 6), dark); boom.position.set(0.2, -0.05, -0.12); boom.rotation.set(1.1, 0, 0.35); h.add(boom);
-    const mic = new THREE.Mesh(new THREE.SphereGeometry(0.016, 10, 8), dark); mic.position.set(0.13, -0.085, -0.225); h.add(mic);
+    const band = new THREE.Mesh(new THREE.TorusGeometry(0.262, 0.02, 10, 40, Math.PI), dark); band.position.y = 0.02; h.add(band);
+    for (const s of [-1, 1]) { const cup = new THREE.Mesh(new THREE.CylinderGeometry(0.085, 0.085, 0.06, 28), dark); cup.rotation.z = Math.PI / 2; cup.position.set(s * 0.25, 0.02, -0.02); h.add(cup);
+      const pad = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.06, 0.066, 28), steel); pad.rotation.z = Math.PI / 2; pad.position.set(s * 0.253, 0.02, -0.02); h.add(pad); }
+    const boom = new THREE.Mesh(new THREE.CylinderGeometry(0.008, 0.008, 0.26, 8), dark); boom.position.set(0.21, -0.05, -0.14); boom.rotation.set(1.1, 0, 0.35); h.add(boom);
+    const mic = new THREE.Mesh(new THREE.SphereGeometry(0.026, 12, 10), dark); mic.position.set(0.14, -0.09, -0.262); h.add(mic);
     const tie = new THREE.Group(); tie.position.set(0, -0.34, -0.2); tie.rotation.x = 0.2; h.add(tie);
     const knot = new THREE.Mesh(new THREE.BoxGeometry(0.045, 0.04, 0.02), new THREE.MeshStandardMaterial({ color: 0x1b2a44, roughness: 0.6 })); tie.add(knot);
     const blade = new THREE.Mesh(new THREE.ConeGeometry(0.038, 0.34, 4), knot.material); blade.rotation.set(Math.PI, Math.PI / 4, 0); blade.scale.z = 0.25; blade.position.y = -0.19; tie.add(blade);
@@ -946,7 +947,7 @@ const robot = (() => {
 })();
 function dressGhost(id) {
   const key = GHOSTS[id] ? id : "scanner", g = GHOSTS[key], r = robot;
-  r.sheet.color.set(g.body); r.sheet.sheenColor.set(g.body); r.U.uGlow.value.set(g.glow); r.U.uRim.value = g.k; r.inner.color.set(g.glow);
+  r.sheet.color.set(g.body); r.sheet.sheenColor.set(g.body); r.sheet.sheen = g.sheen == null ? 1 : g.sheen; r.U.uGlow.value.set(g.glow); r.U.uRim.value = g.k; r.inner.color.set(g.glow);
   r.U.uHead.value.set(...g.head); r.U.uEdge.value = g.edge; r.head.position.set(...g.head); r.head.scale.setScalar(g.hs);
   r.eyeMat.emissive.set(g.eye); r.now = key;
   for (const k of Object.keys(GHOSTS)) { (r.acc[k] || []).forEach((o) => (o.visible = k === key)); if (r.models[k]) r.models[k].visible = k === key; }
@@ -1273,7 +1274,7 @@ function startWatch() { clearInterval(state.watch.timer); state.watch.timer = se
 // =================================================================== MOVING BETWEEN CITY AND ROOM
 const CITY_VIEW = small ? { pos: new THREE.Vector3(48, 34, 60), target: new THREE.Vector3(0, 13, 0) } : { pos: new THREE.Vector3(37, 23, 44), target: new THREE.Vector3(0, 13.5, 0) };
 const ROOM_VIEW = small
-  ? { pos: new THREE.Vector3(1.6, 3.3, 4.6), target: new THREE.Vector3(-0.9, 0.5, -0.9) } // phone: robot + screens sit above the bottom sheet
+  ? { pos: new THREE.Vector3(1.2, 3.3, 4.7), target: new THREE.Vector3(-0.15, 0.55, -0.7) } // phone: robot + screens sit above the bottom sheet
   : { pos: new THREE.Vector3(3.5, 2.15, 2.9), target: new THREE.Vector3(-0.75, 1.45, -1.05) }; // desktop: robot and the whole tank sit left of the panel
 function setCityControls() {
   controls.minDistance = 22; controls.maxDistance = small ? 92 : 70; controls.minPolarAngle = 0.35; controls.maxPolarAngle = 1.38;
