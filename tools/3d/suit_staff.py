@@ -263,16 +263,29 @@ elif V["head"] == "weld":      # welding helmet with a small dark window, a tool
     box((0.09, 0.04, 0.045), (-0.17, CY - 0.02, 1.01), "steel", "HammerHead", bevel=0.008)
 # gloves and boots, taped at the cuffs
 for s in (-1, 1):
-    h = sphere((s * 0.315, 0.215, 0.83), (0.045, 0.06, 0.07))
-    add(h, "rubber", "Glove%d" % (s > 0))
+    # a gloved hand: palm, four fingers a little curled, a thumb (all hang from the wrist, tilted forward)
+    rx, pc = -0.5, Vector((s * 0.315, 0.2, 0.845))
+    def hang(dx, dy, dz):
+        return (pc.x + dx, pc.y + dy * math.cos(rx) - dz * math.sin(rx), pc.z + dy * math.sin(rx) + dz * math.cos(rx))
+    box((0.04, 0.09, 0.1), tuple(pc), "rubber", "Palm%d" % (s > 0), rot=(rx, 0, 0), bevel=0.016)
+    for i, dy in enumerate((-0.033, -0.011, 0.011, 0.033)):
+        ln = 0.07 - abs(i - 1.4) * 0.008
+        cyl(0.0125, ln, hang(-s * 0.006, dy, -0.05 - ln / 2), "rubber", "Finger%d_%d" % (s > 0, i), rot=(rx + 0.25, 0, 0), v=12)
+        sphere(hang(-s * 0.01, dy, -0.05 - ln), 0.0125).name = "Tip%d_%d" % (s > 0, i)
+        bpy.context.object.data.materials.append(M["rubber"])
+    cyl(0.014, 0.055, hang(-s * 0.03, 0.05, -0.01), "rubber", "Thumb%d" % (s > 0), rot=(rx + 0.5, s * 0.5, 0), v=12)
     cu = cyl(0.048, 0.09, (s * 0.311, 0.165, 0.895), "rubber", "GloveCuff%d" % (s > 0), rot=(-0.5, 0, 0))
     torus(0.05, 0.007, (s * 0.31, 0.15, 0.92), "mint", "CuffTape%d" % (s > 0), rot=(-0.5, 0, 0))
-    box((0.1, 0.25, 0.09), (s * 0.115, 0.05, 0.045), "dark", "Boot%d" % (s > 0), bevel=0.03)
-    cyl(0.062, 0.16, (s * 0.115, 0.0, 0.16), "dark", "BootShaft%d" % (s > 0))
+    box((0.108, 0.28, 0.034), (s * 0.115, 0.055, 0.017), "dark", "Sole%d" % (s > 0), bevel=0.012)
+    add(sphere((s * 0.115, 0.075, 0.06), (0.05, 0.115, 0.05)), "white", "BootToe%d" % (s > 0))
+    add(sphere((s * 0.115, -0.005, 0.07), (0.056, 0.07, 0.07)), "white", "BootHeel%d" % (s > 0))
+    cyl(0.062, 0.16, (s * 0.115, 0.0, 0.16), "white", "BootShaft%d" % (s > 0))
     torus(0.064, 0.008, (s * 0.115, 0.0, 0.245), "mint", "BootTape%d" % (s > 0))
 # chest: zip, ID badge, a mint line
 if V["head"] != "bubble":
     box((0.012, 0.012, 0.5), (0, CY, 1.2), "steel", "Zip", rot=(0.05, 0, 0), bevel=0.003)
+    box((0.09, 0.008, 0.09), (0.1 * G, CY + 0.004, 1.12), "suit", "Pocket", rot=(0.02, 0, 0), bevel=0.004)
+    box((0.094, 0.01, 0.022), (0.1 * G, CY + 0.007, 1.168), "suit", "PocketFlap", rot=(0.02, 0, 0), bevel=0.004)
 box((0.07, 0.006, 0.1), (-0.1 * G, CY + 0.012, 1.3), "white", "Badge", rot=(0.12, 0, 0), bevel=0.004)
 box((0.07, 0.007, 0.022), (-0.1 * G, CY + 0.015, 1.337), "mint", "BadgeBar", rot=(0.12, 0, 0), bevel=0.002)
 

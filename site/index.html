@@ -682,9 +682,9 @@ let LAB_Y = 26;
   // A white laboratory block: enamel panels, ribbon windows lit cool white, a mint line, its name over the door.
   // The city around it stays dark, so this is the one bright thing in view.
   const labWhite = new THREE.MeshStandardMaterial({ color: 0xeef1f3, roughness: 0.42, metalness: 0.05, emissive: 0xdfe8ee, emissiveIntensity: 0.2 });
-  const mat = new THREE.MeshStandardMaterial({ color: 0x0b1014, roughness: 0.12, metalness: 0.5, emissive: new THREE.Color(0.8, 0.92, 1.0), emissiveIntensity: 1.7 }); // the windows; fx.glow drives them
+  const mat = new THREE.MeshStandardMaterial({ color: 0x0b1014, roughness: 0.12, metalness: 0.5, emissive: new THREE.Color(0.8, 0.92, 1.0), emissiveIntensity: 0.95 }); // the windows; fx.glow drives them
   const mintLine = new THREE.MeshBasicMaterial({ color: new THREE.Color("#59e7ca").multiplyScalar(1.5) });
-  const spill = new THREE.PointLight(0xdcecff, 260, 34, 1.7); spill.position.set(0, 5, 0); core.add(spill); core.userData.spill = spill; // light spilling onto the plaza
+  const spill = new THREE.PointLight(0xdcecff, 150, 34, 1.7); spill.position.set(0, 5, 0); core.add(spill); core.userData.spill = spill; // light spilling onto the plaza
   const whites = [], glassG = [], mints = [];
   const piers = (w, y0, h, step) => { const n = Math.max(3, Math.round(w / step)); for (let sd = 0; sd < 4; sd++) for (let i = 0; i <= n; i++) { const o = -w / 2 + (i / n) * w, [x, z] = [[o, w / 2], [w / 2, o], [o, -w / 2], [-w / 2, o]][sd]; whites.push(place(new THREE.BoxGeometry(0.1, h, 0.1), x, y0 + h / 2, z, 0)); } };
   const tier = (w, y0, h) => { whites.push(place(new THREE.BoxGeometry(w, h, w), 0, y0 + h / 2, 0, 0));
@@ -698,9 +698,9 @@ let LAB_Y = 26;
   for (const [w, hh] of [[6.0, 8.0], [4.8, 6.0], [3.6, 4.6]]) { const h = Math.round(hh / FLOOR) * FLOOR; tier(w, y, h); mints.push(place(new THREE.BoxGeometry(w + 0.26, 0.05, w + 0.26), 0, y + 0.1, 0, 0)); y += h; }
   g.add(new THREE.Mesh(mergeGeometries(whites), labWhite), new THREE.Mesh(mergeGeometries(glassG), mat), new THREE.Mesh(mergeGeometries(mints), mintLine));
   { // KAELIS LABS, lit, on all four sides of the podium
-    const sign = canvasTex(1024, 160, (c, w, h) => { c.fillStyle = "#f4f6f7"; c.fillRect(0, 0, w, h); c.fillStyle = "#0b0b0c"; c.font = "600 92px Inter, Arial, sans-serif"; c.textAlign = "center"; c.textBaseline = "middle"; c.fillText("K A E L I S   L A B S", w / 2, h / 2 + 4); c.fillStyle = "#59e7ca"; c.fillRect(0, h - 10, w, 10); });
-    const sm = new THREE.MeshBasicMaterial({ map: sign, color: new THREE.Color(1.5, 1.5, 1.5) });
-    for (let sd = 0; sd < 4; sd++) { const pl = new THREE.Mesh(new THREE.PlaneGeometry(5.2, 0.81), sm); const a = sd * Math.PI / 2; pl.position.set(Math.sin(a) * 3.87, FLOOR * 3.3, Math.cos(a) * 3.87); pl.rotation.y = a; g.add(pl); }
+    const sign = canvasTex(1024, 160, (c, w, h) => { c.fillStyle = "#0a0d10"; c.fillRect(0, 0, w, h); c.fillStyle = "#ffffff"; c.font = "600 92px Inter, Arial, sans-serif"; c.textAlign = "center"; c.textBaseline = "middle"; c.fillText("K A E L I S   L A B S", w / 2, h / 2 + 4); c.fillStyle = "#59e7ca"; c.fillRect(0, h - 10, w, 10); });
+    const sm = new THREE.MeshBasicMaterial({ map: sign, color: new THREE.Color(1.9, 1.9, 1.9) });
+    for (let sd = 0; sd < 4; sd++) { const pl = new THREE.Mesh(new THREE.PlaneGeometry(6.4, 1.0), sm); const a = sd * Math.PI / 2; pl.position.set(Math.sin(a) * 3.87, FLOOR * 3.3, Math.cos(a) * 3.87); pl.rotation.y = a; g.add(pl); }
   }
   const fins = [], fw = 3.6;
   for (let f = 0; f < 24; f++) { const side = Math.floor(f / 6), off = ((f % 6) - 2.5) * (fw / 6); const [x, z, ry] = [[off, fw / 2, 0], [fw / 2, -off, Math.PI / 2], [-off, -fw / 2, 0], [-fw / 2, off, Math.PI / 2]][side]; fins.push(place(new THREE.BoxGeometry(0.07, 1.8, 0.26), x, y + 0.9, z, ry)); }
@@ -974,7 +974,7 @@ function dressGhost(id) {
   useGhost(key);
   r.head.visible = false; // the sheet ghost's eyes and kit; the staff bring their own
   roomParts.chair.visible = false; // nobody sits
-  r.R.position.set(...g.at); // at the bench, or beside it facing the shelf and the board
+  r.R.position.set(...(small && (key === "watch" || key === "markets") ? [0.2, 0.45, -2.25] : g.at)); // at the bench, or beside it; on phones behind the bench on a step (feet hidden by the bench), inside the strip above the sheet
 }
 for (const key of Object.keys(GHOSTS)) { // all four sheets are fetched up front, hidden until their room is entered
   const grp = new THREE.Group(); grp.visible = key === "scanner"; robot.models[key] = grp; robot.hips.add(grp);
@@ -1922,7 +1922,7 @@ function updateCityFX(t, dt) {
   _a.set(Math.sin(SWEEP_TILT) * SWEEP_LEN, 0, 0).applyAxisAngle(new THREE.Vector3(0, 1, 0), sa); sweepSpot.position.set(_a.x, 0.08, _a.z);
   sweepCone.material.opacity = 0.4 + Math.sin(t * 0.8) * 0.05;
   // the tower's light: windows, plaza spill, searchlights all follow fx.glow (0 while dark, 1 when lit)
-  core.userData.spill.intensity = 260 * fx.glow * (1 + (m ? Math.sin(t * 0.9) * 0.05 : 0));
+  core.userData.spill.intensity = 150 * fx.glow * (1 + (m ? Math.sin(t * 0.9) * 0.05 : 0));
   search.rotation.y = t * 0.12 * (m || 0.2); searchMats.forEach((sm) => (sm.uniforms.uK.value = 0.16 * fx.glow));
   // blimp
   const ba = t * 0.045 * (m || 0.2) + 1, R = 62;
@@ -1937,7 +1937,7 @@ function updateCityFX(t, dt) {
     if (fx.intro) tw.beamMat.uniforms.uK.value = lerp(tw.beamMat.uniforms.uK.value, (on ? 0.45 : 0.2) + (tw.flare || 0) * 1.2, 0.1);
     if (tw.av) tw.av.material.opacity = Math.sin(t * 2.1 + i * 1.7) > 0.55 ? 1 : 0.06;
     tw.flare = Math.max(0, (tw.flare || 0) - dt * 0.5);
-    if (i === 0) tw.mats[0].emissiveIntensity = fx.glow * 1.7 + (m ? Math.sin(t * 0.7) * 0.04 : 0) + (on ? 0.35 : 0);
+    if (i === 0) tw.mats[0].emissiveIntensity = fx.glow * 0.95 + (m ? Math.sin(t * 0.7) * 0.04 : 0) + (on ? 0.35 : 0);
   });
 }
 
