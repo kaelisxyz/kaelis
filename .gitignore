@@ -24,3 +24,8 @@ seed/
 
 # Blender working files (large, packed textures)
 tools/3d/work/
+
+# Remotion videos: packages, rendered frames and outputs stay out of git
+video/node_modules/
+video/out/
+video/public/
