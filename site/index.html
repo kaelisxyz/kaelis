@@ -192,8 +192,8 @@
   <a class="mark" href="index.html" id="backStory"><b aria-label="KAELIS"><i>K</i><i>A</i><i>E</i><i>L</i><i>I</i><i>S</i></b></a>
   <h1>The trust layer for Solana.</h1>
   <p class="sub">Ratings for the wallets behind tokens. A safety check for AI agents.</p>
-  <a class="live" href="evolution.html" id="live" hidden><b id="lvCalls">–</b> specimens on record <i>·</i> IQ <b id="lvIq">–</b></a>
-  <div class="ca" aria-label="$KAEL contract address"><b>CA</b><span class="pending" data-ca>Announced at launch</span><button type="button" data-ca-copy aria-disabled="true">Copy</button></div>
+  <a class="live" href="ledger.html" id="live" hidden><b id="lvCalls">–</b> specimens on record <i>·</i> IQ <b id="lvIq">–</b></a>
+  <div class="ca" aria-label="$KAEL contract address"><b>CA</b><span class="pending" data-ca>Not launched · track record first</span><button type="button" data-ca-copy aria-disabled="true">Copy</button></div>
   <div class="ctas">
     <button class="cta" id="ctaScan" type="button">Enter</button>
     <a class="buy" href="docs.html">How it works</a>
@@ -259,7 +259,7 @@ const TOWERS = [
   { id: "scanner", name: "The Assay Room", color: "#ffb347", angle: -0.55, h: 15, intro: "Bring a token. Kaelis runs eight tests on it: can it be sold back, how deep the pool is, who holds it, whether the pool is locked, and who can still change it. The result is sealed on the record." },
   { id: "holders", name: "Holders", color: "#ffc24a", angle: 0.85, h: 18, intro: "One lit window for every wallet that holds $KAEL, read from the chain. Sell everything and the window goes dark. Before launch you can try it with any token." },
   { id: "builders", name: "The Workshop", color: "#ff8a4d", angle: 2.35, h: 13, intro: "Proof-of-Build: link your GitHub and a Solana wallet. Kaelis counts your pull requests merged into other people's projects every week and keeps your points. Points convert to $KAEL at launch." },
-  { id: "markets", name: "The Exchange", color: "#d9b77a", angle: -1.38, h: 16.5, intro: "Memes measured with Wall Street's yardstick. Kaelis rates tokenized stocks (SPYx, QQQx, NVDAx, TSLAx, AAPLx) with the same rules, tracks its 20 best-rated memecoins (K-20) next to the S&P 500, and flags tokens that copy a stock's ticker." },
+  { id: "markets", name: "The Gate", color: "#d9b77a", angle: -1.38, h: 16.5, intro: "The check an AI agent or a trading bot runs before it buys. Paste a token and see the answer a machine would get: allow, warn or block, with the reasons and the proof." }, // id stays \"markets\" in code; the room is the agent safety layer
   { id: "watch", name: "The Archive", color: "#e0a04a", angle: -2.2, h: 11.5, intro: "Every specimen Kaelis has tested is kept here and watched. When an insider sells or a pool is pulled, it is filed. A token you bring is re-tested every 60 seconds while this page is open." },
 ];
 const byId = Object.fromEntries(TOWERS.map((t) => [t.id, t]));
@@ -278,6 +278,7 @@ const state = {
   builders: null,          // leaderboard from /api/builders
   markets: null,           // /api/markets: stocks, K-20 vs S&P series, look-alikes
   filings: null,           // /api/filings: insider sales, pulled pools, authority back on
+  gate: null,              // the Gate: the last check_before_buy answer shown in room III
   shelf: null, pick: null, // Archive: compact Ledger rows, and the specimen the visitor tapped
   join: { wallet: null },
   watch: { log: [], timer: null, prev: null, checks: 0 },
@@ -869,7 +870,7 @@ const GHOSTS = {
   // The cloth-ghost fields (head, hs, edge, body, glow...) are kept: the sheets remain in site/models as a fallback.
   scanner:  { h: 1.0,  at: [0.1, 0, -0.02],  name: "The Assayer",   file: "assayer",   head: [0, 1.70, -0.10], hs: 0.977, edge: 1.62, body: "#f3f2ee", glow: "#59e7ca", k: 0.22, eye: "#59e7ca", line: null },
   watch:    { h: 0.93, at: [-1.95, 0, -0.35], name: "The Archivist", file: "archivist", head: [0, 1.26, -0.20], hs: 1.023, edge: 1.34, body: "#e6dfcd", glow: "#ffc98a", k: 0.18, eye: "#ffb347", line: "Everything I tested is still here." },
-  markets:  { h: 1.0,  at: [-1.95, 0, -0.35], name: "The Broker",    file: "broker",    head: [0, 1.56, 0.0],   hs: 1.0,   edge: 1.50, body: "#dfe4ec", glow: "#9cc8ff", k: 0.2,  eye: "#7fd6ff", line: "Stocks get the same test." },
+  markets:  { h: 1.0,  at: [-1.95, 0, -0.35], name: "The Gatekeeper", file: "broker",    head: [0, 1.56, 0.0],   hs: 1.0,   edge: 1.50, body: "#dfe4ec", glow: "#9cc8ff", k: 0.2,  eye: "#7fd6ff", line: "Agents ask here before they buy." },
   builders: { h: 1.06, at: [0.1, 0, -0.02],  name: "The Smith",     file: "smith",     head: [0, 1.62, 0.0],   hs: 1.07,  edge: 1.66, body: "#2c2f34", sheen: 0.15, glow: "#ff7a33", k: 0.7, eye: "#ff8a4d", line: "Show me what you built." },
 };
 const robot = (() => {
@@ -1064,30 +1065,14 @@ function drawScreens(id) {
     screenFrame(gc, W(C), H(C), "Rules", "#ff8a4d");
     textLines(gc, ["Counts: PRs merged into repos", "you don't own, merged by", "someone else, repo >= 5 stars,", ">= 10 lines. GitHub >= 30 days.", ["Points → $KAEL at launch.", "#9aa1ad"]], 14, 56, 13, 24);
   } else if (id === "markets") {
-    const mk = state.markets, last = mk && mk.series[mk.series.length - 1];
-    screenFrame(ga, W(A), H(A), "Kaelis markets board", t.color);
-    if (!mk) textLines(ga, [["Needs the Kaelis server.", t.color], "Markets data is collected", "by Patrol every 30 minutes."], 18, 58);
-    else {
-      const gc0 = (gr) => (!gr ? "#9aa1ad" : /^(AAA|AA|A)$/.test(gr) ? "#59e7ca" : /^(BBB|BB|B)$/.test(gr) ? "#ffc24a" : "#ff4d6a");
-      textLines(ga, [
-        [`K-20 (memes)   ${last && last.k20 != null ? last.k20.toFixed(2).padStart(8) : "     –"}`, "#59e7ca"],
-        [`S&P 500 SPYx   ${last && last.spy != null ? last.spy.toFixed(2).padStart(8) : "     –"}`, "#8fb0ff"],
-        [`KIQ  G${last ? last.gen || 0 : 0}         ${last && last.iq != null ? String(last.iq).padStart(8) : "    soon"}`, "#e9e5ff"],
-      ].concat(mk.stocks.map((x) => [`${x.sym.padEnd(7)} ${x.name.slice(0, 11).padEnd(11)} ${(x.call ? x.call.grade : "…").padStart(4)}`, gc0(x.call && x.call.grade)])), 18, 56, 16, 26);
-    }
-    screenFrame(gb, W(B), H(B), "K-20 vs S&P · indexed 100", "#8a6a45");
-    const ser = mk ? mk.series.filter((p) => p.k20 != null && p.spy != null) : [];
-    if (ser.length >= 2) {
-      const vals = ser.flatMap((p) => [p.k20, p.spy]), lo = Math.min(...vals, 100), hi = Math.max(...vals, 100), x0 = 14, y0 = 62, w = W(B) - 28, hh = H(B) - 110;
-      const Y = (v) => y0 + hh - ((v - lo) / Math.max(0.01, hi - lo)) * hh;
-      gb.strokeStyle = "rgba(220,224,232,.25)"; gb.setLineDash([3, 4]); gb.beginPath(); gb.moveTo(x0, Y(100)); gb.lineTo(x0 + w, Y(100)); gb.stroke();
-      [["k20", "#59e7ca", []], ["spy", "#8fb0ff", [7, 5]]].forEach(([k, c, dash]) => { gb.setLineDash(dash); gb.strokeStyle = c; gb.lineWidth = 3; gb.beginPath(); ser.forEach((p, i) => { const X = x0 + (i / (ser.length - 1)) * w; i ? gb.lineTo(X, Y(p[k])) : gb.moveTo(X, Y(p[k])); }); gb.stroke(); });
-      gb.setLineDash([]);
-      textLines(gb, [[`K-20 ${ser[ser.length - 1].k20.toFixed(1)}   S&P ${ser[ser.length - 1].spy.toFixed(1)}`, "#e9e5ff"]], 14, H(B) - 44, 17);
-    } else textLines(gb, [["Collecting points…", "#9aa1ad"], ["one every 30 minutes", "#9aa1ad"]], 14, 70, 16);
-    screenFrame(gc, W(C), H(C), "Fake tickers", "#ff4d6a");
-    const fakes = (mk && mk.lookalikes) || [];
-    textLines(gc, fakes.length ? fakes.slice(0, 7).map((f) => [`CC  ${f.copies} copy · ${String(f.name || "").slice(0, 18)}`, "#ff8aa0"]) : [["No look-alikes found.", "#59e7ca"]], 14, 56, 13, 22);
+    const gt = state.gate, DC = { allow: "#59e7ca", warn: "#ffc24a", block: "#ff4d6a" };
+    screenFrame(ga, W(A), H(A), "check_before_buy", t.color);
+    if (!gt) textLines(ga, [["The Gate.", t.color], "One call before a trade.", "The answer is one word:", ["allow", DC.allow], ["warn", DC.warn], ["block", DC.block]], 18, 58, 16, 25);
+    else textLines(ga, [[gt.decision.toUpperCase(), DC[gt.decision]], "score " + gt.score + "/100 · " + gt.grade, ["deployer: " + (gt.deployer ? gt.deployer.level : "not traced"), "#9aa1ad"], [gt.proof ? "ledger #" + gt.proof.ledgerCall : "no ledger call yet", "#9aa1ad"]], 18, 58, 17, 28);
+    screenFrame(gb, W(B), H(B), "Reasons", "#8a6a45");
+    textLines(gb, gt ? (gt.reasons.length ? gt.reasons.slice(0, 6).map((r) => [String(r).slice(0, 40), "#e9e5ff"]) : [["No red flag found.", DC.allow]]) : [["block: hard flag", DC.block], ["       or score above 69", DC.block], ["warn:  score 40 or more,", DC.warn], ["       a check that failed,", DC.warn], ["       a deployer with a rug", DC.warn], ["allow: none of these", DC.allow]], 14, 58, 13, 22);
+    screenFrame(gc, W(C), H(C), "Tools", "#59e7ca");
+    textLines(gc, [["check_before_buy", "#e9e5ff"], ["deployer_reputation", "#e9e5ff"], ["scan_token", "#e9e5ff"], ["", "#9aa1ad"], ["POST /mcp", "#9aa1ad"], ["free while in beta", "#9aa1ad"]], 14, 56, 13, 22);
   } else if (id === "watch") {
     const w = state.watch;
     screenFrame(ga, W(A), H(A), "Watch mode", t.color);
@@ -1131,9 +1116,7 @@ function labelText(id) {
   if (id === "scanner") return ls ? [`$${ls.symbol} · ${ls.result.grade || ls.result.score}`, ""] : [state.scanning ? "Testing…" : "Awaiting a specimen", ""];
   if (id === "holders") return CFG.kaelMint && state.holders ? [fmt(state.holders.count), "wallets · live"] : ["At launch", "no $KAEL mint yet"];
   if (id === "builders") { const bl = state.builders; if (!state.server) return ["Offline", "needs the Kaelis server"]; if (!bl) return ["…", "loading"]; const pts = bl.builders.reduce((t, b) => t + b.weekPoints, 0); return bl.count ? [`${fmt(pts)} pts`, `${bl.count} builders · ${bl.week}`] : ["Open", "be the first builder"]; }
-  if (id === "markets") { const mk = state.markets; if (!state.server) return ["Offline", "needs the Kaelis server"]; if (!mk) return ["…", "loading"];
-    const last = mk.series[mk.series.length - 1], rated = mk.stocks.filter((x) => x.call).length;
-    return last && last.k20 != null ? [`K-20 ${last.k20.toFixed(1)}`, `S&P ${last.spy != null ? last.spy.toFixed(1) : "–"} · ${rated} stocks rated`] : ["Collecting", `${rated} stocks rated`]; }
+  if (id === "markets") return state.gate ? [state.gate.decision.toUpperCase(), "score " + state.gate.score + " · " + state.gate.grade] : ["Agent check", "allow · warn · block"];
   if (id === "watch") { const fl = state.filings; return ls ? [`$${ls.symbol}`, `${state.watch.checks} checks · ${state.watch.log.filter((l) => l.bad).length} alerts`] : fl ? [`${fl.filed} filings`, `${fl.tracked} tokens watched`] : ["Sealed specimens", ""]; }
 }
 function refreshLabels() { if (CFG.kaelMint && state.holders) labelEls.lab.querySelector(".s").textContent = fmt(state.holders.count) + " holders, one window each";
@@ -1178,14 +1161,13 @@ function panelHTML(id) {
       <div id="joinStep" class="out"></div>
       <p class="fine">${esc(bl ? bl.payout : "Points convert to $KAEL at launch. Nothing is paid before that.")}</p>`;
   } else if (id === "markets") {
-    const mk = state.markets, last = mk && mk.series[mk.series.length - 1];
-    const gi = (gr) => `<b style="color:${!gr ? "#6b6b6b" : /^(AAA|AA|A)$/.test(gr) ? "#2f8f5b" : /^(BBB|BB|B)$/.test(gr) ? "#9a6a00" : "#c4452c"}">${esc(gr || "…")}</b>`;
-    h += mk ? `<div>${tag("Live", t.color)} ${tag("Benchmark, not advice", "#9aa1ad")}</div>
-      <div class="kv"><span>K-20 (memes)</span><span>${last && last.k20 != null ? last.k20.toFixed(2) : "collecting"}</span><span>S&amp;P 500 (SPYx)</span><span>${last && last.spy != null ? last.spy.toFixed(2) : "collecting"}</span><span>KIQ</span><span>${last && last.iq != null ? last.iq : "soon"} · G${last ? last.gen || 0 : 0}</span></div>
-      <div class="kv">${mk.stocks.map((x) => `<span>${esc(x.sym)} · ${esc(x.name)}</span><span>${x.call ? gi(x.call.grade) + " " + x.call.score : "next patrol"}</span>`).join("")}</div>
-      <p>${mk.lookalikes.length ? `${mk.lookalikes.length} fake ticker${mk.lookalikes.length > 1 ? "s" : ""} flagged (CC).` : "No fake tickers found today."}</p>
-      <div class="row"><button class="act" id="go">Refresh</button><a class="act" href="markets.html" style="text-decoration:none;text-align:center">Open Markets</a></div>`
-      : `<div>${tag(state.server ? "Loading" : "Needs the Kaelis server", t.color)}</div><p>Markets data is collected by Patrol on the Kaelis server.</p><a class="act" href="markets.html" style="text-decoration:none;justify-self:start">Open Markets</a>`;
+    const gt = state.gate, INKD = { allow: "#2f8f5b", warn: "#9a6a00", block: "#c4452c" };
+    h += `<div>${tag(state.server ? "Live" : "Needs the Kaelis server", t.color)} ${tag("Free in beta", "#9aa1ad")}</div>
+      <label class="sr" for="gMint">Token address</label>
+      <div class="row"><input id="gMint" placeholder="Token mint address" spellcheck="false" autocomplete="off" value="${gt ? esc(gt.mint) : ""}"><button class="act" id="go">Check</button></div>
+      <div id="gRes">${gt ? gateSummary(gt) : `<p class="fine">This is what a bot gets from <b>check_before_buy</b>. Try USDC: EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v</p>`}</div>
+      <a class="act" href="docs.html#api" style="text-decoration:none;justify-self:start">API docs</a>
+      <p class="fine">A decision is a risk estimate from public data. It is not financial advice.</p>`;
   } else if (id === "watch") {
     h += pickHTML();
     h += ls ? `<div>${tag("Live data", t.color)}</div><div class="kv"><span>Token</span><span>$${esc(ls.symbol)}</span><span>Checks</span><span id="wChecks">${state.watch.checks}</span><span>Risk now</span><span>${ls.result.score}/100</span></div><button class="act" id="go">Check now</button><div class="out" id="wLog">${state.watch.log.slice(-6).map((l) => esc(l.text)).join("\n") || "No alerts yet."}</div>`
@@ -1198,6 +1180,12 @@ function panelHTML(id) {
 function holdersSummary(pv) {
   return `<div class="score" style="color:#9a6a00">${pv.count != null ? fmt(pv.count) : pv.shown + "+"}<span style="font-size:16px;color:#6b6b6b"> ${pv.count != null ? "holders" : "largest accounts"}</span></div>
     <p class="fine">Top 10 hold ${(pv.top10 * 100).toFixed(1)}% · <a href="tower.html?mint=${encodeURIComponent(pv.mint)}">open the tower view</a></p>`;
+}
+function gateSummary(gt) {
+  const ink = { allow: "#2f8f5b", warn: "#9a6a00", block: "#c4452c" }[gt.decision];
+  return `<div class="score" style="color:${ink}">${esc(gt.decision.toUpperCase())}<span style="font-size:16px;color:#6b6b6b"> · ${gt.score}/100 · ${esc(gt.grade)}</span></div>
+    <div class="out">${gt.reasons.length ? gt.reasons.slice(0, 4).map((r) => "• " + esc(r)).join("\n") : "No red flag found. That is not a promise of safety."}</div>
+    <div class="kv"><span>Deployer</span><span>${gt.deployer ? `<a href="deployer.html?address=${esc(gt.deployer.address)}">${esc(gt.deployer.level)}</a> · ${gt.deployer.tested} tested, ${gt.deployer.rugged} rugged` : "not traced yet"}</span><span>Proof</span><span>${gt.proof ? `Ledger #${gt.proof.ledgerCall} · ${esc(gt.proof.hash.slice(0, 10))}…` : "no Ledger call for this token yet"}</span></div>`;
 }
 function scanSummary(ls) {
   const r = ls.result, bad = r.checks.filter((c) => c.sev > 0).slice(0, 3);
@@ -1244,7 +1232,17 @@ async function action(id) {
   } else if (id === "builders") {
     await loadBuilders(); openPanel(id); drawScreens(id); refreshLabels(); robotCheer();
   } else if (id === "markets") {
-    await loadMarkets(); openPanel(id); drawScreens(id); drawBoard(); refreshLabels(); robotCheer();
+    const inp = $("gMint"), out = $("gRes"), go = $("go"), mint = inp ? inp.value.trim() : "";
+    if (!/^[1-9A-HJ-NP-Za-km-z]{32,44}$/.test(mint)) { out.innerHTML = `<p style="color:var(--danger)">That is not a Solana token address.</p>`; return; }
+    go.disabled = true; out.innerHTML = "<p>The Gate is checking…</p>";
+    try { // the same call an agent makes
+      const r = await fetch("mcp", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ jsonrpc: "2.0", id: 1, method: "tools/call", params: { name: "check_before_buy", arguments: { mint } } }) });
+      const j = await r.json(), res = j.result;
+      if (!r.ok || !res || res.isError) throw new Error((res && res.content && res.content[0] && res.content[0].text) || (j.error && j.error.message) || "The Gate is busy. Try again in a minute.");
+      state.gate = { ...res.structuredContent, mint };
+      out.innerHTML = gateSummary(state.gate); robotCheer(); say(state.gate.decision === "block" ? "Not through this gate." : state.gate.decision === "warn" ? "Through, with a warning." : "Nothing against it. For now.", 5000);
+    } catch (e) { out.innerHTML = `<p style="color:var(--danger)">${esc(e.message || "The Gate needs the Kaelis server.")}</p>`; }
+    go.disabled = false; drawScreens(id); drawBoard(); refreshLabels();
   } else if (id === "watch") {
     await watchTick(); openPanel(id); drawScreens(id);
   }
@@ -1343,7 +1341,7 @@ const HALL_FROM = 2.6, HALL_REST = -0.3;
   // what each window shows: a hint of the room, painted as a silhouette against its light
   const hint = { scanner: (g) => { g.fillRect(104, 40, 48, 130); g.fillRect(92, 26, 72, 18); g.fillRect(84, 166, 88, 18); },
     watch: (g) => { for (let y = 0; y < 3; y++) { g.fillRect(20, 60 + y * 46, 216, 6); for (let x = 0; x < 11; x++) g.fillRect(28 + x * 19, 36 + y * 46, 9, 24); } },
-    markets: (g) => { g.lineWidth = 7; g.beginPath(); g.moveTo(20, 150); for (const [x, y] of [[60, 110], [95, 130], [130, 70], [165, 96], [200, 44], [236, 60]]) g.lineTo(x, y); g.stroke(); g.fillRect(20, 168, 216, 5); },
+    markets: (g) => { for (let i = 0; i < 3; i++) { g.fillRect(56, 52 + i * 44, 144 - i * 34, 22); g.fillRect(28, 52 + i * 44, 16, 22); } },
     builders: (g) => { g.fillRect(70, 138, 116, 22); g.fillRect(104, 160, 48, 26); g.save(); g.translate(150, 90); g.rotate(-0.6); g.fillRect(-8, -60, 16, 90); g.fillRect(-30, -78, 60, 26); g.restore(); } };
   for (const id of ROOMS) {
     const d = DOORS[id], s = d.x, wx = s * (W / 2 - 0.02);
@@ -1531,32 +1529,28 @@ const board = new THREE.Group(); board.position.set(-0.5, 2.42, -3.05); board.vi
 board.add(new THREE.Mesh(new THREE.PlaneGeometry(4.9, 2.8), new THREE.MeshBasicMaterial({ map: boardTex, toneMapped: false, color: new THREE.Color(0.9, 0.9, 0.9) })));
 { const brass = new THREE.MeshStandardMaterial({ color: 0x2a2d31, metalness: 0.6, roughness: 0.35 }); // slim dark bezel
   for (const [w, h, x, y] of [[5.1, 0.1, 0, 1.45], [5.1, 0.1, 0, -1.45], [0.1, 3.0, -2.5, 0], [0.1, 3.0, 2.5, 0]]) { const f = new THREE.Mesh(new THREE.BoxGeometry(w, h, 0.08), brass); f.position.set(x, y, 0.02); board.add(f); } }
-function drawBoard() {
-  const g = boardCv.getContext("2d"), W = 1400, H = 800, mk = state.markets, last = mk && mk.series[mk.series.length - 1];
-  g.fillStyle = "#0e0d0b"; g.fillRect(0, 0, W, H);
-  const cream = "#e9dfc8", dim = "#8d8372", F = (px, w = 500) => `${w} ${px}px JetBrains Mono, monospace`;
-  g.textBaseline = "top"; g.fillStyle = dim; g.font = F(24); g.fillText("THE EXCHANGE  ·  INDEXED TO 100", 40, 30);
-  if (!mk) { g.fillStyle = cream; g.font = F(34); g.fillText("The board fills from the Kaelis server.", 40, 120); boardTex.needsUpdate = true; return; }
-  const big = (label, val, x, c) => { g.fillStyle = dim; g.font = F(22); g.fillText(label, x, 84); g.fillStyle = c; g.font = F(118, 700); g.fillText(val, x, 112); };
-  big("K-20  MEMES", last && last.k20 != null ? last.k20.toFixed(1) : "–", 40, "#59e7ca");
-  big("S&P 500", last && last.spy != null ? last.spy.toFixed(1) : "–", 360, "#9fb6e8");
-  big("KIQ  G" + (last ? last.gen || 0 : 0), last && last.iq != null ? String(last.iq) : "soon", 690, cream);
-  // chart
-  const ser = mk.series.filter((p) => p.k20 != null && p.spy != null), x0 = 40, y0 = 290, w = 900, h = 390;
-  g.strokeStyle = "#2c2820"; g.lineWidth = 2; g.strokeRect(x0, y0, w, h);
-  if (ser.length >= 2) {
-    const vals = ser.flatMap((p) => [p.k20, p.spy]), lo = Math.min(...vals, 100) - 1, hi = Math.max(...vals, 100) + 1, Y = (v) => y0 + h - ((v - lo) / (hi - lo)) * h;
-    g.setLineDash([6, 8]); g.strokeStyle = "#5a5346"; g.beginPath(); g.moveTo(x0, Y(100)); g.lineTo(x0 + w, Y(100)); g.stroke();
-    for (const [k, c, dash] of [["k20", "#59e7ca", []], ["spy", "#9fb6e8", [14, 8]]]) { g.setLineDash(dash); g.strokeStyle = c; g.lineWidth = 5; g.beginPath(); ser.forEach((p, i) => { const X = x0 + (i / (ser.length - 1)) * w; i ? g.lineTo(X, Y(p[k])) : g.moveTo(X, Y(p[k])); }); g.stroke(); }
-    g.setLineDash([]);
-  } else { g.fillStyle = dim; g.font = F(26); g.fillText("collecting points, one every 30 minutes", x0 + 30, y0 + 190); }
-  // stocks
-  g.fillStyle = dim; g.font = F(22); g.fillText("TOKENIZED STOCKS", 990, 84);
-  mk.stocks.forEach((s, i) => { const gr = s.call ? s.call.grade : "…"; g.fillStyle = cream; g.font = F(40, 700); g.fillText(s.sym.padEnd(6), 990, 124 + i * 54); g.fillStyle = GRADE_COL(gr, 0); g.fillText(gr, 1210, 124 + i * 54); });
-  g.fillStyle = dim; g.font = F(22); g.fillText("FAKE TICKERS  ·  FLAGGED CC", 990, 410);
-  const fakes = mk.lookalikes || [];
-  (fakes.length ? fakes.slice(0, 6) : [{ copies: "none found", name: "" }]).forEach((f, i) => { g.fillStyle = fakes.length ? "#ff4d6a" : dim; g.font = F(24); g.fillText(`${f.copies}  ${String(f.name || "").slice(0, 16)}`, 990, 450 + i * 40); });
-  g.fillStyle = dim; g.font = F(20); g.fillText("A benchmark, never an investable product.", 40, 720);
+function drawBoard() { // the Gate's wall display: the last decision, large enough to read from the door
+  const g = boardCv.getContext("2d"), W = 1400, H = 800, gt = state.gate;
+  const DC = { allow: "#59e7ca", warn: "#ffc24a", block: "#ff4d6a" }, cream = "#e9e5df", dim = "#8b9096", F = (px, w = 500) => `${w} ${px}px JetBrains Mono, monospace`;
+  g.fillStyle = "#0b0d10"; g.fillRect(0, 0, W, H); g.textBaseline = "top";
+  g.fillStyle = dim; g.font = F(24); g.fillText("THE GATE  ·  PRE-TRADE CHECK FOR AGENTS", 40, 30);
+  if (!gt) {
+    g.fillStyle = cream; g.font = F(40, 600); g.fillText("One call before the trade.", 40, 96);
+    [["ALLOW", "no known red flag"], ["WARN", "score 40+, a check that failed, or a deployer with a rug"], ["BLOCK", "a hard flag, or a score above 69"]].forEach(([w, why], i) => {
+      const y = 210 + i * 170; g.fillStyle = DC[w.toLowerCase()]; g.font = F(112, 700); g.fillText(w, 40, y); g.fillStyle = dim; g.font = F(26); g.fillText(why, 520, y + 52); });
+    g.fillStyle = dim; g.font = F(20); g.fillText("A risk estimate from public data. Not financial advice.", 40, 740);
+    boardTex.needsUpdate = true; return;
+  }
+  g.fillStyle = DC[gt.decision]; g.font = F(230, 700); g.fillText(gt.decision.toUpperCase(), 34, 80);
+  g.fillStyle = cream; g.font = F(44, 600); g.fillText(`score ${gt.score}/100  ·  grade ${gt.grade}`, 40, 340);
+  g.fillStyle = dim; g.font = F(24); g.fillText(gt.mint.slice(0, 6) + "…" + gt.mint.slice(-6), 40, 404);
+  g.fillStyle = dim; g.font = F(22); g.fillText("REASONS", 40, 470);
+  (gt.reasons.length ? gt.reasons.slice(0, 4) : ["No red flag found."]).forEach((r, i) => { g.fillStyle = cream; g.font = F(26); g.fillText("· " + String(r).slice(0, 78), 40, 506 + i * 40); });
+  g.fillStyle = dim; g.font = F(22); g.fillText("DEPLOYER", 920, 340); g.fillStyle = cream; g.font = F(30, 600);
+  g.fillText(gt.deployer ? `${gt.deployer.level}  ·  ${gt.deployer.tested} tested, ${gt.deployer.rugged} rugged` : "not traced yet", 920, 372);
+  g.fillStyle = dim; g.font = F(22); g.fillText("PROOF", 920, 430); g.fillStyle = cream; g.font = F(26);
+  g.fillText(gt.proof ? `Ledger #${gt.proof.ledgerCall}  ${gt.proof.hash.slice(0, 14)}…` : "no Ledger call yet", 920, 462);
+  g.fillStyle = dim; g.font = F(20); g.fillText("A risk estimate from public data. Not financial advice.", 40, 740);
   boardTex.needsUpdate = true;
 }
 

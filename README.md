@@ -1,29 +1,36 @@
-# Kaelis ($KAEL)
+# Kaelis
 
-> Forged by builders. Awakened by the chain.
+> The trust layer for Solana: verifiable ratings for the wallets that launch tokens, and a pre-trade safety check for AI agents. Proof, not vibes.
 
-Kaelis is an AI agent born from the blockchain. Developers ("Forgers") build a neon on-chain city, and Kaelis guards it: it rewards real builders and checks tokens for scams.
+Kaelis tests new Solana tokens around the clock, records who launched each one and who funded that wallet, and seals every call in a hash-chained ledger that is written to Solana once a day and graded 7 days later, misses included. Agents and apps read it through an MCP server and a small REST API. Live at https://kaelis.si.
+
+$KAEL is not launched. The track record comes first.
 
 ## What's here
 
 | Path | What it is |
 | --- | --- |
-| `site/index.html` | Home page: 3D scroll story (particle KAELIS logo → first block → chain → city → Kaelis with hologram panels → join), then token info |
-| `site/city.html` | Forge City: neon plaza with four towers (Scanner, Holders, Builders, Watch). Step inside a tower to see Kaelis at its desk; the Scanner tower runs real scans |
-| `site/scan.html` | **Live** token scanner: sell test, 8 checks, wallet links, watch mode |
-| `site/tower.html` | **Live** holder tower: one window per $KAEL holder (switches on with `kaelMint`) |
-| `site/guide.html` | How to use Kaelis, plus the full tech details |
-| `site/js/kaelis-core.js` | The rules engine. One file used by the site and the API |
-| `site/js/kaelis-config.js` | The one file to edit at launch (`kaelMint`) |
-| `api/` | API handlers: `/api/scan`, `/api/holders`, `/api/health`, `/api/builders` (Proof-of-Build: leaderboard, register, refresh) and `/mcp` (MCP server for AI agents) |
+| `site/index.html` | Home: a white lab tower in a night city. Inside, a corridor and four rooms: the Assay Room (test a token), the Archive (the Ledger as a shelf), the Gate (the agent check, live) and the Workshop (Proof-of-Build) |
+| `site/deployer.html` | Deployer reputation: look up a wallet or a token, see its tested tokens, outcomes, funder and cluster |
+| `site/ledger.html` | The Ledger: every call, the chain check, and accuracy with every wrong call listed |
+| `site/filings.html` | Filings: insider sales, liquidity pulled, authority switched back on |
+| `site/docs.html` | Docs: how it works, deployer reputation, the agent safety API |
+| `site/scan.html` | The full token check: sell test, 8 checks, wallet links, watch mode |
+| `site/markets.html`, `site/evolution.html` | Supporting pages: tokenized stocks and the K-20 benchmark, and the nightly rule evolution |
+| `site/js/kaelis-core.js` | The rules engine. One file used by the site and the API. **MIT licensed** |
+| `lib/` | Ledger, deployers, filings, anchor, genome, markets, Patrol (the autonomous loop) |
+| `api/` | Handlers: `/api/scan`, `/api/deployer`, `/api/deployers`, `/api/ledger`, `/api/filings`, `/api/anchors`, `/api/health`, `/api/builders`, and `/mcp` |
 | `server.js` | Node server that serves `site/` and the API (Railway runs it) |
 | `tests/` | `npm test`, runs offline with mocked data |
-| `site/clay-alt.html` | Alternative minimal clay-style design (not chosen) |
-| `site/models/` | Drop `kaelis.glb` / `hammer.glb` here to replace the simple shapes on the home page |
-| `docs/brief.md` | Project brief: name, lore, product concept (Forge City), decisions |
-| `docs/asset-prompts.md` | Prompts for Scenario, Meshy, Luma, Kaedim and Spline |
+| `tools/3d/` | Blender scripts that build the lab, the corridor, the staff and the logo |
 
-The scanner and the holder tower read real Solana data. Forge City and Proof-of-Build still use example data.
+## For agents
+
+`POST /mcp` (MCP over HTTP, JSON-RPC). Tools: `check_before_buy` (decision `allow`, `warn` or `block`, with reasons, the deployer's record and the hash of the sealed Ledger call), `deployer_reputation`, `scan_token`. Free while in beta, 30 calls a minute per IP, no key. Details: https://kaelis.si/docs.html#api
+
+## Licence
+
+The rules engine, `site/js/kaelis-core.js`, is open source under the MIT licence (`site/js/LICENSE`), so anyone can reproduce a score. The rest of this repository is public to read but is not licensed for reuse.
 
 ## Run locally
 
@@ -37,7 +44,7 @@ python3 -m http.server 8000
 
 ## Put it online (Railway)
 
-`server.js` serves `site/` and the API (`/api/scan`, `/api/holders`, `/api/health`) from one Node process. No extra packages besides the Anthropic SDK.
+`server.js` serves `site/` and the API from one Node process. No extra packages besides the Anthropic SDK.
 
 1. railway.com > New Project > Deploy from GitHub repo > `kaelisxyz/kaelis`. Railway runs `npm install` and `npm start` (see `railway.json`).
 2. Variables tab, all optional (see `.env.example`):
@@ -47,7 +54,7 @@ python3 -m http.server 8000
    - `SCAN_RATE_PER_MIN`: scans per minute per visitor (default 20).
 3. Settings > Networking > Generate Domain (or add your own domain).
 4. Open `/api/health` to see which parts are on. Every push to `main` redeploys.
-5. AI agents connect to `https://<your domain>/mcp` (MCP over HTTP). Tools: `check_before_buy`, `scan_token`.
+5. AI agents connect to `https://<your domain>/mcp` (MCP over HTTP). Tools: `check_before_buy`, `deployer_reputation`, `scan_token`.
 
 Run the same server locally: `npm install && npm start`, then open http://localhost:3000.
 

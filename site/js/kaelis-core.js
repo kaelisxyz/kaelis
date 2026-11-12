@@ -1,4 +1,6 @@
 /*
+ * SPDX-License-Identifier: MIT  (see LICENSE next to this file; the licence covers this file only)
+ *
  * Kaelis Core: data gathering + rules engine for the token scanner.
  * Pure JavaScript with fetch, so the same file runs in the browser (window.KaelisCore)
  * and in Node 18+ (require), which lets the website and the API share one rule set.

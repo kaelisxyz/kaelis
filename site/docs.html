@@ -173,8 +173,8 @@
       <p class="lead">Kaelis rates the wallets that launch tokens and gives AI agents a safety check to call before they buy. Every rating is a public call, sealed on a ledger and checked against what happened.</p>
       <div class="status tag"><b style="background:#2f8f5b"></b>Live: agent safety check (MCP), Ledger, Filings, daily anchor on Solana, Proof-of-Build. Collecting: deployer reputation. Not live: paid API, $KAEL. Not financial advice.</div>
       <nav class="toc" aria-label="Contents">
-        <a href="#overview">Overview</a><a href="#how">How it works</a><a href="#deployers">Deployer reputation</a><a href="#api">Agent safety + API</a><a href="#use">Use it</a><a href="#video">Video</a><a href="#evolution">Evolution</a><a href="#ledger">Rating + Ledger</a><a href="#markets">Markets</a><a href="#filings">Filings</a>
-        <a href="#hood">Under the hood</a><a href="#details">Full details</a><a href="#token">$KAEL</a>
+        <a href="#overview">Overview</a><a href="#how">How it works</a><a href="#deployers">Deployer reputation</a><a href="#api">Agent safety + API</a><a href="#use">Use it</a><a href="#video">Video</a><a href="#ledger">Rating + Ledger</a><a href="#filings">Filings</a>
+        <a href="#hood">Under the hood</a><a href="#evolution">More: rule evolution</a><a href="#markets">More: markets</a><a href="#details">Full details</a><a href="#token">$KAEL</a>
       </nav>
     </div>
   </section>
@@ -258,6 +258,7 @@
   "links": { "solscan": "…", "dexscreener": "…", "rugcheck": "…" }
 }</pre>
       <div class="kv"><span>REST, read-only</span><span><code>GET /api/deployer?address=</code> or <code>?mint=</code> · <code>GET /api/deployers</code> (totals, top deployers, clusters) · <code>GET /api/filings</code> (insider sales, liquidity pulled, authority back on) · <code>GET /api/ledger</code> (calls, accuracy, wrong calls) · <code>GET /api/anchors</code> (daily memos on Solana)</span></div>
+      <div class="kv"><span>Open rules</span><span>The rules engine that produces every score is one file, open source under the MIT licence: <a href="https://github.com/kaelisxyz/kaelis/blob/main/site/js/kaelis-core.js" target="_blank" rel="noopener">kaelis-core.js on GitHub ↗</a>. Run it yourself and you get the same score.</span></div>
       <div class="kv"><span>Limits</span><span>MCP: 30 calls per minute per IP. REST: 60 per minute per IP. No API key yet.</span></div>
       <div class="kv"><span>Price</span><span>Free while in beta. Paid quotas and staking $KAEL for quota are planned and not live. This page will say so when they are.</span></div>
       <p class="note" id="mcpnote">Read-only. Kaelis never trades and never sees your keys. A decision is a risk estimate, not financial advice.</p>
@@ -531,13 +532,15 @@
       <span class="tag">$KAEL</span>
       <h3>The token.</h3>
       <p class="lead" style="max-width:56ch">$KAEL is meant to be used, not just held: to pay or stake for API and MCP quota, and as the reward for Proof-of-Build. The token and paid quota are not live yet.</p>
+      <div class="kv"><span>When</span><span>Not before the Ledger shows several weeks of graded calls: the track record comes first. No date is set.</span></div>
+      <div class="kv" style="margin-bottom:18px"><span>Careful</span><span>$KAEL does not exist yet. The only real contract address will be the one shown on this site's home page. Anything sold as $KAEL before that is not Kaelis.</span></div>
       <div class="alloc">
         <div class="r"><span>Community &amp; liquidity</span><span>60%</span><i style="--w:60%"></i></div>
         <div class="r"><span>Proof-of-Build rewards</span><span>20%</span><i style="--w:20%"></i></div>
         <div class="r"><span>Builder (vested 24 months)</span><span>10%</span><i style="--w:10%"></i></div>
         <div class="r"><span>Treasury</span><span>10%</span><i style="--w:10%"></i></div>
       </div>
-      <p class="note">Example numbers, not final. $KAEL launches on pump.fun: the contract address (CA) and the buy link appear on the home page at launch, and both open the token on pump.fun. Nothing here is financial advice.</p>
+      <p class="note">Example numbers, not final. $KAEL is planned to launch on pump.fun: the contract address (CA) and the buy link will appear on the home page, and both will open the token on pump.fun. Nothing here is financial advice.</p>
     </div>
   </section>
 </main>
