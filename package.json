@@ -7,7 +7,7 @@
   },
   "scripts": {
     "start": "node server.js",
-    "test": "node tests/core.test.js && node tests/build.test.js && node tests/ledger.test.js && node tests/genome.test.js && node tests/markets.test.js && node tests/filings.test.js && node tests/anchor.test.js"
+    "test": "node tests/core.test.js && node tests/build.test.js && node tests/ledger.test.js && node tests/genome.test.js && node tests/markets.test.js && node tests/filings.test.js && node tests/anchor.test.js && node tests/deployers.test.js"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^1.5.0"

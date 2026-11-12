@@ -32,6 +32,8 @@ const API = {
   "/api/markets": require("./api/markets.js"),
   "/api/filings": require("./api/filings.js"),
   "/api/anchors": require("./api/anchors.js"),
+  "/api/deployers": require("./api/deployers.js"),
+  "/api/deployer": require("./api/deployers.js"),
 };
 const TYPES = {
   ".html": "text/html; charset=utf-8", ".js": "text/javascript; charset=utf-8", ".css": "text/css; charset=utf-8",

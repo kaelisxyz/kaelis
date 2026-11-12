@@ -104,7 +104,12 @@ function world(kind) {
   const init = await post("/mcp", { jsonrpc: "2.0", id: 1, method: "initialize", params: { protocolVersion: "2025-06-18" } });
   assert.strictEqual(init.body.result.serverInfo.name, "kaelis");
   const list = await post("/mcp", { jsonrpc: "2.0", id: 2, method: "tools/list" });
-  assert.deepStrictEqual(list.body.result.tools.map((t) => t.name), ["scan_token", "check_before_buy"]);
+  assert.deepStrictEqual(list.body.result.tools.map((t) => t.name), ["check_before_buy", "deployer_reputation", "scan_token"]);
+  const noArg = await post("/mcp", { jsonrpc: "2.0", id: 4, method: "tools/call", params: { name: "deployer_reputation", arguments: {} } });
+  assert.strictEqual(noArg.body.result.isError, true);
+  const board = await get("/api/deployers"); assert.strictEqual(board.status, 200); assert.ok(JSON.parse(board.body).totals);
+  assert.strictEqual((await get("/api/deployer?address=nope")).status, 400);
+  assert.strictEqual((await get("/api/deployer?mint=nope")).status, 400);
   const bad = await post("/mcp", { jsonrpc: "2.0", id: 3, method: "tools/call", params: { name: "check_before_buy", arguments: { mint: "x" } } });
   assert.strictEqual(bad.body.result.isError, true);
   assert.strictEqual((await post("/mcp", { jsonrpc: "2.0", method: "notifications/initialized" })).status, 202);

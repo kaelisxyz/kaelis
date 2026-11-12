@@ -1,23 +1,34 @@
 // POST /mcp : Kaelis as an MCP server (Streamable HTTP, stateless, JSON responses).
-// Lets AI agents and assistants (Claude, Cursor, Eliza, Solana Agent Kit) check a token
-// before they buy it. Same rules and score as the website.
+// The agent safety layer: a pre-trade check (allow / warn / block) and deployer reputation for AI agents
+// and trading bots (Claude, Cursor, Eliza, Solana Agent Kit). Same rules and score as the website.
 const { K, limited } = require("../lib/server.js");
 const { scan, brief } = require("../lib/scan.js");
+const { ledger, filings, deployers } = require("../lib/ledger-instance.js");
 
 const PROTOCOL = "2025-06-18";
+const MINT = { type: "string", description: "The token's mint address (base58, 32 to 44 characters)." };
 const TOOLS = [
   {
-    name: "scan_token",
-    title: "Scan a Solana token for scam risk",
-    description: "Runs Kaelis' 8 fixed checks on a Solana token (sell test via Jupiter quotes, liquidity, top holders, LP lock, mint and freeze authority, Token-2022 extensions, pool age) plus a wallet-funding trace of the top holders. Returns a risk score from 0 (no known red flag) to 100, a band, and evidence for every check. Read-only: nothing is traded.",
-    inputSchema: { type: "object", properties: { mint: { type: "string", description: "The token's mint address (base58, 32 to 44 characters)." } }, required: ["mint"], additionalProperties: false },
+    name: "check_before_buy",
+    title: "Pre-trade safety check: allow, warn or block",
+    description: "Call this before an agent or bot buys a Solana token. Runs Kaelis' fixed checks (sell test via Jupiter quotes, liquidity, top holders, LP lock, mint and freeze authority, Token-2022 extensions, pool age) and returns decision = 'block' (a hard flag such as a failed sell test, or a score above max_score), 'warn' (score at or above warn_score, a check that could not run, or a deployer with confirmed rugs) or 'allow'. Also returns the score, the reasons, the deployer's record if Kaelis knows it, and proof: the hash of Kaelis' sealed Ledger call for this token and links to the on-chain evidence. A decision is a risk estimate from public data, not financial advice.",
+    inputSchema: { type: "object", properties: { mint: MINT,
+      max_score: { type: "integer", minimum: 0, maximum: 100, description: "Block above this score. Default 69 (the 'dangerous' band is blocked)." },
+      warn_score: { type: "integer", minimum: 0, maximum: 100, description: "Warn at or above this score. Default 40." } }, required: ["mint"], additionalProperties: false },
     annotations: { readOnlyHint: true, openWorldHint: true },
   },
   {
-    name: "check_before_buy",
-    title: "Should an agent buy this token?",
-    description: "A guard for trading agents. Scans the token and returns allow=false when the Kaelis score is above max_score (default 69, i.e. 'dangerous' is blocked) or when a hard flag such as a failed sell test is found. Use it right before executing a swap into an unknown token.",
-    inputSchema: { type: "object", properties: { mint: { type: "string", description: "The token's mint address." }, max_score: { type: "integer", minimum: 0, maximum: 100, description: "Highest score you still accept. Default 69." } }, required: ["mint"], additionalProperties: false },
+    name: "deployer_reputation",
+    title: "Reputation of the wallet that launched a token",
+    description: "Returns what Kaelis knows about a deployer wallet: the tokens it launched that Kaelis tested, how each ended after 7 days (held or rugged), a risk figure from 0 to 100, who first funded the wallet, and its cluster (other deployers funded by the same non-exchange source). Pass a wallet address, or a token mint to look up its deployer. Counts only tokens Kaelis has tested.",
+    inputSchema: { type: "object", properties: { address: { type: "string", description: "The deployer's wallet address." }, mint: { type: "string", description: "A token mint; Kaelis looks up who launched it." } }, additionalProperties: false },
+    annotations: { readOnlyHint: true, openWorldHint: true },
+  },
+  {
+    name: "scan_token",
+    title: "Full check results for a Solana token",
+    description: "The full result behind check_before_buy: every check with its points and evidence, the grade, wallet-funding findings for the top holders, and a plain-language summary. Use it when you need the detail, not just a decision.",
+    inputSchema: { type: "object", properties: { mint: MINT }, required: ["mint"], additionalProperties: false },
     annotations: { readOnlyHint: true, openWorldHint: true },
   },
 ];
@@ -32,20 +43,57 @@ function reply(res, status, body) {
 const ok = (id, result) => ({ jsonrpc: "2.0", id, result });
 const fail = (id, code, message) => ({ jsonrpc: "2.0", id: id == null ? null : id, error: { code, message } });
 
+const text = (o) => ({ content: [{ type: "text", text: JSON.stringify(o) }], structuredContent: o });
+const oops = (m) => ({ isError: true, content: [{ type: "text", text: m }] });
+function deployerBrief(address) {
+  const p = deployers.profile(address, ledger.all());
+  return { address, level: p.level, risk: p.risk, tested: p.tested, rugged: p.rugged, held: p.held, open: p.open,
+    funder: p.funder ? { address: p.funder.address, hub: p.funder.hub } : null, cluster: p.cluster ? { wallets: p.cluster.wallets, rugged: p.cluster.rugged, tested: p.cluster.tested } : null,
+    link: "https://kaelis.si/deployer.html?address=" + address };
+}
+// block: a hard flag or a score above max. warn: a middling score, a check that could not run, or a deployer with confirmed rugs.
+function decide(out, dep, max, warn) {
+  if (out.hardFlag || out.score > max) return "block";
+  if (out.score >= warn || out.unavailableChecks > 0 || (dep && (dep.level === "serial" || dep.level === "flagged"))) return "warn";
+  return "allow";
+}
 async function callTool(name, args) {
-  const mint = String((args && args.mint) || "").trim();
-  if (!K.isAddress(mint)) return { isError: true, content: [{ type: "text", text: "That doesn't look like a Solana mint address (base58, 32 to 44 characters)." }] };
+  args = args || {};
+  if (name === "deployer_reputation") {
+    let address = String(args.address || "").trim();
+    const mint = String(args.mint || "").trim();
+    if (!address && !mint) return oops("Pass a wallet address or a token mint.");
+    if (mint) {
+      if (!K.isAddress(mint)) return oops("That doesn't look like a Solana mint address.");
+      let t = deployers.ofMint(mint);
+      if (!t && ledger.has(mint)) { try { t = await deployers.learn(mint); } catch (e) { t = null; } }
+      if (!t || !t.deployer) return text({ mint, known: false, note: ledger.has(mint) ? "The deployer of this token could not be identified yet." : "Kaelis has not tested this token. Call check_before_buy first." });
+      address = t.deployer;
+    }
+    if (!K.isAddress(address)) return oops("That doesn't look like a Solana wallet address.");
+    const p = deployers.profile(address, ledger.all(), filings.view(100000).filings);
+    return text(p);
+  }
+  const mint = String(args.mint || "").trim();
+  if (!K.isAddress(mint)) return oops("That doesn't look like a Solana mint address (base58, 32 to 44 characters).");
   let out;
   try { out = brief(await scan(mint)); }
-  catch (e) { return { isError: true, content: [{ type: "text", text: "Scan failed: " + (e && e.message || "unknown error") }] }; }
+  catch (e) { return oops("Scan failed: " + (e && e.message || "unknown error")); }
   if (name === "check_before_buy") {
-    const max = Number.isInteger(args.max_score) ? args.max_score : 69;
-    const allow = !out.hardFlag && out.score <= max;
+    const max = Number.isInteger(args.max_score) ? args.max_score : 69, warn = Number.isInteger(args.warn_score) ? args.warn_score : 40;
+    const t = deployers.ofMint(mint), dep = t ? deployerBrief(t.deployer) : null;
+    if (!t && ledger.has(mint)) deployers.learn(mint).catch(() => {}); // trace it for the next caller; never make an agent wait for it
+    const decision = decide(out, dep, max, warn);
     const reasons = out.checks.filter((c) => c.points && c.points >= c.max / 2).map((c) => `${c.name}: ${c.evidence}`);
-    const res = { allow, score: out.score, band: out.band, maxScore: max, hardFlag: out.hardFlag, reasons, summary: out.summary, links: out.links, disclaimer: out.disclaimer };
-    return { content: [{ type: "text", text: JSON.stringify(res) }], structuredContent: res };
+    if (dep && dep.rugged) reasons.push(`Deployer: ${dep.rugged} of ${dep.tested} tested tokens from this wallet rugged.`);
+    if (out.unavailableChecks) reasons.push(`${out.unavailableChecks} check(s) could not run; treat the score as incomplete.`);
+    const c = ledger.all().filter((x) => x.mint === mint).pop();
+    const res = { decision, allow: decision !== "block", score: out.score, grade: out.grade, band: out.band, maxScore: max, warnScore: warn, hardFlag: out.hardFlag, reasons,
+      deployer: dep, proof: c ? { ledgerCall: c.n, hash: c.hash, openedAt: c.openedAt, anchoredTx: c.anchored || null, ledger: "https://kaelis.si/ledger.html" } : null,
+      summary: out.summary, rulesVersion: out.rulesVersion, slot: out.slot, links: out.links, disclaimer: out.disclaimer };
+    return text(res);
   }
-  return { content: [{ type: "text", text: JSON.stringify(out) }], structuredContent: out };
+  return text(out);
 }
 
 async function handle(msg) {
@@ -87,3 +135,4 @@ module.exports = async (req, res) => {
   const out = await handle(msg);
   return out ? reply(res, 200, out) : reply(res, 202, null);
 };
+module.exports.decide = decide; // for tests
