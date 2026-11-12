@@ -11,3 +11,4 @@
 | Fire extinguisher (baked into `lab_furn.webp`) | Clean lab | Poly Haven, UM JOORIN, https://polyhaven.com/a/korean_fire_extinguisher_01 | CC0 |
 | Notepads (baked into `lab_furn.webp`) | Clean lab | Poly Haven, Ulan Cabanilla, https://polyhaven.com/a/office_notepads | CC0 |
 | Style studies (not shipped, not in git) | `tools/3d/work/` | Poly Haven textures and furniture | CC0 |
+| Clean corridor | `site/models/hall.glb`, `site/media/hall_shell.webp` | Made for Kaelis in Blender, light baked by `tools/3d/bake_hall.py` | Project-owned |
