@@ -1822,7 +1822,7 @@ async function intro() {
   controls.enabled = false;
   const p1 = camera.position.clone(), q1 = controls.target.clone();
   const r1 = Math.hypot(p1.x, p1.z), a1 = Math.atan2(p1.z, p1.x), up = new THREE.Vector3(0, 1, 0);
-  const at = (k) => { const a = a1 + (1 - k) * 1.15, r = r1 * lerp(0.78, 1, k); return camera.position.set(Math.cos(a) * r, lerp(p1.y + 9, p1.y, k), Math.sin(a) * r); };
+  const at = (k) => { const a = a1 + (1 - k) * 1.15, r = r1 * lerp(0.94, 1, k); return camera.position.set(Math.cos(a) * r, lerp(p1.y - 17, p1.y, k), Math.sin(a) * r); };
   at(0); camera.lookAt(q1);
   const rise = tween(4600, (k) => {
     TOWERS[0].group.scale.y = 1;
