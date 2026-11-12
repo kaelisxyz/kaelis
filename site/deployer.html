@@ -1,0 +1,268 @@
+<!doctype html>
+<html lang="en">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Kaelis Deployers</title>
+<meta name="description" content="Look up the wallet behind a Solana token: the tokens it launched that Kaelis tested, how each ended after 7 days, who funded the wallet, and its cluster.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter+Tight:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap">
+<style>
+  /* Deployers: who launched it, who funded them, how their tokens ended. Same paper look as the Ledger. */
+  :root {
+    --paper: #ffffff; --ink: #0b0b0c; --mute: #7a7a7a; --rule: #d6d6d6; --grid: rgba(0,0,0,.06); --tint: #f4f4f1;
+    --ok: #2f8f5b; --warn: #c88a12; --bad: #c4452c; --mint: #59e7ca;
+    --f-sans: "Inter Tight", "Helvetica Neue", Arial, system-ui, sans-serif;
+    --f-mono: "JetBrains Mono", ui-monospace, Menlo, monospace;
+    --gut: max(16px, env(safe-area-inset-left, 0px));
+    color-scheme: light;
+  }
+  * { box-sizing: border-box; }
+  html, body { background: var(--paper); color: var(--ink); }
+  body { margin: 0; font-family: var(--f-sans); font-size: 17px; line-height: 1.5;
+    background-image: linear-gradient(var(--grid) 1px, transparent 1px), linear-gradient(90deg, var(--grid) 1px, transparent 1px);
+    background-size: 100% 240px, 25% 100%; }
+  a { color: inherit; }
+  .tag { font-family: var(--f-mono); font-size: 11px; letter-spacing: .1em; text-transform: uppercase; }
+  .wrap { max-width: 1180px; margin: 0 auto; padding: 0 var(--gut); }
+  header { position: sticky; top: 0; z-index: 5; background: rgba(255,255,255,.92); backdrop-filter: blur(6px); border-bottom: 1px solid var(--rule); }
+  header .wrap { display: flex; align-items: center; justify-content: space-between; gap: 12px; height: 60px; }
+  .logo { display: flex; align-items: baseline; gap: 10px; text-decoration: none; font-weight: 600; letter-spacing: .14em; font-size: 15px; }
+  .mark { display: flex; } .mark i { font-style: normal; }
+  .mark i:nth-child(even) { color: var(--paper); -webkit-text-stroke: 1px var(--ink); paint-order: stroke fill; }
+  .pill { display: inline-flex; align-items: center; border: 1px solid var(--ink); border-radius: 999px; padding: 8px 14px; text-decoration: none; background: var(--ink); color: var(--paper); }
+  .pill.ghost { background: var(--paper); color: var(--ink); }
+  section { padding: 56px 0; border-bottom: 1px solid var(--rule); }
+  .label { display: inline-block; background: var(--ink); color: var(--paper); padding: 6px 10px; }
+  h1 { font-size: clamp(44px, 8vw, 112px); line-height: .92; letter-spacing: -.035em; font-weight: 500; margin: 18px 0 20px; }
+  h2 { font-size: clamp(28px, 4vw, 44px); line-height: 1; letter-spacing: -.03em; font-weight: 500; margin: 8px 0 18px; }
+  .lead { font-size: clamp(18px, 2vw, 23px); line-height: 1.35; max-width: 44ch; margin: 0 0 22px; }
+  .note { font-size: 14px; color: var(--mute); max-width: 72ch; }
+
+  .stats { display: grid; grid-template-columns: 1.4fr repeat(5, 1fr); border-top: 1px solid var(--ink); border-left: 1px solid var(--ink); }
+  .stats > div { padding: 16px 18px; border-right: 1px solid var(--ink); border-bottom: 1px solid var(--ink); background: var(--paper); }
+  .stats span { display: block; font-family: var(--f-mono); font-size: 10.5px; letter-spacing: .1em; text-transform: uppercase; color: var(--mute); }
+  .stats b { display: block; font-size: 40px; font-weight: 500; letter-spacing: -.03em; font-variant-numeric: tabular-nums; line-height: 1.1; margin-top: 6px; }
+  .stats .iq { background: var(--ink); color: var(--paper); }
+  .stats .iq span { color: #a9a9a9; }
+  .stats .iq b { font-size: 64px; }
+  .stats .iq small { display: block; font-family: var(--f-mono); font-size: 11px; color: #a9a9a9; letter-spacing: .04em; }
+  @media (max-width: 900px) { .stats { grid-template-columns: 1fr 1fr; } .stats .iq { grid-column: 1 / -1; } }
+
+  .stats.four { grid-template-columns: repeat(4, 1fr); } @media (max-width: 900px) { .stats.four { grid-template-columns: 1fr 1fr; } }
+  .chain { display: flex; flex-wrap: wrap; gap: 8px 18px; align-items: center; font-family: var(--f-mono); font-size: 12px; margin-top: 18px; border: 1px dashed var(--ink); padding: 10px 12px; background: var(--paper); }
+  .chain code { word-break: break-all; }
+  .dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 6px; vertical-align: 1px; }
+
+  .tbl { width: 100%; border-collapse: collapse; font-size: 14.5px; background: var(--paper); }
+  .tbl th, .tbl td { text-align: left; padding: 10px 8px; border-bottom: 1px solid var(--rule); vertical-align: middle; }
+  .tbl th { font-family: var(--f-mono); font-size: 10px; letter-spacing: .1em; text-transform: uppercase; color: var(--mute); font-weight: 400; border-bottom-color: var(--ink); }
+  .tbl td.m { font-family: var(--f-mono); font-size: 12.5px; }
+  .tbl .g { font-family: var(--f-mono); font-weight: 500; }
+  .st { font-family: var(--f-mono); font-size: 10.5px; letter-spacing: .1em; text-transform: uppercase; padding: 3px 7px; border: 1px solid currentColor; white-space: nowrap; }
+  .st.open { color: var(--mute); } .st.rug { color: var(--bad); } .st.held { color: var(--ok); }
+  .empty { padding: 28px 0; color: var(--mute); }
+  @media (max-width: 700px) { .tbl .hide-sm { display: none; } }
+
+  .road { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); border-top: 1px solid var(--ink); }
+  .road > div { padding: 14px 16px 14px 0; display: grid; gap: 6px; align-content: start; border-right: 1px dashed var(--rule); padding-left: 14px; }
+  .road > div:first-child { padding-left: 0; }
+  .road .s { font-family: var(--f-mono); font-size: 10px; letter-spacing: .1em; text-transform: uppercase; color: var(--mute); }
+  .road .s.now { color: var(--ink); }
+  .road .s.now::before { content: ""; display: inline-block; width: 7px; height: 7px; border-radius: 50%; background: var(--mint); margin-right: 6px; box-shadow: 0 0 8px var(--mint); }
+  .road b { font-weight: 500; font-size: 17px; } .road p { margin: 0; font-size: 14px; }
+  @media (max-width: 899px) { .road > div { border-right: 0; border-bottom: 1px dashed var(--rule); padding-left: 0; } }
+  .kv { display: grid; grid-template-columns: 11rem 1fr; gap: 12px; padding: 10px 0; border-bottom: 1px dashed var(--rule); font-size: 15px; }
+  .kv span:first-child { font-family: var(--f-mono); font-size: 10.5px; letter-spacing: .08em; text-transform: uppercase; color: var(--mute); padding-top: 3px; }
+  @media (max-width: 640px) { .kv { grid-template-columns: 1fr; gap: 2px; } }
+  /* phones: the header links scroll sideways instead of widening the page, and tables fit */
+  header .wrap > span { min-width: 0; overflow-x: auto; scrollbar-width: none; } header .wrap > span::-webkit-scrollbar { display: none; }
+  header .pill { white-space: nowrap; flex: none; } header .logo { flex: none; }
+  @media (max-width: 700px) { .st { white-space: normal; display: inline-block; } .tbl th, .tbl td { padding: 9px 5px; } .tbl { font-size: 13.5px; } header .pill { padding: 7px 11px; font-size: 14px; } }
+  footer { padding: 32px 0 56px; }
+  footer .wrap { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 12px; }
+
+  .find { display: flex; gap: 8px; max-width: 720px; margin-top: 8px; }
+  .find input { flex: 1; min-width: 0; font: 500 15px var(--f-mono); padding: 14px 14px; border: 1px solid var(--ink); background: var(--paper); color: var(--ink); border-radius: 0; }
+  .find input:focus-visible { outline: 2px solid var(--mint); outline-offset: 1px; }
+  .find button { font: 600 15px var(--f-sans); padding: 0 20px; border: 1px solid var(--ink); background: var(--ink); color: var(--paper); cursor: pointer; }
+  .find button:disabled { opacity: .5; cursor: wait; }
+  @media (max-width: 560px) { .find { flex-direction: column; } .find button { padding: 14px; } }
+  .msg { margin-top: 14px; font-size: 15px; } .msg.err { color: var(--bad); }
+  .lv { display: inline-block; font-family: var(--f-mono); font-size: 11px; letter-spacing: .1em; text-transform: uppercase; padding: 4px 9px; border: 1px solid currentColor; }
+  .lv.serial, .lv.flagged { color: var(--bad); } .lv.watch { color: var(--warn); } .lv.clean { color: var(--ok); } .lv.new, .lv.unknown { color: var(--mute); }
+  .who { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 16px; margin: 0 0 18px; }
+  .who code { font-family: var(--f-mono); font-size: 14px; word-break: break-all; min-width: 0; }
+  .tbl { table-layout: auto; } .tbl td { word-break: break-word; }
+  .stats.d { grid-template-columns: 1.4fr repeat(4, 1fr); }
+  @media (max-width: 900px) { .stats.d { grid-template-columns: 1fr 1fr; } }
+  .sub { margin: 34px 0 10px; font-size: 20px; font-weight: 500; letter-spacing: -.01em; }
+  .mono { font-family: var(--f-mono); font-size: 12.5px; word-break: break-all; }
+  [hidden] { display: none !important; }
+</style>
+
+<header>
+  <div class="wrap">
+    <a class="logo" href="index.html"><b class="mark" aria-label="KAELIS"><i>K</i><i>A</i><i>E</i><i>L</i><i>I</i><i>S</i></b><span class="tag" style="color:var(--mute)">Deployers</span></a>
+    <span style="display:flex;gap:8px"><a class="pill ghost" href="ledger.html">Ledger</a><a class="pill ghost" href="filings.html">Filings</a><a class="pill" href="docs.html#api">API</a></span>
+  </div>
+</header>
+
+<main>
+  <section>
+    <div class="wrap">
+      <span class="tag label">[ Deployer reputation · collecting ]</span>
+      <h1>Who launched it.</h1>
+      <p class="lead">Paste a wallet, or a token to find the wallet behind it. Kaelis shows the tokens that wallet launched, how each one ended, and who paid for the wallet in the first place.</p>
+      <form class="find" id="find" autocomplete="off">
+        <label class="tag" for="q" style="position:absolute;left:-9999px">Wallet or token address</label>
+        <input id="q" name="q" placeholder="Wallet or token mint address" spellcheck="false" inputmode="latin" required minlength="32" maxlength="44">
+        <button type="submit" id="go">Look up</button>
+      </form>
+      <p class="msg" id="msg" role="status" aria-live="polite"></p>
+    </div>
+  </section>
+
+  <section id="profile" hidden>
+    <div class="wrap">
+      <div class="who"><span class="lv" id="pLevel"></span><code id="pAddr"></code><a class="tag" id="pScan" target="_blank" rel="noopener">Solscan ↗</a></div>
+      <div class="stats d">
+        <div class="iq"><span>Risk · 0 to 100</span><b id="pRisk">–</b><small id="pRiskNote"></small></div>
+        <div><span>Tokens tested</span><b id="pTested">–</b></div>
+        <div><span>Rugged</span><b id="pRug">–</b></div>
+        <div><span>Held</span><b id="pHeld">–</b></div>
+        <div><span>Open calls</span><b id="pOpen">–</b></div>
+      </div>
+      <div class="kv" style="margin-top:18px"><span>Funded by</span><span id="pFunder">–</span></div>
+      <div class="kv"><span>Wallet</span><span id="pWallet">–</span></div>
+      <div class="kv"><span>Insider filings</span><span id="pFilings">–</span></div>
+
+      <h2 class="sub">Tokens from this wallet that Kaelis tested</h2>
+      <table class="tbl">
+        <thead><tr><th>Token</th><th>Grade</th><th class="hide-sm">Rug chance</th><th class="hide-sm">Called</th><th>Result</th><th class="hide-sm">Ledger hash</th></tr></thead>
+        <tbody id="pTokens"></tbody>
+      </table>
+
+      <div id="pClusterBox" hidden>
+        <h2 class="sub">Cluster: other deployers funded by the same wallet</h2>
+        <p class="note" id="pClusterNote" style="margin:0 0 10px"></p>
+        <table class="tbl">
+          <thead><tr><th>Deployer</th><th>Level</th><th>Tested</th><th>Rugged</th><th class="hide-sm">Risk</th></tr></thead>
+          <tbody id="pCluster"></tbody>
+        </table>
+      </div>
+      <p class="note" id="pNote" style="margin-top:18px"></p>
+    </div>
+  </section>
+
+  <section>
+    <div class="wrap">
+      <span class="tag">The map so far</span>
+      <h2>What Kaelis has traced.</h2>
+      <div class="stats four">
+        <div><span>Tokens with a known deployer</span><b id="tTokens">–</b></div>
+        <div><span>Deployers</span><b id="tDep">–</b></div>
+        <div><span>Funders traced</span><b id="tTraced">–</b></div>
+        <div><span>Clusters</span><b id="tClus">–</b></div>
+      </div>
+      <h2 class="sub">Clusters</h2>
+      <table class="tbl">
+        <thead><tr><th>Funder</th><th>Deployers</th><th>Tokens tested</th><th>Rugged</th></tr></thead>
+        <tbody id="clusters"><tr><td colspan="4" class="empty">Loading…</td></tr></tbody>
+      </table>
+      <h2 class="sub">Deployers with the most tested tokens</h2>
+      <table class="tbl">
+        <thead><tr><th>Deployer</th><th>Level</th><th>Tested</th><th>Rugged</th><th class="hide-sm">Held</th><th class="hide-sm">Risk</th></tr></thead>
+        <tbody id="top"><tr><td colspan="6" class="empty">Loading…</td></tr></tbody>
+      </table>
+    </div>
+  </section>
+
+  <section>
+    <div class="wrap">
+      <span class="tag">Method</span>
+      <h2>How to read a record.</h2>
+      <div class="kv"><span>What counts</span><span>Only tokens Kaelis has tested. A wallet may have launched others that Kaelis never saw. Every number on this page has that limit.</span></div>
+      <div class="kv"><span>The deployer</span><span>The token's creator from RugCheck's report. If that is unavailable, the fee payer of the oldest transaction on the mint, when the history is short enough to reach it.</span></div>
+      <div class="kv"><span>The funder</span><span>The source of the transfer in the wallet's first transaction. A funder with 1,000 or more transactions is treated as a hub (an exchange, a bridge, a bot service) and never forms a cluster, because thousands of unrelated people share it.</span></div>
+      <div class="kv"><span>The cluster</span><span>Two or more deployers whose first funds came from the same wallet that is not a hub. On pump.fun most launches come from a fresh wallet, so repeat launchers usually show up here and not in one wallet's history.</span></div>
+      <div class="kv"><span>Risk</span><span>The share of the wallet's tested tokens expected to end as rugs. A confirmed rug counts 1, a token that held counts 0, an open call counts its published rug chance. A weak prior (0.3 over one token) keeps a single launch from being a verdict.</span></div>
+      <div class="kv"><span>Levels</span><span><b>Serial</b>: three confirmed rugs, or two that are at least half of the resolved tokens. <b>Flagged</b>: one confirmed rug. <b>Clean</b>: two or more tokens held, none rugged. <b>Watch</b>: no result yet and risk of 50 or more. <b>New</b>: no result yet.</span></div>
+      <div class="kv"><span>Outcomes</span><span>Held or rugged comes from the <a href="ledger.html">Ledger</a>: the same hash-chained calls, checked 7 days after each one.</span></div>
+      <div class="kv"><span>Not for sale</span><span>Kaelis does not sell ratings. Nobody can pay to change a record. A record is a risk estimate from public data, not an accusation and not financial advice.</span></div>
+    </div>
+  </section>
+</main>
+
+<footer>
+  <div class="wrap tag">
+    <span>Kaelis Deployers · Not financial advice</span>
+    <a href="docs.html#deployers">Docs →</a>
+  </div>
+</footer>
+
+<script>
+(function () {
+  const $ = (id) => document.getElementById(id);
+  const esc = (s) => String(s == null ? "" : s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+  const short = (a) => a.slice(0, 4) + "…" + a.slice(-4);
+  const day = (iso) => iso ? iso.slice(0, 10) : "–";
+  const isAddr = (s) => /^[1-9A-HJ-NP-Za-km-z]{32,44}$/.test(s);
+  const LV = { serial: "Serial rugger", flagged: "Flagged", watch: "Watch", clean: "Clean so far", new: "New", unknown: "Unknown" };
+  const lv = (l) => `<span class="lv ${esc(l)}">${esc(LV[l] || l)}</span>`;
+  const wallet = (a) => `<a class="mono" href="deployer.html?address=${esc(a)}">${esc(short(a))}</a>`;
+
+  function show(p) {
+    $("profile").hidden = false;
+    $("pLevel").className = "lv " + p.level; $("pLevel").textContent = LV[p.level] || p.level;
+    $("pAddr").textContent = p.address; $("pScan").href = p.links.solscan;
+    $("pRisk").textContent = p.tested ? p.risk : "–";
+    $("pRiskNote").textContent = p.tested ? `from ${p.tested} tested token${p.tested === 1 ? "" : "s"}` : "no tested tokens";
+    $("pTested").textContent = p.tested; $("pRug").textContent = p.rugged; $("pHeld").textContent = p.held; $("pOpen").textContent = p.open;
+    $("pFunder").innerHTML = !p.funder ? (p.wallet && p.wallet.busy ? "Not traced: this wallet has 1,000 or more transactions, so its first one is out of reach." : "Not traced yet.")
+      : `${wallet(p.funder.address)} ${p.funder.hub ? "· a hub (exchange, bridge or service), so no cluster is drawn from it" : ""} ${p.funder.link ? `· <a href="${esc(p.funder.link)}" target="_blank" rel="noopener">funding transaction ↗</a>` : ""}`;
+    $("pWallet").textContent = p.wallet ? `${p.wallet.txCount == null ? "?" : p.wallet.txCount >= 1000 ? "1,000+" : p.wallet.txCount} transactions${p.wallet.firstAt ? ", first seen " + day(p.wallet.firstAt) : ""}` : "Not traced yet.";
+    $("pFilings").innerHTML = p.filings ? `${p.filings} on its tokens · <a href="filings.html">see Filings</a>` : "None on its tokens.";
+    $("pTokens").innerHTML = p.tokens.length ? p.tokens.map((t) => {
+      const res = t.state === "open" ? `<span class="st open">Open</span>` : t.state === "rugged" ? `<span class="st rug">Rugged</span>` : `<span class="st held">Held</span>`;
+      return `<tr><td><a href="scan.html?mint=${esc(t.mint)}">${esc(t.symbol ? "$" + t.symbol : short(t.mint))}</a></td><td class="g">${esc(t.grade)}</td><td class="m hide-sm">${Math.round(t.p * 100)}%</td>
+        <td class="m hide-sm">${day(t.openedAt)}</td><td>${res}</td><td class="m hide-sm" title="${esc(t.hash)}">#${t.call} · ${esc(t.hash.slice(0, 10))}…</td></tr>`;
+    }).join("") : `<tr><td colspan="6" class="empty">Kaelis has not tested a token from this wallet.</td></tr>`;
+    $("pClusterBox").hidden = !p.cluster;
+    if (p.cluster) {
+      $("pClusterNote").textContent = `${p.cluster.wallets} deployers share one funder. Together: ${p.cluster.tested} tested tokens, ${p.cluster.rugged} rugged.`;
+      $("pCluster").innerHTML = p.cluster.others.map((o) => `<tr><td>${wallet(o.address)}</td><td>${lv(o.level)}</td><td class="m">${o.tested}</td><td class="m">${o.rugged}</td><td class="m hide-sm">${o.risk}</td></tr>`).join("");
+    }
+    $("pNote").textContent = p.note + (p.asked ? ` Deployer of ${short(p.asked.mint)} identified through ${p.asked.via === "rugcheck" ? "RugCheck's report" : "the mint's first transaction"}${p.asked.platform ? " (" + p.asked.platform + ")" : ""}.` : "");
+    $("profile").scrollIntoView({ behavior: matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth", block: "start" });
+  }
+
+  async function lookup(v, push) {
+    const msg = $("msg"), btn = $("go");
+    msg.className = "msg"; msg.textContent = "";
+    if (!isAddr(v)) { msg.className = "msg err"; msg.textContent = "That is not a Solana address. Paste a wallet or a token mint (32 to 44 characters)."; return; }
+    btn.disabled = true; msg.textContent = "Looking it up…";
+    try {
+      // a wallet Kaelis knows answers at once; otherwise treat the address as a token and find its deployer
+      let r = await fetch("api/deployer?address=" + v), j = await r.json(), as = "address";
+      if (!r.ok || !j.known) { const r2 = await fetch("api/deployer?mint=" + v), j2 = await r2.json(); if (r2.ok) { r = r2; j = j2; as = "mint"; } else if (r.ok) { /* a wallet with no tested tokens: show the empty record */ } else throw new Error(j2.error || j.error || "Lookup failed."); }
+      msg.textContent = j.known ? "" : "Kaelis has no tested token from this address yet. If it is a token, test it first in the Assay Room, then look it up again.";
+      show(j);
+      if (push) history.replaceState(null, "", "deployer.html?" + (as === "mint" ? "mint=" : "address=") + v);
+    } catch (e) { msg.className = "msg err"; msg.textContent = e.message || "Lookup failed. Try again in a minute."; }
+    btn.disabled = false;
+  }
+  $("find").addEventListener("submit", (e) => { e.preventDefault(); lookup($("q").value.trim(), true); });
+  const qs = new URLSearchParams(location.search), first = qs.get("address") || qs.get("mint");
+  if (first) { $("q").value = first; lookup(first, false); }
+
+  fetch("api/deployers").then((r) => r.ok ? r.json() : Promise.reject()).then((b) => {
+    $("tTokens").textContent = b.totals.tokensWithDeployer; $("tDep").textContent = b.totals.deployers; $("tTraced").textContent = b.totals.traced; $("tClus").textContent = b.totals.clusters;
+    $("clusters").innerHTML = b.clusters.length ? b.clusters.map((c) => `<tr><td>${wallet(c.funder)}</td><td class="m">${c.wallets}: ${c.members.slice(0, 4).map(wallet).join(", ")}${c.members.length > 4 ? " …" : ""}</td><td class="m">${c.tested}</td><td class="m">${c.rugged}</td></tr>`).join("")
+      : `<tr><td colspan="4" class="empty">No cluster found yet. Kaelis is still tracing the wallets behind the tokens on its Ledger.</td></tr>`;
+    $("top").innerHTML = b.deployers.length ? b.deployers.slice(0, 25).map((d) => `<tr><td>${wallet(d.address)}</td><td>${lv(d.level)}</td><td class="m">${d.tested}</td><td class="m">${d.rugged}</td><td class="m hide-sm">${d.held}</td><td class="m hide-sm">${d.risk}</td></tr>`).join("")
+      : `<tr><td colspan="6" class="empty">Tracing has just started. Check back soon.</td></tr>`;
+  }).catch(() => { $("clusters").innerHTML = $("top").innerHTML = `<tr><td colspan="6" class="empty">This page needs the Kaelis server.</td></tr>`; });
+})();
+</script>
+</html>

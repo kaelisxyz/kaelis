@@ -57,6 +57,13 @@
   .bands span:nth-child(1) { background: var(--ok); } .bands span:nth-child(2) { background: var(--warn); } .bands span:nth-child(3) { background: var(--bad); }
   .eg { font-family: var(--f-mono); font-size: 12px; color: var(--mute); margin: 0; }
 
+  code { font-family: var(--f-mono); font-size: .88em; background: var(--tint, #f4f4f1); padding: 1px 5px; }
+  pre code, pre.mcpcfg code { background: none; padding: 0; }
+  .kv { display: grid; grid-template-columns: 11rem 1fr; gap: 12px; padding: 10px 0; border-bottom: 1px dashed var(--rule); font-size: 15px; }
+  .kv > span:first-child { font-family: var(--f-mono); font-size: 10.5px; letter-spacing: .08em; text-transform: uppercase; color: var(--mute); padding-top: 3px; }
+  @media (max-width: 640px) { .kv { grid-template-columns: 1fr; gap: 2px; } }
+
+  pre.mcpcfg { max-width: 100%; overflow-x: auto; }
   .flow { display: grid; grid-template-columns: repeat(4, 1fr); border-top: 1px solid var(--ink); border-left: 1px solid var(--ink); }
   .flow div { padding: 18px; border-right: 1px solid var(--ink); border-bottom: 1px solid var(--ink); }
   .flow b { display: block; font-size: 22px; font-weight: 500; margin: 8px 0 4px; }
@@ -129,6 +136,7 @@
   }
   .tech { --f-head: var(--f-sans); --mint: #59e7ca; --soft: #121212; }
   .tech h3 { margin-bottom: 0; }
+  .flow.three { grid-template-columns: repeat(3, 1fr); } @media (max-width: 860px) { .flow.three { grid-template-columns: 1fr; } }
   .flow.two { grid-template-columns: 1fr 1fr; } @media (max-width: 600px) { .flow.two { grid-template-columns: 1fr; } }
   .markhero { position: relative; height: calc(100vh - 61px); height: calc(100svh - 61px); min-height: 420px; border-bottom: 1px solid var(--rule); background: #fff; }
   .markhero iframe { display: block; width: 100%; height: 100%; border: 0; }
@@ -161,12 +169,12 @@
   <section class="hero">
     <div class="wrap">
       <span class="tag label">[ Kaelis docs ]</span>
-      <h1>How Kaelis works.</h1>
-      <p class="lead">Everything behind Forge City: what Kaelis is, who it is for, how each part works and how to use it.</p>
-      <div class="status tag"><b style="background:#2f8f5b"></b>Live: Patrol, Genome, Rating, Ledger, Scanner, Proof-of-Build. Holder windows at launch. Not financial advice.</div>
+      <h1>The trust layer for Solana.</h1>
+      <p class="lead">Kaelis rates the wallets that launch tokens and gives AI agents a safety check to call before they buy. Every rating is a public call, sealed on a ledger and checked against what happened.</p>
+      <div class="status tag"><b style="background:#2f8f5b"></b>Live: agent safety check (MCP), Ledger, Filings, daily anchor on Solana, Proof-of-Build. Collecting: deployer reputation. Not live: paid API, $KAEL. Not financial advice.</div>
       <nav class="toc" aria-label="Contents">
-        <a href="#overview">Overview</a><a href="#video">Video</a><a href="#use">Use it</a><a href="#evolution">Evolution</a><a href="#ledger">Rating + Ledger</a><a href="#markets">Markets</a><a href="#filings">Filings</a>
-        <a href="#hood">Under the hood</a><a href="#agents">For AI agents</a><a href="#details">Full details</a><a href="#token">$KAEL</a>
+        <a href="#overview">Overview</a><a href="#how">How it works</a><a href="#deployers">Deployer reputation</a><a href="#api">Agent safety + API</a><a href="#use">Use it</a><a href="#video">Video</a><a href="#evolution">Evolution</a><a href="#ledger">Rating + Ledger</a><a href="#markets">Markets</a><a href="#filings">Filings</a>
+        <a href="#hood">Under the hood</a><a href="#details">Full details</a><a href="#token">$KAEL</a>
       </nav>
     </div>
   </section>
@@ -174,12 +182,85 @@
   <section id="overview">
     <div class="wrap">
       <span class="tag">Overview</span>
-      <h3>A market intelligence that evolves in public.</h3>
+      <h3>Two products on one public record.</h3>
       <div class="ov">
-        <div><span class="tag">What it is</span><b>An agent that grades the market, and itself</b><p>Kaelis patrols new Solana tokens on its own, rates each one from AAA to D, seals every call on a public ledger and checks itself 7 days later. Every night it tries to breed a better rule set, and keeps it only if it proves smarter.</p></div>
-        <div><span class="tag">Who it is for</span><b>Degens, builders, holders, bots</b><ul><li>Traders who want to know if a token is a trap before buying.</li><li>Developers who earn $KAEL points for merged code.</li><li>$KAEL holders, who light a window in the city.</li><li>Trading bots and AI agents, through MCP.</li></ul></div>
-        <div><span class="tag">Why it matters</span><b>Proof, not vibes</b><p>Every flag comes with evidence, every call is on record, and the intelligence is a public number (Kaelis IQ), not a claim. A copy of the code starts with zero track record.</p></div>
+        <div><span class="tag">What it is</span><b>Deployer reputation and agent safety</b><p><b>Deployer reputation</b>: a record for every wallet that launched a token Kaelis tested: how many tokens, how each ended after 7 days, who funded the wallet, which other deployers share that funder. <b>Agent safety</b>: one call an AI agent or bot makes before a trade, answered allow, warn or block.</p></div>
+        <div><span class="tag">Who it is for</span><b>Anything that lets people buy a token</b><ul><li>Launchpads, wallets and DEX aggregators that want to warn before a swap.</li><li>Telegram bots and trading agents that need a guard they can call.</li><li>Traders who want to know who is behind a launch.</li><li>Developers, who earn points for merged code.</li></ul></div>
+        <div><span class="tag">Why it is hard to copy</span><b>Proof, not vibes</b><p>The rules are open, so anyone can reproduce a score. The record is not copyable: every call is hash-chained, written to Solana once a day and graded 7 days later, misses included. A copy of the code starts with no history.</p></div>
       </div>
+    </div>
+  </section>
+
+  <section id="how">
+    <div class="wrap">
+      <span class="tag">How it works</span>
+      <h3>Data, rating, proof, API.</h3>
+      <div class="flow">
+        <div><span class="tag">1 · Data</span><b>Test and trace</b><p>Kaelis tests new Solana tokens around the clock: a sell test, liquidity, holders, LP lock, authorities, extensions, pool age. For each one it records who launched it and who first funded that wallet.</p></div>
+        <div><span class="tag">2 · Rating</span><b>Token, deployer, cluster</b><p>Each token gets a score and a grade from fixed, open rules. Each deployer gets a risk figure from how its tested tokens ended. Deployers funded by the same source are grouped as a cluster.</p></div>
+        <div><span class="tag">3 · Proof</span><b>Sealed and checked</b><p>Every call goes into a hash chain. The chain head is written to Solana once a day. Seven days later Kaelis checks the outcome and <a href="ledger.html#accuracy">publishes its hits and its misses</a>.</p></div>
+        <div><span class="tag">4 · API</span><b>Read by machines</b><p>Agents and apps read all of it: a pre-trade decision, a deployer record, the insider filings feed. Free while in beta.</p></div>
+      </div>
+    </div>
+  </section>
+
+  <section id="deployers">
+    <div class="wrap">
+      <span class="tag">Deployer reputation · collecting</span>
+      <h3>A record for the wallet behind the token.</h3>
+      <p class="lead" style="max-width:58ch">A token is new every time. The wallet that launches it, and the wallet that pays for that wallet, often are not. Kaelis keeps the record. <a href="deployer.html">Look up a wallet or a token →</a></p>
+      <div class="flow two">
+        <div><span class="tag">Per wallet</span><b>Tokens and outcomes</b><p>The tokens this wallet launched that Kaelis tested, each with its grade, its rug chance and its 7-day result. One risk figure from 0 to 100.</p></div>
+        <div><span class="tag">Per cluster</span><b>Shared funder</b><p>Deployers whose first funds came from the same wallet. A funder with 1,000 or more transactions is a hub (an exchange, a bridge, a bot service) and never forms a cluster.</p></div>
+      </div>
+      <div class="kv" style="margin-top:18px"><span>Limit</span><span>Only tokens Kaelis has tested count. A wallet may have launched others that Kaelis never saw.</span></div>
+      <div class="kv"><span>What to expect</span><span>On pump.fun most launches come from a fresh wallet, so one wallet often shows one token. Repeat launchers show up in the cluster. Tracing started on 12 November 2026 and works back through the Ledger.</span></div>
+      <div class="kv"><span>Levels</span><span>Serial (three confirmed rugs, or two that are at least half of the resolved tokens), Flagged (one confirmed rug), Clean (two or more held, none rugged), Watch (no result yet, risk 50 or more), New (no result yet).</span></div>
+      <div class="kv"><span>Not for sale</span><span>Kaelis does not sell ratings. Nobody can pay to change a record.</span></div>
+    </div>
+  </section>
+
+  <section id="api">
+    <div class="wrap" id="agents">
+      <span class="tag">Agent safety + API</span>
+      <h3>One call before the trade.</h3>
+      <p class="lead" style="max-width:58ch">Kaelis is an MCP server. A trading bot or an AI agent (Claude, Cursor, Eliza, Solana Agent Kit) calls <code>check_before_buy</code> right before a swap and gets a decision it can act on.</p>
+      <div class="flow three">
+        <div><span class="tag">Tool</span><b>check_before_buy</b><p><code>mint</code>, optional <code>max_score</code> (69) and <code>warn_score</code> (40). Returns <code>decision</code>, score, grade, reasons, the deployer's record and proof.</p></div>
+        <div><span class="tag">Tool</span><b>deployer_reputation</b><p><code>address</code> or <code>mint</code>. Returns the wallet's tested tokens and outcomes, its risk, its funder and its cluster.</p></div>
+        <div><span class="tag">Tool</span><b>scan_token</b><p><code>mint</code>. The full result behind the decision: every check with its points and evidence.</p></div>
+      </div>
+      <div class="kv" style="margin-top:18px"><span>block</span><span>A hard flag (for example a failed sell test, or a token copying a known asset), or a score above <code>max_score</code>.</span></div>
+      <div class="kv"><span>warn</span><span>A score at or above <code>warn_score</code>, a check that could not run, or a deployer with a confirmed rug.</span></div>
+      <div class="kv"><span>allow</span><span>None of the above. It means no known red flag was found. It is not a promise of safety.</span></div>
+      <p class="note" style="margin-top:18px">Add Kaelis to your MCP client:</p>
+      <pre class="mcpcfg" id="mcpcfg">{ "mcpServers": { "kaelis": { "type": "http", "url": "/mcp" } } }</pre>
+      <p class="note">Or call it directly (JSON-RPC over HTTP):</p>
+      <pre class="mcpcfg">curl -s https://kaelis.si/mcp -H "content-type: application/json" -d '{
+  "jsonrpc": "2.0", "id": 1, "method": "tools/call",
+  "params": { "name": "check_before_buy", "arguments": { "mint": "&lt;token mint&gt;" } }
+}'</pre>
+      <p class="note">A real answer from 12 November 2026, addresses shortened (in <code>result.structuredContent</code>). Note that "allow" still lists what it found:</p>
+      <pre class="mcpcfg">{
+  "decision": "allow",
+  "allow": true,
+  "score": 35, "grade": "BBB", "maxScore": 69, "warnScore": 40,
+  "hardFlag": false,
+  "reasons": [
+    "Liquidity depth: $3.5k in 2 pools.",
+    "LP locked or burned: 0% of pool tokens are locked or burned (RugCheck).",
+    "Pool age: Oldest pool is 1 days old."
+  ],
+  "deployer": { "address": "…", "level": "new", "risk": 20, "tested": 1, "rugged": 0,
+                "funder": { "address": "…", "hub": false }, "cluster": null },
+  "proof": { "ledgerCall": 404, "hash": "159a7ac2dbf34106…", "openedAt": "2026-11-11T14:47:44.510Z",
+             "anchoredTx": null, "ledger": "https://kaelis.si/ledger.html" },
+  "links": { "solscan": "…", "dexscreener": "…", "rugcheck": "…" }
+}</pre>
+      <div class="kv"><span>REST, read-only</span><span><code>GET /api/deployer?address=</code> or <code>?mint=</code> · <code>GET /api/deployers</code> (totals, top deployers, clusters) · <code>GET /api/filings</code> (insider sales, liquidity pulled, authority back on) · <code>GET /api/ledger</code> (calls, accuracy, wrong calls) · <code>GET /api/anchors</code> (daily memos on Solana)</span></div>
+      <div class="kv"><span>Limits</span><span>MCP: 30 calls per minute per IP. REST: 60 per minute per IP. No API key yet.</span></div>
+      <div class="kv"><span>Price</span><span>Free while in beta. Paid quotas and staking $KAEL for quota are planned and not live. This page will say so when they are.</span></div>
+      <p class="note" id="mcpnote">Read-only. Kaelis never trades and never sees your keys. A decision is a risk estimate, not financial advice.</p>
     </div>
   </section>
 
@@ -197,7 +278,7 @@
   <section id="use">
     <div class="wrap tools">
       <article class="card">
-        <div class="bar tag"><span>01 · Scan a token · Live beta</span><i></i></div>
+        <div class="bar tag"><span>01 · Check a token · Free</span><i></i></div>
         <div class="body">
           <h2>Check a token before you buy.</h2>
           <p class="what">Kaelis runs eight checks, including a real sell test through Jupiter, looks for wallets funded by the same source, and gives a risk score.</p>
@@ -225,16 +306,16 @@
         </div>
       </article>
       <article class="card">
-        <div class="bar tag"><span>03 · Hold · Live at launch</span><i></i></div>
+        <div class="bar tag"><span>03 · Check a wallet · Collecting</span><i></i></div>
         <div class="body">
-          <h2>Light a window in the city.</h2>
-          <p class="what">Every wallet holding $KAEL lights one window in the <a href="tower.html">Kaelis tower</a>, read live from the chain. Your window stays in the same place every visit.</p>
+          <h2>See who is behind a launch.</h2>
+          <p class="what">Kaelis records who launched each token it tests and who funded that wallet. One lookup shows the wallet's other tokens and how they ended.</p>
           <ol>
-            <li>Hold $KAEL in your wallet.</li>
-            <li>Paste your wallet on the tower page to find your window.</li>
-            <li>Sell everything and it turns off.</li>
+            <li>Copy a wallet address, or the address of a token.</li>
+            <li>Paste it into <a href="deployer.html">Kaelis Deployers</a>.</li>
+            <li>Read its tested tokens, its risk, its funder and its cluster.</li>
           </ol>
-          <p class="eg">No sign-up. Kaelis only reads public balances.</p>
+          <p class="eg">Counts only tokens Kaelis has tested. A short record is not a clean record.</p>
         </div>
       </article>
     </div>
@@ -310,20 +391,6 @@
         <div><span class="tag">04</span><b>Score itself</b><p>All results feed the Kaelis IQ, a public calibration score. <a href="ledger.html">See the Ledger</a>.</p></div>
       </div>
       <p class="note">A grade is a risk estimate, never buy or sell advice.</p>
-    </div>
-  </section>
-  <section id="agents">
-    <div class="wrap">
-      <span class="tag">For AI agents</span>
-      <h3>Let your agent ask Kaelis before it buys.</h3>
-      <p class="lead" style="max-width:56ch">Kaelis runs as an MCP server, so trading bots and AI assistants (Claude, Cursor, Eliza, Solana Agent Kit) can check a token right before a swap. Same rules and score as the scanner.</p>
-      <div class="flow two">
-        <div><span class="tag">Tool</span><b>check_before_buy</b><p>Returns allow true or false. Blocks a dangerous score (70+) or a failed sell test. You can set your own limit.</p></div>
-        <div><span class="tag">Tool</span><b>scan_token</b><p>The full scan: score, band, evidence for all 8 checks, wallet links and links to check it yourself.</p></div>
-      </div>
-      <p class="note" style="margin-top:18px">Add Kaelis to your MCP client:</p>
-      <pre class="mcpcfg" id="mcpcfg">{ "mcpServers": { "kaelis": { "type": "http", "url": "/mcp" } } }</pre>
-      <p class="note" id="mcpnote">Read-only. Kaelis never trades and never sees your keys. A low score is not a promise of safety.</p>
     </div>
   </section>
   <section id="details">
@@ -463,7 +530,7 @@
     <div class="wrap">
       <span class="tag">$KAEL</span>
       <h3>The token.</h3>
-      <p class="lead" style="max-width:56ch">Kaelis runs on $KAEL. Builders earn it for merged code, and every wallet holding it lights one window in the Kaelis tower.</p>
+      <p class="lead" style="max-width:56ch">$KAEL is meant to be used, not just held: to pay or stake for API and MCP quota, and as the reward for Proof-of-Build. The token and paid quota are not live yet.</p>
       <div class="alloc">
         <div class="r"><span>Community &amp; liquidity</span><span>60%</span><i style="--w:60%"></i></div>
         <div class="r"><span>Proof-of-Build rewards</span><span>20%</span><i style="--w:20%"></i></div>

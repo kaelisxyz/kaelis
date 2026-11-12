@@ -127,6 +127,7 @@
   .pad button { width: 52px; height: 52px; border: 1px solid var(--ink); background: var(--paper, #efeee9); color: var(--ink); font-size: 16px; cursor: pointer; touch-action: none; user-select: none; -webkit-user-select: none; }
   .pad button:active { background: var(--ink); color: var(--paper, #efeee9); }
   body.inside .hint { color: #4a5058; } /* dark ink on the white lab */
+  .hero .sub { margin: -4px 0 0; font-size: 14px; line-height: 1.35; color: #4a4d52; max-width: 30ch; }
   .hint { position: fixed; left: 50%; transform: translateX(-50%); bottom: 96px; z-index: 4; color: var(--mute); pointer-events: none; text-align: center; }
 
   /* inside a tower: info + actions */
@@ -177,7 +178,7 @@
 </style>
 </head>
 <body>
-<canvas id="c" aria-label="A city at night. One white tower stands in the middle with Kaelis above it."></canvas>
+<canvas id="c" aria-label="A city at night. One white tower stands in the middle with Kaelis above it. Inside: the rooms where tokens and the wallets behind them are tested."></canvas>
 <div id="labels"></div>
 
 <header class="top">
@@ -189,12 +190,14 @@
 
 <section class="hero" aria-label="Kaelis">
   <a class="mark" href="index.html" id="backStory"><b aria-label="KAELIS"><i>K</i><i>A</i><i>E</i><i>L</i><i>I</i><i>S</i></b></a>
-  <h1>Something is being tested inside.</h1>
+  <h1>The trust layer for Solana.</h1>
+  <p class="sub">Ratings for the wallets behind tokens. A safety check for AI agents.</p>
   <a class="live" href="evolution.html" id="live" hidden><b id="lvCalls">–</b> specimens on record <i>·</i> IQ <b id="lvIq">–</b></a>
   <div class="ca" aria-label="$KAEL contract address"><b>CA</b><span class="pending" data-ca>Announced at launch</span><button type="button" data-ca-copy aria-disabled="true">Copy</button></div>
   <div class="ctas">
     <button class="cta" id="ctaScan" type="button">Enter</button>
     <a class="buy" href="docs.html">How it works</a>
+    <a class="buy" href="docs.html#api">API</a>
     <a class="buy" id="ctaBuy" href="#" hidden aria-disabled="true">Buy $KAEL</a>
   </div>
 </section>

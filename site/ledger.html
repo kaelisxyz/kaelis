@@ -49,6 +49,7 @@
   .stats .iq small { display: block; font-family: var(--f-mono); font-size: 11px; color: #a9a9a9; letter-spacing: .04em; }
   @media (max-width: 900px) { .stats { grid-template-columns: 1fr 1fr; } .stats .iq { grid-column: 1 / -1; } }
 
+  .stats.four { grid-template-columns: repeat(4, 1fr); } @media (max-width: 900px) { .stats.four { grid-template-columns: 1fr 1fr; } }
   .chain { display: flex; flex-wrap: wrap; gap: 8px 18px; align-items: center; font-family: var(--f-mono); font-size: 12px; margin-top: 18px; border: 1px dashed var(--ink); padding: 10px 12px; background: var(--paper); }
   .chain code { word-break: break-all; }
   .dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 6px; vertical-align: 1px; }
@@ -74,6 +75,10 @@
   .kv { display: grid; grid-template-columns: 11rem 1fr; gap: 12px; padding: 10px 0; border-bottom: 1px dashed var(--rule); font-size: 15px; }
   .kv span:first-child { font-family: var(--f-mono); font-size: 10.5px; letter-spacing: .08em; text-transform: uppercase; color: var(--mute); padding-top: 3px; }
   @media (max-width: 640px) { .kv { grid-template-columns: 1fr; gap: 2px; } }
+  /* phones: the header links scroll sideways instead of widening the page, and tables fit */
+  header .wrap > span { min-width: 0; overflow-x: auto; scrollbar-width: none; } header .wrap > span::-webkit-scrollbar { display: none; }
+  header .pill { white-space: nowrap; flex: none; } header .logo { flex: none; }
+  @media (max-width: 700px) { .st { white-space: normal; display: inline-block; } .tbl th, .tbl td { padding: 9px 5px; } .tbl { font-size: 13.5px; } header .pill { padding: 7px 11px; font-size: 14px; } }
   footer { padding: 32px 0 56px; }
   footer .wrap { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 12px; }
 </style>
@@ -81,7 +86,7 @@
 <header>
   <div class="wrap">
     <a class="logo" href="index.html"><b class="mark" aria-label="KAELIS"><i>K</i><i>A</i><i>E</i><i>L</i><i>I</i><i>S</i></b><span class="tag" style="color:var(--mute)">Ledger</span></a>
-    <span style="display:flex;gap:8px"><a class="pill" href="filings.html" style="background:#fff;color:#0b0b0c">Filings</a><a class="pill" href="markets.html" style="background:#fff;color:#0b0b0c">Markets</a><a class="pill" href="evolution.html" style="background:#fff;color:#0b0b0c">Evolution</a><a class="pill" href="scan.html">Scan a token</a></span>
+    <span style="display:flex;gap:8px"><a class="pill" href="deployer.html" style="background:#fff;color:#0b0b0c">Deployers</a><a class="pill" href="filings.html" style="background:#fff;color:#0b0b0c">Filings</a><a class="pill" href="markets.html" style="background:#fff;color:#0b0b0c">Markets</a><a class="pill" href="evolution.html" style="background:#fff;color:#0b0b0c">Evolution</a><a class="pill" href="scan.html">Scan a token</a></span>
   </div>
 </header>
 
@@ -90,8 +95,8 @@
     <div class="wrap">
       <span class="tag label">[ The Ledger · live ]</span>
       <h1>Every call on record.</h1>
-      <p class="lead">Each time Kaelis scans a traded token, it makes a call: the chance that token is rugged within 7 days. Seven days later it checks what really happened and grades itself, in public.</p>
-      <p class="note" style="margin:0">Superintelligence isn't claimed. It's scored. Calls are hash-chained, so none can be edited or deleted later.</p>
+      <p class="lead">Each time Kaelis tests a traded token, it makes a call: the chance that token is rugged within 7 days. Seven days later it checks what really happened and grades itself, in public, misses included.</p>
+      <p class="note" style="margin:0">This page is the proof behind every Kaelis rating. Calls are hash-chained, so none can be edited or deleted later.</p>
     </div>
   </section>
 
@@ -106,6 +111,26 @@
         <div><span>Hit rate</span><b id="sAcc">–</b></div>
       </div>
       <div class="chain"><span><i class="dot" id="chainDot" style="background:var(--mute)"></i><b id="chainState">Checking chain…</b></span><span>Head <code id="head">–</code></span><span id="anchor">On-chain anchoring: –</span></div>
+    </div>
+  </section>
+
+  <section id="accuracy">
+    <div class="wrap">
+      <span class="tag">Accuracy</span>
+      <h2>Right, wrong, and how wrong.</h2>
+      <p class="lead" id="accLead" style="max-width:60ch">Loading…</p>
+      <div class="stats four">
+        <div><span>Hit rate</span><b id="aHit">–</b></div>
+        <div><span>Rugs caught</span><b id="aCaught">–</b></div>
+        <div><span>Rugs missed</span><b id="aMissed">–</b></div>
+        <div><span>False alarms</span><b id="aFalse">–</b></div>
+      </div>
+      <p class="note" style="margin-top:14px">A call counts as "rug" when its rug chance is 50% or more. <b>Rugs missed</b>: Kaelis said under 50% and the token rugged. <b>False alarms</b>: Kaelis said 50% or more and the token held.</p>
+      <h2 style="font-size:22px;margin-top:30px">Calls Kaelis got wrong.</h2>
+      <table class="tbl">
+        <thead><tr><th>#</th><th>Token</th><th>Grade</th><th>Rug chance</th><th>What happened</th><th class="hide-sm">Hash</th></tr></thead>
+        <tbody id="wrong"><tr><td colspan="6" class="empty">Loading…</td></tr></tbody>
+      </table>
     </div>
   </section>
 
@@ -137,16 +162,17 @@
   <section>
     <div class="wrap">
       <span class="tag">Where this goes</span>
-      <h2>The AI rating agency for memecoins.</h2>
-      <p class="lead" style="max-width:56ch">Stocks get ratings, reports and an index. Memecoins get nothing. Kaelis brings the stock-market toolkit to memecoins, run by one AI that has to prove itself.</p>
+      <h2>The trust layer for Solana.</h2>
+      <p class="lead" style="max-width:56ch">The Ledger is the record everything else stands on: ratings for the wallets that launch tokens, and a safety check AI agents call before they buy.</p>
       <div class="road">
         <div><span class="s now">Live</span><b>Kaelis Rating</b><p>AAA to D, from the open rules, on every scan.</p></div>
         <div><span class="s now">Live</span><b>The Ledger</b><p>Hash-chained calls, graded after 7 days, Kaelis IQ.</p></div>
         <div><span class="s now">Live</span><b>Patrol + Genome</b><p>Kaelis scans new tokens by itself and evolves its rules every night. <a href="evolution.html">Evolution →</a></p></div>
         <div><span class="s now">Live</span><b>On-chain anchor</b><p>Once a day the heads of the Ledger, Filings and Genome chains are written to Solana as a memo.</p></div>
-        <div><span class="s">Next</span><b>Listing reports</b><p>A one-page report, like an IPO prospectus, for every token that graduates.</p></div>
-        <div><span class="s">Planned</span><b>K-20 Index</b><p>The 20 best-rated memecoins as a weekly benchmark. Not an investable product.</p></div>
-        <div><span class="s">Planned</span><b>Tokenized stocks</b><p>The same rating for tokenized stocks on Solana, side by side with memecoins.</p></div>
+        <div><span class="s now">Live</span><b>Agent safety check</b><p>One call before a trade: allow, warn or block, with the reasons and this Ledger's hash. <a href="docs.html#api">API →</a></p></div>
+        <div><span class="s now">Collecting</span><b>Deployer reputation</b><p>Who launched each tested token, who funded them, how their tokens ended. <a href="deployer.html">Deployers →</a></p></div>
+        <div><span class="s">Next</span><b>Verify it yourself</b><p>A tool that recomputes this chain in your browser and compares it with the daily memo on Solana.</p></div>
+        <div><span class="s">Planned</span><b>The reputation map</b><p>The city as a map: one building per deployer, one block per funding cluster.</p></div>
       </div>
     </div>
   </section>
@@ -182,6 +208,16 @@
         : `On Solana: first anchor soon · wallet <a href="https://solscan.io/account/${esc(a.address)}" target="_blank" rel="noopener">${esc(a.address.slice(0, 4))}…${esc(a.address.slice(-4))} ↗</a>`;
     }).catch(() => {});
     $("rule").textContent = j.rule;
+    // accuracy: the numbers, and every wrong call by name
+    $("aHit").textContent = s.accuracy == null ? "–" : s.accuracy + "%"; $("aCaught").textContent = s.resolved ? s.rugsCaught : "–";
+    $("aMissed").textContent = s.resolved ? s.rugsMissed : "–"; $("aFalse").textContent = s.resolved ? s.falseAlarms : "–";
+    $("accLead").textContent = s.resolved
+      ? `${s.resolved} of ${s.calls} calls have reached their 7-day check. Kaelis was right on ${s.accuracy}% of them.`
+      : `No call has reached its 7-day check yet, so there is no accuracy to show. The first call was made on ${day(j.firstOpenedAt)}; the first results are due on ${day(j.nextResolveAt)}. Until then every number here stays empty.`;
+    $("wrong").innerHTML = (j.wrong || []).length ? j.wrong.map((c) => `<tr><td class="m">${c.n}</td><td><a href="scan.html?mint=${esc(c.mint)}">${esc(c.symbol ? "$" + c.symbol : c.mint.slice(0, 6) + "…")}</a></td>
+        <td class="g">${esc(c.finalGrade || c.grade)}</td><td class="m">${Math.round(c.p * 100)}%</td><td>${c.rugged ? `<span class="st rug" title="${esc(c.why)}">Rugged</span> a miss` : `<span class="st held" title="${esc(c.why)}">Held</span> a false alarm`}</td>
+        <td class="m hide-sm" title="${esc(c.hash)}">${esc(c.hash.slice(0, 10))}…</td></tr>`).join("")
+      : `<tr><td colspan="6" class="empty">${s.resolved ? "No wrong call so far." : "Nothing to list until the first calls are checked."}</td></tr>`;
     $("rows").innerHTML = j.calls.length ? j.calls.map((c) => {
       const res = !c.resolvedAt ? `<span class="st open">Open until ${day(c.resolveAt)}</span>` : c.rugged ? `<span class="st rug" title="${esc(c.why)}">Rugged</span>` : `<span class="st held" title="${esc(c.why)}">Held</span>`;
       const g = c.finalGrade || c.grade;
