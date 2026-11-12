@@ -129,7 +129,7 @@
       <div class="kv"><span>The check</span><span>Seven days later Kaelis reads DexScreener again. Rugged means no pool left, liquidity down by half or more, or price down 90% or more.</span></div>
       <div class="kv"><span>Kaelis IQ</span><span>A calibration score from 0 to 100, from the Brier score of all resolved calls. 100 is perfect. 0 is no better than saying 50% every time. Shown after 10 resolved calls.</span></div>
       <div class="kv"><span>Tamper-proof</span><span>Each call's hash covers the one before it. Changing any old call breaks every hash after it, and the page checks the whole chain on every visit.</span></div>
-      <div class="kv"><span>On-chain</span><span>Next: the chain head gets posted to Solana as a memo, so anyone can prove when each call was made.</span></div>
+      <div class="kv"><span>On-chain</span><span>Once a day the chain heads of the Ledger, Filings and Genome are written to Solana as a memo transaction. Recompute the chain and compare it with the memo to prove nothing was edited.</span></div>
       <div class="kv"><span>Not advice</span><span>A call is a risk estimate, never a buy or sell signal.</span></div>
     </div>
   </section>
@@ -143,7 +143,7 @@
         <div><span class="s now">Live</span><b>Kaelis Rating</b><p>AAA to D, from the open rules, on every scan.</p></div>
         <div><span class="s now">Live</span><b>The Ledger</b><p>Hash-chained calls, graded after 7 days, Kaelis IQ.</p></div>
         <div><span class="s now">Live</span><b>Patrol + Genome</b><p>Kaelis scans new tokens by itself and evolves its rules every night. <a href="evolution.html">Evolution →</a></p></div>
-        <div><span class="s">Next</span><b>On-chain anchor</b><p>The Ledger head posted to Solana once the Kaelis wallet is set.</p></div>
+        <div><span class="s now">Live</span><b>On-chain anchor</b><p>Once a day the heads of the Ledger, Filings and Genome chains are written to Solana as a memo.</p></div>
         <div><span class="s">Next</span><b>Listing reports</b><p>A one-page report, like an IPO prospectus, for every token that graduates.</p></div>
         <div><span class="s">Planned</span><b>K-20 Index</b><p>The 20 best-rated memecoins as a weekly benchmark. Not an investable product.</p></div>
         <div><span class="s">Planned</span><b>Tokenized stocks</b><p>The same rating for tokenized stocks on Solana, side by side with memecoins.</p></div>
@@ -175,6 +175,12 @@
     $("chainState").textContent = ok ? `Chain verified · ${j.chain.length} call${j.chain.length === 1 ? "" : "s"}` : "Chain check failed";
     $("head").textContent = j.head.slice(0, 16) + "…";
     $("anchor").textContent = "On-chain anchoring: " + (j.anchoring === "on" ? "on" : "starts when the Kaelis wallet is set");
+    fetch("api/anchors").then((r) => r.ok ? r.json() : null).then((a) => {
+      if (!a || !a.on) return;
+      const el = $("anchor"), l = a.latest;
+      el.innerHTML = l ? `On Solana: anchored ${esc(l.day)} · <a href="https://solscan.io/tx/${esc(l.signature)}" target="_blank" rel="noopener">see the memo ↗</a>`
+        : `On Solana: first anchor soon · wallet <a href="https://solscan.io/account/${esc(a.address)}" target="_blank" rel="noopener">${esc(a.address.slice(0, 4))}…${esc(a.address.slice(-4))} ↗</a>`;
+    }).catch(() => {});
     $("rule").textContent = j.rule;
     $("rows").innerHTML = j.calls.length ? j.calls.map((c) => {
       const res = !c.resolvedAt ? `<span class="st open">Open until ${day(c.resolveAt)}</span>` : c.rugged ? `<span class="st rug" title="${esc(c.why)}">Rugged</span>` : `<span class="st held" title="${esc(c.why)}">Held</span>`;
