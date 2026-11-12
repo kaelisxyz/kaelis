@@ -368,6 +368,7 @@ const renderPass = new RenderPass(city, camera);
 const bloom = new UnrealBloomPass(new THREE.Vector2(256, 256), 0.6, 0.45, 0.82);
 const BLOOM = { city: [small ? 0.3 : 0.38, 0.5, 0.9], room: [0.22, 0.3, 0.93] };
 const setBloom = (k) => { [bloom.strength, bloom.radius, bloom.threshold] = BLOOM[k]; };
+BLOOM.lab = [0.16, 0.5, 1.25]; // a bright room: only the light panels and the specimens bloom
 setBloom("city");
 const finish = new ShaderPass({ // lens vignette + fine film grain, after tone mapping
   uniforms: { tDiffuse: { value: null }, uTime: { value: 0 } },
@@ -729,10 +730,10 @@ function bakeCityEnv() {
 // =================================================================== ROOM (inside a tower)
 const roomParts = {};
 {
-  room.background = new THREE.Color(0x070605);
-  room.fog = new THREE.Fog(0x070605, 7, 19);
-  room.add(new THREE.HemisphereLight(0x6b5236, 0x0a0806, 0.2));
-  const key = new THREE.DirectionalLight(0xffd9a8, 0.1); key.position.set(3, 5, 4); room.add(key);
+  const leg0 = room.children.length; // everything from here to the chair is the old hand-built room
+  room.background = new THREE.Color(0xe6e9ec);
+  room.add(new THREE.HemisphereLight(0xffffff, 0xc4c8cc, 1.7)); // the baked room is unlit; these light only what moves (ghost, tank, tubes)
+  const key = new THREE.DirectionalLight(0xffffff, 1.2); key.position.set(3, 5, 4); room.add(key);
   const screenLight = new THREE.PointLight(0xffb347, 1.2, 5, 2); screenLight.position.set(0, 1.5, -0.6); room.add(screenLight);
   roomParts.screenLight = screenLight;
 
@@ -816,8 +817,30 @@ const roomParts = {};
   const back = new THREE.Mesh(new THREE.BoxGeometry(0.58, 0.62, 0.1), chairMat); back.position.set(0, 0.9, 0.29); back.rotation.x = -0.08; chair.add(back);
   const strip = new THREE.Mesh(new THREE.PlaneGeometry(0.05, 0.46), new THREE.MeshBasicMaterial({ color: new THREE.Color("#ffb347").multiplyScalar(0.7) }));
   strip.position.set(0, 0.9, 0.345); strip.rotation.x = -0.08; chair.add(strip); roomParts.strip = strip;
+  // the old stage, plank wall, clock and desk give way to the baked lab; screens, keyboard, button and mug stay on the new bench
+  for (const o of room.children.slice(leg0)) { if (o.isLight) continue; const q = o.position;
+    if ((o.geometry && o.geometry.type === "CircleGeometry") || o === roomParts.edge || q.z < -3.2 || (q.y <= 0.845 && Math.abs(q.x) <= 1.4 && q.z <= -0.5 && q.z >= -1.5)) o.visible = false; }
   const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.04, 0.42, 12), chairMat); pole.position.y = 0.26; chair.add(pole);
   for (let i = 0; i < 5; i++) { const a = (i / 5) * Math.PI * 2, leg = new THREE.Mesh(new THREE.BoxGeometry(0.05, 0.04, 0.34), chairMat); leg.position.set(Math.sin(a) * 0.16, 0.04, Math.cos(a) * 0.16); leg.rotation.y = a; chair.add(leg); }
+}
+
+// ---------------------------------------------------------------- the clean lab
+// Built and lit in Blender (tools/3d/work/clean_lab.blend), light baked with Cycles into two atlases (tools/3d/bake_lab.py).
+// Drawn unlit, so it looks like the render and costs almost nothing. The bake is stored at 0.6x; LAB_GAIN brings it back.
+const LAB_GAIN = 1 / 0.6;
+{
+  const tl = new THREE.TextureLoader();
+  const atlas = (n) => { const t = tl.load("media/" + n + ".webp"); t.flipY = false; t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = 8; return new THREE.MeshBasicMaterial({ map: t, color: new THREE.Color(LAB_GAIN, LAB_GAIN, LAB_GAIN) }); };
+  const mats = { lab_shell: atlas("lab_shell"), lab_furn: atlas("lab_furn"),
+    lab_glass: new THREE.MeshStandardMaterial({ color: 0xdff2f0, transparent: true, opacity: 0.16, roughness: 0.05, metalness: 0.1, depthWrite: false }) };
+  new GLTFLoader().setMeshoptDecoder(MeshoptDecoder).load("models/lab.glb", (g) => {
+    g.scene.traverse((o) => { if (o.isMesh) o.material = mats[o.material.name] || mats.lab_furn; });
+    room.add(g.scene);
+  });
+  // a soft contact shadow under whoever floats here
+  const blob = new THREE.Mesh(new THREE.CircleGeometry(0.75, 40), new THREE.MeshBasicMaterial({ transparent: true, depthWrite: false, opacity: 0.5,
+    map: canvasTex(128, 128, (g) => { const r = g.createRadialGradient(64, 64, 4, 64, 64, 62); r.addColorStop(0, "rgba(20,24,28,.75)"); r.addColorStop(1, "rgba(20,24,28,0)"); g.fillStyle = r; g.fillRect(0, 0, 128, 128); }) }));
+  blob.rotation.x = -Math.PI / 2; blob.position.y = 0.012; room.add(blob); roomParts.blob = blob;
 }
 
 // ---------------------------------------------------------------- the ghosts (one per room, the staff of Kaelis Labs)
@@ -920,7 +943,7 @@ function dressGhost(id) {
 }
 function swayGhost(t) {
   const m = reduce ? 0.25 : 1;
-  robot.U.uT.value = t * m;
+  robot.U.uT.value = t * m; roomParts.blob.position.x = robot.R.position.x; roomParts.blob.position.z = robot.R.position.z; roomParts.blob.material.opacity = 0.5 / (1 + robot.R.position.y * 1.5);
   if (robot.acc.lantern) robot.acc.lantern.position.y = 1.2 + Math.sin(t * 1.7) * 0.04 * m;
   robot.antTip.position.set(Math.cos(t * 0.9) * 0.42, 0.22 + Math.sin(t * 1.9) * 0.07, Math.sin(t * 0.9) * 0.42);
 }
@@ -1236,7 +1259,7 @@ function setCityControls() {
   controls.autoRotate = !reduce; controls.autoRotateSpeed = 0.35;
 }
 function setRoomControls() {
-  controls.minDistance = 1.6; controls.maxDistance = 7.5; controls.minPolarAngle = 0.5; controls.maxPolarAngle = 1.5;
+  controls.minDistance = 1.6; controls.maxDistance = 5.2; controls.minPolarAngle = 0.5; controls.maxPolarAngle = 1.5;
   controls.minAzimuthAngle = -1.1; controls.maxAzimuthAngle = 1.1; controls.autoRotate = false;
 }
 function tween(ms, fn) {
@@ -1421,7 +1444,7 @@ const shelfTubes = new THREE.InstancedMesh(new THREE.CylinderGeometry(0.036, 0.0
     col.set("#c98a2e").multiplyScalar(0.18 + r() * 0.25); shelfTubes.setColorAt(i, col); // unlabelled until the Ledger loads
   }
   room.add(shelfTubes);
-  for (let row = 0; row < SHELF.rows; row++) { const sh = new THREE.Mesh(new THREE.BoxGeometry(9.8, 0.045, 0.2), new THREE.MeshStandardMaterial({ color: 0x1c140d, roughness: 0.85 })); sh.position.set(0, 3.26 - row * 0.56, -3.18); room.add(sh); }
+  for (let row = 0; row < SHELF.rows; row++) { const sh = new THREE.Mesh(new THREE.BoxGeometry(9.8, 0.045, 0.2), new THREE.MeshStandardMaterial({ color: 0x1c140d, roughness: 0.85 })); sh.position.set(0, 3.26 - row * 0.56, -3.18); sh.visible = false; room.add(sh); } // the boards are part of the baked lab now
 }
 const GRADE_COL = (g, rug) => (rug === 1 || g === "D" ? "#140a08" : /^(AAA|AA|A)$/.test(g) ? "#59e7ca" : /^(BBB|BB|B)$/.test(g) ? "#ffc24a" : "#ff4d6a");
 let shelfFlagged = [];
@@ -1556,8 +1579,8 @@ async function greet() {
 // ---------------------------------------------------------------- moving: city -> corridor -> room
 let busy = false, savedCity = null;
 function setScene(s) {
-  scene = s; renderPass.scene = s; setBloom(s === city ? "city" : "room");
-  paint.enabled = s !== city; // inside the building everything is an oil painting
+  scene = s; renderPass.scene = s; setBloom(s === city ? "city" : s === room ? "lab" : "room");
+  paint.enabled = s === hall; // only the old corridor is still painted
   const pr = s === city ? BASE_PR : 1; renderer.setPixelRatio(pr); composer.setPixelRatio(pr); resize();
   document.body.classList.toggle("inside", s !== city); document.body.classList.toggle("in-hall", s === hall);
   $("exitBtn").hidden = s === city; $("exitBtn").textContent = s === room ? "← Corridor" : "← City";
@@ -1601,7 +1624,7 @@ async function enterRoom(id) {
   themeRoom(id); drawScreens(id); dressRoom(id);
   const view = viewOf(id);
   controls.minAzimuthAngle = -Infinity; controls.maxAzimuthAngle = Infinity;
-  const from = walked ? new THREE.Vector3(view.pos.x + 1.9, 1.62, view.pos.z + 4.4) : view.pos.clone().add(new THREE.Vector3(1.2, 0.5, 2)); // the doorway is behind you
+  const from = walked ? new THREE.Vector3(0.4, 1.62, 4.7) : view.pos.clone().add(new THREE.Vector3(1.2, 0.5, 2)); // the doorway is behind you
   camera.position.copy(from); controls.target.copy(view.target);
   setRoomControls(); controls.update();
   await fade(false);
@@ -1627,7 +1650,7 @@ $("exitBtn").addEventListener("click", exitTower);
 $("ctaScan").addEventListener("click", enterLab); $("pClose").addEventListener("click", exitTower);
 addEventListener("keydown", (e) => { if (e.key === "Escape") exitTower(); });
 function themeRoom() { // every room is lit by the tank and by lamplight
-  roomParts.screenLight.color.set("#ffb347"); roomParts.screenLight.intensity = 1.2;
+  roomParts.screenLight.color.set("#ffffff"); roomParts.screenLight.intensity = 0.4;
   roomParts.edge.material.color.set("#8a6a45").multiplyScalar(0.7); roomParts.lip.material.color.set("#ffb347").multiplyScalar(0.8);
 }
 

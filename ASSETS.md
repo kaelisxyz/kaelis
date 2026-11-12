@@ -1,8 +1,12 @@
-# Assets: sources and licenses
+# Assets
 
-| Asset | Where | Source | License |
+Every third-party asset used on the site, with its source and licence.
+
+| Asset | Used in | Source | Licence |
 |---|---|---|---|
-| Kaelis core model | `site/models/kaelis.glb` | Made for Kaelis, `tools/3d/kaelis_models.py` | Project-owned |
-| Hammer of light model | `site/models/hammer.glb` | Made for Kaelis, `tools/3d/kaelis_models.py` | Project-owned |
-| Studio HDRI (preview renders only, not shipped) | `tools/3d/assets/studio_small_09_1k.hdr` | https://polyhaven.com/a/studio_small_09 | CC0 |
-| City env map + normal maps | `site/textures/` | Earlier work, listed as CC0 in DESIGN_NOTES | CC0 |
+| korean_fire_extinguisher_01 (model) | Clean lab (baked into `site/media/lab_furn.webp`) | Poly Haven, UM JOORIN, https://polyhaven.com/a/korean_fire_extinguisher_01 | CC0 |
+| office_notepads (model) | Clean lab (baked into `site/media/lab_furn.webp`) | Poly Haven, Ulan Cabanilla, https://polyhaven.com/a/office_notepads | CC0 |
+
+Everything else in `site/models/` (lab.glb, ghost.glb, kaelis.glb, hammer.glb) is built for this project
+with the scripts in `tools/3d/`. Style studies in `tools/3d/work/` (not shipped, not in git) also used
+Poly Haven CC0 textures and furniture.

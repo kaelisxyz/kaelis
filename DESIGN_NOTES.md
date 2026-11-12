@@ -96,3 +96,10 @@ Guideline skill: `docs/skills/crypto-web-pro/SKILL.md`.
 - In the shader (`sheet.onBeforeCompile`): eyes and mouth are cut per pixel, the hem frays through `alphaHash` using the flat-cloth UVs, a rim light in the room colour, sway on the hanging part only. Arms no longer animate; the whole sheet turns, bobs and rises on a cheer.
 - No black between places: `.fade` is a warm light wash. Corridor doors hinge (`doorPiv`), open into the room with a bright slab behind, the camera walks up, steps through, and walks into the room with a footstep bob (`hc.walk`).
 - Corridor is first person (`walk`, `updateHall`): W/S or arrows, mouse wheel, or the on-screen pad move along the hall; the mouse looks left and right; the door you stand at and look at lights up and opens with a click or E. Leaving a room puts you back at its door.
+
+## Clean lab (2026-11-12, direction change)
+- The user picked a bright, clean modern lab (style 7 of ten Blender studies) over the old dark laboratory. Everything is to be brought to this tone; characters stay non-robot and realistic.
+- Room = `site/models/lab.glb` + `site/media/lab_shell.webp`, `lab_furn.webp`: built in Blender through the Blender MCP (`tools/3d/work/clean_lab.blend`, not in git), lighting baked with Cycles by `tools/3d/bake_lab.py` (combined bake, 4K atlas per group, stored at 0.6x, `LAB_GAIN` restores it). Drawn with MeshBasicMaterial; hemisphere + key light only for moving things.
+- Site coordinates kept: bench top y 0.845 (x -1.5..1.5, z -1.55..-0.5), tank bay at (-2.15, 0, -1.55), specimen shelf boards at y 3.26 - row*0.56, z -3.18, back wall z -3.3, side walls x +-5.5, front wall z 5.2.
+- The old hand-built stage, desk and plank wall are hidden (not deleted) after the legacy block. Oil-paint pass is now only on in the corridor.
+- Still in the old style: corridor, tank, slate board, ghost costumes (hood, top hat). Tower version A (old brick) is cancelled.

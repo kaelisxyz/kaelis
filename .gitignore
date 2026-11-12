@@ -21,3 +21,6 @@ data/
 
 # one-time data seed for a new server (never commit)
 seed/
+
+# Blender working files (large, packed textures)
+tools/3d/work/
