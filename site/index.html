@@ -177,7 +177,7 @@
 </style>
 </head>
 <body>
-<canvas id="c" aria-label="A city at night. One tower, Kaelis Labs, stands in the middle with Kaelis above it."></canvas>
+<canvas id="c" aria-label="A city at night. One white tower stands in the middle with Kaelis above it."></canvas>
 <div id="labels"></div>
 
 <header class="top">
@@ -679,7 +679,7 @@ let LAB_Y = 26;
   for (const [ri, ro, k] of [[9.0, 9.14, 0.9], [13.6, 13.7, 0.6], [18.4, 18.56, 0.75], [22.6, 22.68, 0.5]]) { const rg = new THREE.Mesh(new THREE.RingGeometry(ri, ro, 160), new THREE.MeshBasicMaterial({ color: new THREE.Color("#cfeee6").multiplyScalar(k) })); rg.rotation.x = -Math.PI / 2; rg.position.y = 0.05; core.add(rg); }
   for (let i = 0; i < 16; i++) { const a = (i / 16) * Math.PI * 2, sp = new THREE.Mesh(new THREE.PlaneGeometry(0.06, 13.4), new THREE.MeshBasicMaterial({ color: new THREE.Color("#cfeee6").multiplyScalar(0.4) })); sp.rotation.x = -Math.PI / 2; sp.rotation.z = -a + Math.PI / 2; sp.position.set(Math.cos(a) * 15.8, 0.05, Math.sin(a) * 15.8); core.add(sp); }
   const g = new THREE.Group(); g.position.y = 0.6; g.rotation.y = 0.32; city.add(g);
-  // A white laboratory block: enamel panels, ribbon windows lit cool white, a mint line, its name over the door.
+  // A white laboratory block: enamel panels, ribbon windows lit cool white, a mint line. No name on it (the user asked).
   // The city around it stays dark, so this is the one bright thing in view.
   const labWhite = new THREE.MeshStandardMaterial({ color: 0xeef1f3, roughness: 0.42, metalness: 0.05, emissive: 0xdfe8ee, emissiveIntensity: 0.2 });
   const mat = new THREE.MeshStandardMaterial({ color: 0x0b1014, roughness: 0.12, metalness: 0.5, emissive: new THREE.Color(0.8, 0.92, 1.0), emissiveIntensity: 0.95 }); // the windows; fx.glow drives them
@@ -697,11 +697,6 @@ let LAB_Y = 26;
   let y = FLOOR * 4;
   for (const [w, hh] of [[6.0, 8.0], [4.8, 6.0], [3.6, 4.6]]) { const h = Math.round(hh / FLOOR) * FLOOR; tier(w, y, h); mints.push(place(new THREE.BoxGeometry(w + 0.26, 0.05, w + 0.26), 0, y + 0.1, 0, 0)); y += h; }
   g.add(new THREE.Mesh(mergeGeometries(whites), labWhite), new THREE.Mesh(mergeGeometries(glassG), mat), new THREE.Mesh(mergeGeometries(mints), mintLine));
-  { // KAELIS LABS, lit, on all four sides of the podium
-    const sign = canvasTex(1024, 160, (c, w, h) => { c.fillStyle = "#0a0d10"; c.fillRect(0, 0, w, h); c.fillStyle = "#ffffff"; c.font = "600 92px Inter, Arial, sans-serif"; c.textAlign = "center"; c.textBaseline = "middle"; c.fillText("K A E L I S   L A B S", w / 2, h / 2 + 4); c.fillStyle = "#59e7ca"; c.fillRect(0, h - 10, w, 10); });
-    const sm = new THREE.MeshBasicMaterial({ map: sign, color: new THREE.Color(1.9, 1.9, 1.9) });
-    for (let sd = 0; sd < 4; sd++) { const pl = new THREE.Mesh(new THREE.PlaneGeometry(6.4, 1.0), sm); const a = sd * Math.PI / 2; pl.position.set(Math.sin(a) * 3.87, FLOOR * 3.3, Math.cos(a) * 3.87); pl.rotation.y = a; g.add(pl); }
-  }
   const fins = [], fw = 3.6;
   for (let f = 0; f < 24; f++) { const side = Math.floor(f / 6), off = ((f % 6) - 2.5) * (fw / 6); const [x, z, ry] = [[off, fw / 2, 0], [fw / 2, -off, Math.PI / 2], [-off, -fw / 2, 0], [-fw / 2, off, Math.PI / 2]][side]; fins.push(place(new THREE.BoxGeometry(0.07, 1.8, 0.26), x, y + 0.9, z, ry)); }
   g.add(new THREE.Mesh(mergeGeometries(fins), labWhite));
@@ -709,7 +704,7 @@ let LAB_Y = 26;
   const crown = new THREE.Mesh(new THREE.BoxGeometry(3.75, 0.07, 3.75), new THREE.MeshBasicMaterial({ color: amber.clone().multiplyScalar(1.1) }));
   crown.position.y = y + 1.82; g.add(crown);
   const tip = glowSprite("rgba(255,40,24,1)", 0.9); tip.position.set(1.7, y + 2.2, 1.7); g.add(tip);
-  const b = beam("#bff3e6", 0.7, 80, 0.12); b.position.y = y + 1.9; g.add(b);
+  const b = beam("#59e7ca", 0.5, 80, 0.12); // a thin mint thread of light, not a grey tube b.position.y = y + 1.9; g.add(b);
   LAB_Y = 0.6 + y + 5.2;
   const hit = new THREE.Mesh(new THREE.BoxGeometry(8, y + 9, 8), new THREE.MeshBasicMaterial({ visible: false }));
   hit.position.y = (y + 9) / 2; hit.userData.tower = "lab"; g.add(hit); towerHits.push(hit);
@@ -726,7 +721,7 @@ function beam(color, radius, height, strength = 1) {
     transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, side: THREE.DoubleSide,
     uniforms: { uColor: { value: new THREE.Color(color) }, uTime: { value: 0 }, uK: { value: strength } },
     vertexShader: "varying vec2 vUv; void main(){ vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position,1.); }",
-    fragmentShader: "uniform vec3 uColor; uniform float uTime; uniform float uK; varying vec2 vUv; void main(){ float fall = pow(1.0 - vUv.y, 1.6); float band = 0.75 + 0.25 * sin(vUv.y * 60.0 - uTime * 4.0); float edge = 0.55 + 0.45 * sin(vUv.x * 6.2832 * 3.0); float a = fall * band * edge * uK; gl_FragColor = vec4(uColor * a * 2.2, a); }",
+    fragmentShader: "uniform vec3 uColor; uniform float uTime; uniform float uK; varying vec2 vUv; void main(){ float fall = pow(clamp(1.0 - vUv.y, 0.0, 1.0), 1.6); float band = 0.75 + 0.25 * sin(vUv.y * 60.0 - uTime * 4.0); float edge = 0.55 + 0.45 * sin(vUv.x * 6.2832 * 3.0); float a = fall * band * edge * uK; gl_FragColor = vec4(uColor * a * 2.2, a); }",
   });
   const b = new THREE.Mesh(new THREE.CylinderGeometry(radius * 0.35, radius, height, 24, 1, true), m);
   b.geometry.translate(0, height / 2, 0); b.userData.mat = m; beams.push(m); return b;
@@ -900,7 +895,7 @@ const robot = (() => {
           } }
         #include <alphahash_fragment>`)
       .replace("#include <emissivemap_fragment>", `#include <emissivemap_fragment>
-        totalEmissiveRadiance += uGlow * uRim * pow(1.0 - abs(dot(normalize(vNormal), normalize(vViewPosition))), 2.6);`);
+        totalEmissiveRadiance += uGlow * uRim * pow(clamp(1.0 - abs(dot(normalize(vNormal), normalize(vViewPosition))), 0.0, 1.0), 2.6);`);
   };
   const hollow = new THREE.MeshBasicMaterial({ color: 0x020202 });
   const eyeMat = new THREE.MeshStandardMaterial({ color: 0x0a1a16, emissive: 0x59e7ca, emissiveIntensity: 1.6 });
@@ -1120,7 +1115,7 @@ function drawClock() {
 const labelEls = {}, dockEls = {};
 { // one quiet tag on the tower; it does not say what happens inside
   const el = document.createElement("div"); el.className = "lbl"; el.style.setProperty("--c", "#ffb347");
-  el.innerHTML = `<span class="n">Kaelis Labs</span><span class="v">Enter</span><span class="s"></span>`;
+  el.innerHTML = `<span class="v">Enter</span><span class="s"></span>`;
   el.addEventListener("click", () => enterLab()); $("labels").appendChild(el); labelEls.lab = el;
 }
 ROOMS.forEach((id) => { // the room directory, only shown inside the building
@@ -1796,7 +1791,7 @@ const searchMats = [];
 for (const s of [0, Math.PI]) {
   const m = new THREE.ShaderMaterial({ transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, side: THREE.DoubleSide, uniforms: { uK: { value: 0 } },
     vertexShader: "varying vec2 vUv; void main(){ vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position,1.); }",
-    fragmentShader: "uniform float uK; varying vec2 vUv; void main(){ float a = pow(vUv.y, 1.5) * (0.35 + 0.65 * abs(sin(vUv.x * 3.14159))) * uK; gl_FragColor = vec4(vec3(0.85, 0.95, 1.0) * a, a); }" });
+    fragmentShader: "uniform float uK; varying vec2 vUv; void main(){ float a = pow(clamp(vUv.y, 0.0, 1.0), 1.5) * (0.35 + 0.65 * abs(sin(vUv.x * 3.14159))) * uK; gl_FragColor = vec4(vec3(0.85, 0.95, 1.0) * a, a); }" });
   const c = new THREE.Mesh(new THREE.ConeGeometry(5.5, 80, 28, 1, true), m); c.geometry.translate(0, -40, 0);
   const arm = new THREE.Group(); arm.rotation.y = s; c.rotation.z = Math.PI / 2 + 0.5; arm.add(c); search.add(arm); searchMats.push(m);
 }
@@ -1812,7 +1807,7 @@ const blimp = new THREE.Group(); city.add(blimp);
   const bannerCv = document.createElement("canvas"); bannerCv.width = 2048; bannerCv.height = 128;
   const bg = bannerCv.getContext("2d"); bg.fillStyle = "#0b0c0e"; bg.fillRect(0, 0, 2048, 128);
   bg.font = "700 74px JetBrains Mono, monospace"; bg.textBaseline = "middle"; bg.fillStyle = "#efe9dc";
-  bg.fillText("$KAEL  ·  KAELIS LABS  ·  WHAT IS IN THE TANK?  ·", 20, 66);
+  bg.fillText("$KAEL  ·  KAELIS  ·  WHAT IS IN THE TANK?  ·", 20, 66);
   const bannerTex = srgb(new THREE.CanvasTexture(bannerCv)); bannerTex.wrapS = THREE.RepeatWrapping; bannerTex.repeat.set(0.55, 1);
   for (const side of [1, -1]) {
     const b = new THREE.Mesh(new THREE.PlaneGeometry(8.5, 0.9), new THREE.MeshBasicMaterial({ map: bannerTex, color: new THREE.Color(1.1, 1.1, 1.1) }));
@@ -1824,7 +1819,7 @@ const blimp = new THREE.Group(); city.add(blimp);
 }
 
 // --- intro: camera swoops in, towers rise one by one, beams ignite
-TOWERS.forEach((tw) => { tw.group.scale.y = reduce ? 1 : 0.001; tw.beamMat.uniforms.uK.value = reduce ? 0.6 : 0; });
+TOWERS.forEach((tw) => { tw.group.scale.y = 1; tw.beamMat.uniforms.uK.value = reduce ? 0.09 : 0; }); // always full height
 async function intro() {
   if (reduce) return;
   controls.enabled = false;
@@ -1835,7 +1830,7 @@ async function intro() {
   const rise = tween(4600, (k) => {
     TOWERS[0].group.scale.y = 1;
     fx.glow = 0.4 + 0.6 * clamp((k - 0.2) / 0.5, 0, 1);                       // the building wakes floor by floor of light
-    TOWERS[0].beamMat.uniforms.uK.value = 0.2 * clamp((k - 0.7) / 0.25, 0, 1);
+    TOWERS[0].beamMat.uniforms.uK.value = 0.09 * clamp((k - 0.7) / 0.25, 0, 1);
   });
   await tween(4600, (k) => { at(k); camera.lookAt(q1); });
   await rise; fx.glow = 1; fx.intro = 1; cityPulse("#cfeee6", 1.1); controls.enabled = true;
@@ -1934,7 +1929,7 @@ function updateCityFX(t, dt) {
   TOWERS.forEach((tw, i) => {
     const on = !!hovered;
     tw.group.position.y = 0.6;
-    if (fx.intro) tw.beamMat.uniforms.uK.value = lerp(tw.beamMat.uniforms.uK.value, (on ? 0.45 : 0.2) + (tw.flare || 0) * 1.2, 0.1);
+    if (fx.intro) tw.beamMat.uniforms.uK.value = lerp(tw.beamMat.uniforms.uK.value, (on ? 0.22 : 0.09) + (tw.flare || 0) * 1.2, 0.1);
     if (tw.av) tw.av.material.opacity = Math.sin(t * 2.1 + i * 1.7) > 0.55 ? 1 : 0.06;
     tw.flare = Math.max(0, (tw.flare || 0) - dt * 0.5);
     if (i === 0) tw.mats[0].emissiveIntensity = fx.glow * 0.95 + (m ? Math.sin(t * 0.7) * 0.04 : 0) + (on ? 0.35 : 0);
@@ -2050,11 +2045,11 @@ function frame() {
   drawClock(); refreshLabels();
   try { bakeCityEnv(); } catch (e) { /* keep the studio environment */ }
   requestAnimationFrame(frame);
+  const q = new URLSearchParams(location.search).get("tower");
+  if (!(q && ROMAN[q])) intro(); // the opening shot starts at once and never waits for data
   await checkHealth(); await Promise.all([loadHolders(), loadBuilders(), loadMarkets(), loadFilings()]); await loadShelf(); refreshLabels();
   setInterval(async () => { await Promise.all([loadMarkets(), loadFilings(), loadShelf()]); refreshLabels(); if (current === "markets") drawBoard(); if (current === "watch") drawScreens("watch"); if (current === "markets") drawScreens("markets"); }, 5 * 60000);
-  const q = new URLSearchParams(location.search).get("tower");
-  if (q && ROMAN[q]) { fx.glow = 1; TOWERS[0].group.scale.y = 1; TOWERS[0].beamMat.uniforms.uK.value = 0.2; fx.intro = 1; enterRoom(q); }
-  else intro();
+  if (q && ROMAN[q]) { fx.glow = 1; TOWERS[0].beamMat.uniforms.uK.value = 0.09; fx.intro = 1; enterRoom(q); }
 })();
 </script>
 <script>
