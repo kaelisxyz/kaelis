@@ -122,6 +122,10 @@
   .say.on { opacity: 1; transform: none; }
   body:not(.inside) .say, body.in-hall .say { display: none; }
   body.in-hall .hint { bottom: 104px; } .dock button:focus-visible { outline: 2px solid var(--ink); outline-offset: -3px; }
+  .pad { position: fixed; right: 18px; bottom: 104px; z-index: 5; display: none; flex-direction: column; gap: 6px; }
+  body.in-hall .pad { display: flex; }
+  .pad button { width: 52px; height: 52px; border: 1px solid var(--ink); background: var(--paper, #efeee9); color: var(--ink); font-size: 16px; cursor: pointer; touch-action: none; user-select: none; -webkit-user-select: none; }
+  .pad button:active { background: var(--ink); color: var(--paper, #efeee9); }
   .hint { position: fixed; left: 50%; transform: translateX(-50%); bottom: 96px; z-index: 4; color: var(--mute); pointer-events: none; text-align: center; }
 
   /* inside a tower: info + actions */
@@ -163,6 +167,7 @@
     .dock { grid-template-columns: 1fr 1fr; } .dock button:nth-child(2n) { border-right: 0; } .dock button:nth-child(-n+4) { border-bottom: 1px solid rgba(0,0,0,.15); }
     .dock button { padding: 7px 10px 8px; } .dock button b { font-size: 14px; } .dock button:nth-child(-n+4) { border-bottom: 0; } .dock button:nth-child(-n+2) { border-bottom: 1px solid rgba(0,0,0,.15); }
     .hint { display: none; } body.in-hall .hint { display: block; bottom: 170px; }
+    .pad { bottom: 200px; right: 12px; }
     .say { left: 16px; top: 11%; max-width: 70vw; font-size: 17px; }
     header.top { justify-content: flex-end; }
   }
@@ -193,6 +198,7 @@
   </div>
 </section>
 
+<div class="pad" id="pad" aria-label="Walk"><button id="goF" type="button" aria-label="Walk forward">▲</button><button id="goB" type="button" aria-label="Walk back">▼</button></div>
 <p class="hint mono" id="hint">Tap the tower to step inside · drag to look around</p>
 <p class="say" id="say" role="status" aria-live="polite"></p>
 
@@ -1298,13 +1304,40 @@ const HALL_FROM = 2.6, HALL_REST = -0.3;
   const eye = new THREE.Mesh(new THREE.CircleGeometry(0.5, 40), new THREE.MeshBasicMaterial({ color: 0x030807 })); eye.position.set(0, 1.75, zc - L / 2 + 0.03); hall.add(eye);
   const pupil = new THREE.Mesh(new THREE.RingGeometry(0.1, 0.16, 40), new THREE.MeshBasicMaterial({ color: new THREE.Color("#59e7ca").multiplyScalar(2.6), fog: false })); pupil.position.set(0, 1.75, zc - L / 2 + 0.04); hall.add(pupil); hall.userData.pupil = pupil;
 }
+const HALL_MIN = -11.2, HALL_MAX = 2.6;
+const walk = { keys: {}, hold: 0, push: 0, v: 0, last: 0, near: null }; // input -> speed along the corridor
 function updateHall(t) {
-  const m = reduce ? 0 : 1;
-  camera.position.set(hc.x + pointer.x * 0.18 * m * (1 - hc.walk) + Math.sin(t * 4.6) * 0.025 * hc.walk * m, 1.62 + Math.sin(t * 1.4) * 0.012 * m + Math.abs(Math.sin(t * 4.6)) * 0.045 * hc.walk * m, hc.z); // footsteps while walking
-  camera.lookAt(hc.x + hc.lx + pointer.x * 0.6 * m, 1.55 + pointer.y * 0.25 * m, hc.z + hc.lz);
-  for (const id of ROOMS) doorGlow[id].material.color.setScalar((hoverDoor === id ? 1.25 : 0.86) + Math.sin(t * 2.3 + DOORS[id].z) * 0.04 * m);
+  const m = reduce ? 0 : 1, dt = Math.min(0.05, Math.max(0, t - walk.last)); walk.last = t;
+  if (!busy && scene === hall) {
+    const want = (walk.keys.f ? 1 : 0) - (walk.keys.b ? 1 : 0) + walk.hold + walk.push;
+    walk.push *= Math.pow(0.02, dt);                                   // a wheel flick carries you a step, then dies out
+    walk.v += (clamp(want, -1, 1) * 2.6 - walk.v) * Math.min(1, dt * 7); // metres per second, eased
+    hc.z = clamp(hc.z - walk.v * dt, HALL_MIN, HALL_MAX);
+    if (hc.z === HALL_MIN || hc.z === HALL_MAX) walk.v *= 0.5;
+    hc.walk = Math.min(1, Math.abs(walk.v) / 2.2);
+    hc.x += (pointer.x * 0.25 - hc.x) * Math.min(1, dt * 3);
+    const yaw = pointer.x * 1.25;                                      // look left and right with the mouse, as far as the doors
+    hc.lx = Math.sin(yaw) * 6; hc.lz = -Math.cos(yaw) * 6;
+    // the door you are standing at, on the side you are looking at
+    let best = null, bd = 1.9;
+    for (const id of ROOMS) { const d = DOORS[id], dz = Math.abs(hc.z - 1.2 - d.z); if (dz < bd && (Math.abs(pointer.x) < 0.12 || Math.sign(pointer.x) === Math.sign(d.x))) { bd = dz; best = id; } }
+    if (best !== walk.near) { walk.near = best; $("hint").textContent = best ? (small ? "Tap the door: " : "Click or press E: ") + byId[best].name : HALL_HINT; }
+  }
+  const step = t * 7.2;
+  camera.position.set(hc.x + Math.sin(step * 0.5) * 0.03 * hc.walk * m, 1.62 + Math.sin(t * 1.4) * 0.012 * m + Math.abs(Math.sin(step * 0.5)) * 0.05 * hc.walk * m, hc.z); // footsteps while walking
+  camera.lookAt(hc.x + hc.lx, 1.55 + pointer.y * 0.9 * m, hc.z + hc.lz);
+  for (const id of ROOMS) doorGlow[id].material.color.setScalar((hoverDoor === id || walk.near === id ? 1.25 : 0.86) + Math.sin(t * 2.3 + DOORS[id].z) * 0.04 * m);
   hall.userData.pupil.position.x = pointer.x * 0.12; hall.userData.pupil.position.y = 1.75 + pointer.y * 0.08;
 }
+const HALL_HINT = small ? "Hold the arrows to walk · tap a door" : "W / S or scroll to walk · move the mouse to look · click a door";
+addEventListener("keydown", (e) => { if (scene !== hall || e.target.closest("input, textarea")) return; const k = e.key.toLowerCase();
+  if (k === "w" || k === "arrowup") { walk.keys.f = true; e.preventDefault(); } else if (k === "s" || k === "arrowdown") { walk.keys.b = true; e.preventDefault(); }
+  else if ((k === "e" || k === "enter") && walk.near) enterRoom(walk.near); });
+addEventListener("keyup", (e) => { const k = e.key.toLowerCase(); if (k === "w" || k === "arrowup") walk.keys.f = false; if (k === "s" || k === "arrowdown") walk.keys.b = false; });
+addEventListener("blur", () => { walk.keys = {}; walk.hold = 0; });
+addEventListener("wheel", (e) => { if (scene === hall && !busy) walk.push = clamp(walk.push - e.deltaY * 0.012, -1.6, 1.6); }, { passive: true });
+for (const [id, dir] of [["goF", 1], ["goB", -1]]) { const b = $(id), on = (e) => { e.preventDefault(); walk.hold = dir; }, off = () => { walk.hold = 0; };
+  b.addEventListener("pointerdown", on); for (const ev of ["pointerup", "pointerleave", "pointercancel"]) b.addEventListener(ev, off); }
 let hoverDoor = null;
 
 // ---------------------------------------------------------------- THE SPECIMEN TANK + the shelf of old specimens
@@ -1528,7 +1561,7 @@ function setScene(s) {
   const pr = s === city ? BASE_PR : 1; renderer.setPixelRatio(pr); composer.setPixelRatio(pr); resize();
   document.body.classList.toggle("inside", s !== city); document.body.classList.toggle("in-hall", s === hall);
   $("exitBtn").hidden = s === city; $("exitBtn").textContent = s === room ? "← Corridor" : "← City";
-  $("hint").textContent = s === city ? "Tap the tower to step inside · drag to look around" : s === hall ? "Choose a door" : "Drag to look around";
+  $("hint").textContent = s === city ? "Tap the tower to step inside · drag to look around" : s === hall ? HALL_HINT : "Drag to look around";
   for (const id of ROOMS) dockEls[id].classList.toggle("on", s === room && current === id);
 }
 async function enterLab() {
@@ -1543,7 +1576,8 @@ async function enterLab() {
   Object.assign(hc, { x: 0, z: HALL_FROM, lx: 0, lz: -6 }); updateHall(0);
   await fade(false);
   const first = !met();
-  await tween(first ? 2600 : 1600, (k) => { hc.z = lerp(HALL_FROM, HALL_REST, k); hc.walk = Math.sin(k * Math.PI); });
+  walk.v = 0; walk.push = 0; walk.near = null;
+  await tween(first ? 2600 : 900, (k) => { hc.z = lerp(HALL_FROM, first ? HALL_REST : HALL_FROM - 1.2, k); hc.walk = Math.sin(k * Math.PI); });
   hc.walk = 0; busy = false;
   if (first) enterRoom("scanner"); // first visit: straight through the first door
 }
@@ -1582,7 +1616,7 @@ async function exitTower() {
   await fade(true);
   greetS.run++; greetS.target = 0; greetS.on = false; skipGreet(); say(null);
   $("panel").hidden = true; controls.enabled = false;
-  if (scene === room) { current = null; setScene(hall); Object.assign(hc, { x: 0, z: HALL_REST, lx: 0, lz: -6 }); updateHall(0); }
+  if (scene === room) { const back = DOORS[current]; current = null; walk.v = 0; walk.push = 0; walk.near = null; setScene(hall); Object.assign(hc, { x: 0, z: clamp(back.z + 2.2, HALL_MIN, HALL_MAX), lx: 0, lz: -6 }); updateHall(0); }
   else {
     setScene(city); controls.minAzimuthAngle = -Infinity; controls.maxAzimuthAngle = Infinity; setCityControls();
     camera.position.copy(savedCity ? savedCity.pos : CITY_VIEW.pos); controls.target.copy(savedCity ? savedCity.target : CITY_VIEW.target); controls.update(); controls.enabled = true;
