@@ -5,6 +5,18 @@ const fs = require("fs");
 const path = require("path");
 try { process.loadEnvFile?.(path.join(__dirname, ".env")); } catch {} // local .env only; on Railway the file is absent and Variables win
 
+// One-time seed: when a deploy carries seed/*.json and the data volume does not have that file yet,
+// copy it in (used to move the Ledger / Genome / Markets / Filings track record to a new server).
+// It never overwrites: data already on the volume always wins.
+(function seedData() {
+  const dir = process.env.KAELIS_DATA_DIR, seed = path.join(__dirname, "seed");
+  if (!dir || !fs.existsSync(seed)) return;
+  try {
+    fs.mkdirSync(dir, { recursive: true });
+    for (const f of fs.readdirSync(seed)) if (/^[a-z]+\.json$/.test(f) && !fs.existsSync(path.join(dir, f))) { fs.copyFileSync(path.join(seed, f), path.join(dir, f)); console.log("seeded", f); }
+  } catch (e) { console.error("seed failed:", e.message); }
+})();
+
 const ROOT = path.join(__dirname, "site");
 const PORT = Number(process.env.PORT || 3000);
 const API = {

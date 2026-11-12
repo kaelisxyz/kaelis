@@ -7,7 +7,7 @@ set -euo pipefail
 cd "$(dirname "$0")/.."
 
 [ -f .env.personal ] || { echo "Tidak ada .env.personal"; exit 1; }
-set -a; . ./.env.personal; set +a
+set -a; . <(tr -d '\r' < .env.personal); set +a  # strip Windows line endings
 
 for v in GITHUB_TOKEN GITHUB_REPO GIT_AUTHOR_NAME GIT_AUTHOR_EMAIL; do
   [ -n "${!v:-}" ] || { echo "Isi $v di .env.personal dulu"; exit 1; }
