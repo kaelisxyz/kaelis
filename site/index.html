@@ -104,7 +104,7 @@
   .lbl::after { content: ""; position: absolute; left: 50%; bottom: -10px; width: 1px; height: 10px; background: var(--paper); }
 
   /* bottom tower bar: keyboard + touch way in */
-  .dock { position: fixed; left: 50%; transform: translateX(-50%); bottom: max(16px, env(safe-area-inset-bottom, 0px)); z-index: 5; display: grid; grid-template-columns: repeat(5, minmax(128px, 1fr));
+  .dock { position: fixed; left: 50%; transform: translateX(-50%); bottom: max(16px, env(safe-area-inset-bottom, 0px)); z-index: 5; display: grid; grid-template-columns: repeat(4, minmax(150px, 1fr));
     background: var(--paper); border: 1px solid var(--ink); width: min(900px, calc(100vw - 2 * var(--gut))); }
   .dock button { all: unset; box-sizing: border-box; cursor: pointer; display: grid; grid-template-columns: auto 1fr; gap: 1px 8px; padding: 9px 12px 10px; color: var(--ink); border-right: 1px solid rgba(0,0,0,.15); }
   .dock button:last-child { border-right: 0; }
@@ -112,7 +112,16 @@
   .dock button small { font: 500 9.5px var(--f-mono); letter-spacing: .12em; text-transform: uppercase; color: #6b6b6b; }
   .dock button b { font: 600 15px var(--f-sans); letter-spacing: -.01em; }
   .dock button em { grid-column: 2; font: 500 10px var(--f-mono); letter-spacing: .06em; font-style: normal; color: #3a3a3a; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-  .dock button:hover { background: #e6e3da; } .dock button:focus-visible { outline: 2px solid var(--ink); outline-offset: -3px; }
+  .dock button:hover, .dock button.on { background: #e6e3da; }
+  body:not(.inside) .dock { display: none; }
+  .dock button small { font-family: Georgia, serif; font-size: 13px; letter-spacing: .08em; }
+  /* what the robot says: one line, paper and ink, above its head */
+  .say { position: fixed; z-index: 5; left: 31%; top: 20%; margin: 0; max-width: 300px; padding: 11px 15px 12px; background: var(--paper); color: var(--ink); border: 1px solid var(--ink);
+    font: 500 19px/1.25 Georgia, "Times New Roman", serif; font-style: italic; letter-spacing: -.005em; opacity: 0; transform: translateY(8px); transition: opacity .35s, transform .35s; pointer-events: none; }
+  .say::after { content: ""; position: absolute; left: 34px; bottom: -9px; width: 16px; height: 16px; background: var(--paper); border-right: 1px solid var(--ink); border-bottom: 1px solid var(--ink); transform: rotate(45deg); }
+  .say.on { opacity: 1; transform: none; }
+  body:not(.inside) .say, body.in-hall .say { display: none; }
+  body.in-hall .hint { bottom: 104px; } .dock button:focus-visible { outline: 2px solid var(--ink); outline-offset: -3px; }
   .hint { position: fixed; left: 50%; transform: translateX(-50%); bottom: 96px; z-index: 4; color: var(--mute); pointer-events: none; text-align: center; }
 
   /* inside a tower: info + actions */
@@ -152,8 +161,9 @@
     .hero { gap: 10px; padding: 12px 14px 14px; width: calc(100vw - 2 * var(--gut)); } .hero h1 { font-size: 24px; }
     .stats b { font-size: 17px; } .cta { padding: 10px 14px; font-size: 13.5px; }
     .dock { grid-template-columns: 1fr 1fr; } .dock button:nth-child(2n) { border-right: 0; } .dock button:nth-child(-n+4) { border-bottom: 1px solid rgba(0,0,0,.15); }
-    .dock button:last-child:nth-child(odd) { grid-column: span 2; border-right: 0; } .dock button { padding: 7px 10px 8px; } .dock button b { font-size: 14px; }
-    .hint { display: none; }
+    .dock button { padding: 7px 10px 8px; } .dock button b { font-size: 14px; } .dock button:nth-child(-n+4) { border-bottom: 0; } .dock button:nth-child(-n+2) { border-bottom: 1px solid rgba(0,0,0,.15); }
+    .hint { display: none; } body.in-hall .hint { display: block; bottom: 170px; }
+    .say { left: 16px; top: 11%; max-width: 70vw; font-size: 17px; }
     header.top { justify-content: flex-end; }
   }
   @media (prefers-reduced-motion: reduce) { .tape .run, .tape .k::before { animation: none; } }
@@ -161,7 +171,7 @@
 </style>
 </head>
 <body>
-<canvas id="c" aria-label="Forge City: a city at night with four towers around the Kaelis core"></canvas>
+<canvas id="c" aria-label="A city at night. One tower, Kaelis Labs, stands in the middle with Kaelis above it."></canvas>
 <div id="labels"></div>
 
 <header class="top">
@@ -173,18 +183,18 @@
 
 <section class="hero" aria-label="Kaelis">
   <a class="mark" href="index.html" id="backStory"><b aria-label="KAELIS"><i>K</i><i>A</i><i>E</i><i>L</i><i>I</i><i>S</i></b></a>
-  <h1>Every new Solana token, rated.</h1>
-  <a class="live" href="evolution.html" id="live" hidden><b id="lvCalls">–</b> calls on record <i>·</i> IQ <b id="lvIq">–</b></a>
+  <h1>Something is being tested inside.</h1>
+  <a class="live" href="evolution.html" id="live" hidden><b id="lvCalls">–</b> specimens on record <i>·</i> IQ <b id="lvIq">–</b></a>
   <div class="ca" aria-label="$KAEL contract address"><b>CA</b><span class="pending" data-ca>Announced at launch</span><button type="button" data-ca-copy aria-disabled="true">Copy</button></div>
   <div class="ctas">
-    <button class="cta" id="ctaScan" type="button">Scan a token</button>
-    <a class="buy" href="markets.html">Markets</a>
+    <button class="cta" id="ctaScan" type="button">Enter</button>
     <a class="buy" href="docs.html">How it works</a>
     <a class="buy" id="ctaBuy" href="#" hidden aria-disabled="true">Buy $KAEL</a>
   </div>
 </section>
 
-<p class="hint mono" id="hint">Tap a tower to step inside · drag to look around</p>
+<p class="hint mono" id="hint">Tap the tower to step inside · drag to look around</p>
+<p class="say" id="say" role="status" aria-live="polite"></p>
 
 <div class="dock" id="dock" role="toolbar" aria-label="Towers"></div>
 
@@ -236,13 +246,17 @@ if (window.parent !== window) $("backStory").addEventListener("click", (e) => { 
 
 // ---------------------------------------------------------------- towers (one per Kaelis job)
 const TOWERS = [
-  { id: "scanner", name: "Scanner", color: "#59e7ca", angle: -0.55, h: 15, intro: "Kaelis checks a Solana token before you buy: a sell test, liquidity, top holders, locked LP, mint and freeze authority, Token-2022 controls and pool age. Live data." },
+  { id: "scanner", name: "The Assay Room", color: "#ffb347", angle: -0.55, h: 15, intro: "Bring a token. Kaelis runs eight tests on it: can it be sold back, how deep the pool is, who holds it, whether the pool is locked, and who can still change it. The result is sealed on the record." },
   { id: "holders", name: "Holders", color: "#ffc24a", angle: 0.85, h: 18, intro: "One lit window for every wallet that holds $KAEL, read from the chain. Sell everything and the window goes dark. Before launch you can try it with any token." },
-  { id: "builders", name: "Builders", color: "#ff8a4d", angle: 2.35, h: 13, intro: "Proof-of-Build: link your GitHub and a Solana wallet. Kaelis counts your pull requests merged into other people's projects every week and keeps your points. Points convert to $KAEL at launch." },
-  { id: "markets", name: "Markets", color: "#5b8def", angle: -1.38, h: 16.5, intro: "Memes measured with Wall Street's yardstick. Kaelis rates tokenized stocks (SPYx, QQQx, NVDAx, TSLAx, AAPLx) with the same rules, tracks its 20 best-rated memecoins (K-20) next to the S&P 500, and flags tokens that copy a stock's ticker." },
-  { id: "watch", name: "Watch", color: "#9d8bff", angle: -2.2, h: 11.5, intro: "Keep an eye on a token you scanned. Kaelis re-checks it every 60 seconds while this page is open and warns you when liquidity drops or an authority comes back." },
+  { id: "builders", name: "The Workshop", color: "#ff8a4d", angle: 2.35, h: 13, intro: "Proof-of-Build: link your GitHub and a Solana wallet. Kaelis counts your pull requests merged into other people's projects every week and keeps your points. Points convert to $KAEL at launch." },
+  { id: "markets", name: "The Exchange", color: "#d9b77a", angle: -1.38, h: 16.5, intro: "Memes measured with Wall Street's yardstick. Kaelis rates tokenized stocks (SPYx, QQQx, NVDAx, TSLAx, AAPLx) with the same rules, tracks its 20 best-rated memecoins (K-20) next to the S&P 500, and flags tokens that copy a stock's ticker." },
+  { id: "watch", name: "The Archive", color: "#e0a04a", angle: -2.2, h: 11.5, intro: "Every specimen Kaelis has tested is kept here and watched. When an insider sells or a pool is pulled, it is filed. A token you bring is re-tested every 60 seconds while this page is open." },
 ];
 const byId = Object.fromEntries(TOWERS.map((t) => [t.id, t]));
+// the four rooms inside Kaelis Labs, in door order
+const ROOMS = ["scanner", "watch", "markets", "builders"];
+const ROMAN = { scanner: "I", watch: "II", markets: "III", builders: "IV" };
+
 
 // ---------------------------------------------------------------- shared live state
 const state = {
@@ -254,6 +268,7 @@ const state = {
   builders: null,          // leaderboard from /api/builders
   markets: null,           // /api/markets: stocks, K-20 vs S&P series, look-alikes
   filings: null,           // /api/filings: insider sales, pulled pools, authority back on
+  shelf: null, pick: null, // Archive: compact Ledger rows, and the specimen the visitor tapped
   join: { wallet: null },
   watch: { log: [], timer: null, prev: null, checks: 0 },
 };
@@ -324,7 +339,8 @@ let renderer;
 try {
   renderer = new THREE.WebGLRenderer({ canvas, antialias: !small, powerPreference: "high-performance" });
 } catch (e) { $("nogl").hidden = false; throw e; }
-renderer.setPixelRatio(Math.min(devicePixelRatio || 1, small ? 1.5 : 2));
+const BASE_PR = Math.min(devicePixelRatio || 1, small ? 1.5 : 2);
+renderer.setPixelRatio(BASE_PR);
 renderer.outputColorSpace = THREE.SRGBColorSpace;
 renderer.toneMapping = THREE.AgXToneMapping;   // AgX keeps sodium and LED lights natural instead of neon
 renderer.toneMappingExposure = 1.15;
@@ -352,7 +368,34 @@ const finish = new ShaderPass({ // lens vignette + fine film grain, after tone m
   vertexShader: "varying vec2 vUv; void main(){ vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position,1.); }",
   fragmentShader: "uniform sampler2D tDiffuse; uniform float uTime; varying vec2 vUv; float h(vec2 p){ return fract(sin(dot(p, vec2(12.9898, 78.233)) + uTime * 7.3) * 43758.5453); } void main(){ vec4 c = texture2D(tDiffuse, vUv); vec2 q = vUv - .5; c.rgb *= 1. - dot(q, q) * .62; c.rgb += (h(vUv * 1024.) - .5) * .022; gl_FragColor = c; }",
 });
-composer.addPass(renderPass); composer.addPass(bloom); composer.addPass(new OutputPass()); composer.addPass(finish);
+// Oil paint: a Kuwahara filter (each pixel takes the mean of its calmest neighbouring quadrant, which flattens
+// detail into brush-like patches and keeps edges), plus canvas weave. Only on inside the building.
+const paint = new ShaderPass({
+  defines: { R: small ? 3 : 4 },
+  uniforms: { tDiffuse: { value: null }, uRes: { value: new THREE.Vector2(1, 1) }, uStep: { value: small ? 1.25 : 1.5 } },
+  vertexShader: "varying vec2 vUv; void main(){ vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position,1.); }",
+  fragmentShader: `uniform sampler2D tDiffuse; uniform vec2 uRes; uniform float uStep; varying vec2 vUv;
+    float hash(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }
+    void main(){
+      vec2 px = uStep / uRes; float n = float((R + 1) * (R + 1));
+      vec3 m0 = vec3(0.), m1 = vec3(0.), m2 = vec3(0.), m3 = vec3(0.), s0 = vec3(0.), s1 = vec3(0.), s2 = vec3(0.), s3 = vec3(0.);
+      for (int j = -R; j <= 0; j++) for (int i = -R; i <= 0; i++) { vec3 c = texture2D(tDiffuse, vUv + vec2(float(i), float(j)) * px).rgb; m0 += c; s0 += c * c; }
+      for (int j = -R; j <= 0; j++) for (int i = 0; i <= R; i++) { vec3 c = texture2D(tDiffuse, vUv + vec2(float(i), float(j)) * px).rgb; m1 += c; s1 += c * c; }
+      for (int j = 0; j <= R; j++) for (int i = 0; i <= R; i++) { vec3 c = texture2D(tDiffuse, vUv + vec2(float(i), float(j)) * px).rgb; m2 += c; s2 += c * c; }
+      for (int j = 0; j <= R; j++) for (int i = -R; i <= 0; i++) { vec3 c = texture2D(tDiffuse, vUv + vec2(float(i), float(j)) * px).rgb; m3 += c; s3 += c * c; }
+      m0 /= n; m1 /= n; m2 /= n; m3 /= n;
+      float v0 = dot(abs(s0 / n - m0 * m0), vec3(1.)), v1 = dot(abs(s1 / n - m1 * m1), vec3(1.)), v2 = dot(abs(s2 / n - m2 * m2), vec3(1.)), v3 = dot(abs(s3 / n - m3 * m3), vec3(1.));
+      vec3 col = m0; float mv = v0;
+      if (v1 < mv) { mv = v1; col = m1; } if (v2 < mv) { mv = v2; col = m2; } if (v3 < mv) { mv = v3; col = m3; }
+      float l = dot(col, vec3(.299, .587, .114)); col = mix(vec3(l), col, 1.18);            // a little richer
+      col *= vec3(1.03, 1.0, .95);                                                           // old varnish
+      vec2 cp = vUv * uRes; float weave = (hash(floor(cp / vec2(2., 5.))) - .5) * .05 + (hash(floor(cp / vec2(7., 2.))) - .5) * .035;
+      col += weave * (.35 + l);
+      gl_FragColor = vec4(col, 1.);
+    }`,
+});
+paint.enabled = false;
+composer.addPass(renderPass); composer.addPass(bloom); composer.addPass(new OutputPass()); composer.addPass(paint); composer.addPass(finish);
 
 // ---------------------------------------------------------------- texture helpers
 const srgb = (t) => { t.colorSpace = THREE.SRGBColorSpace; return t; };
@@ -384,7 +427,7 @@ const beams = [];
 // ---- facade textures
 const FACADE = { cols: 8, rows: 16 }, BAY = 0.62, FLOOR = 0.42;
 const TILE_W = FACADE.cols * BAY, TILE_H = FACADE.rows * FLOOR;
-function facadeSet(kind, seed) {
+function facadeSet(kind, seed, lit) {
   const r = rand(seed), W = 256, H = 512, cw = W / FACADE.cols, rh = H / FACADE.rows;
   const mk = () => { const c = document.createElement("canvas"); c.width = W; c.height = H; return [c, c.getContext("2d")]; };
   const [ca, a] = mk(), [ce, e] = mk(), [cr, ro] = mk();
@@ -393,6 +436,7 @@ function facadeSet(kind, seed) {
     office: { wall: "#4b4844", frame: "#33312e", win: "#0b0d10", rough: 230, roughWin: 34, inset: 0.2, winH: 0.58, lit: 0.26 },
     home:   { wall: "#5b4b40", frame: "#3a3029", win: "#0d0c0b", rough: 240, roughWin: 40, inset: 0.28, winH: 0.52, lit: 0.24 },
   }[kind];
+  if (lit) P.lit = lit;
   const gray = (v) => `rgb(${v},${v},${v})`;
   a.fillStyle = P.wall; a.fillRect(0, 0, W, H);
   e.fillStyle = "#000"; e.fillRect(0, 0, W, H);
@@ -424,8 +468,8 @@ function facadeSet(kind, seed) {
   const t = (c, color) => { const tx = new THREE.CanvasTexture(c); if (color) tx.colorSpace = THREE.SRGBColorSpace; tx.wrapS = tx.wrapT = THREE.RepeatWrapping; tx.anisotropy = 8; return tx; };
   return { map: t(ca, true), em: t(ce, true), ro: t(cr, false) };
 }
-function facadeMat(kind, seed, glow = 1) {
-  const t = facadeSet(kind, seed);
+function facadeMat(kind, seed, glow = 1, lit) {
+  const t = facadeSet(kind, seed, lit);
   return new THREE.MeshStandardMaterial({ map: t.map, emissiveMap: t.em, emissive: 0xffffff, emissiveIntensity: glow, roughnessMap: t.ro, roughness: 1,
     metalness: kind === "glass" ? 0.55 : 0.04, envMapIntensity: kind === "glass" ? 1.5 : 0.5 });
 }
@@ -605,23 +649,49 @@ const avLights = new THREE.InstancedMesh(new THREE.SphereGeometry(0.16, 8, 6), n
 avPos.forEach((p, i) => avLights.setMatrixAt(i, new THREE.Matrix4().makeTranslation(p.x, p.y, p.z)));
 city.add(avLights);
 
-// ---- central core: granite plinth, glass dome with bronze ribs lit from inside, Kaelis floating above
+// ---- Kaelis Labs: the one tower. Everything Kaelis does happens inside it (four rooms off one corridor),
+// and Kaelis itself floats above the crown. The old five job towers are gone; TOWERS now describes rooms,
+// and every entry shares this one building so the rest of the code (labels, intro, hover) keeps working.
 const core = new THREE.Group(); city.add(core);
+const towerHits = [];
+let LAB_Y = 26;
 {
-  const ribs = canvasTex(512, 128, (g, w, h) => { const gr = g.createLinearGradient(0, 0, 0, h); gr.addColorStop(0, "#5a3f26"); gr.addColorStop(1, "#ffcf9a"); g.fillStyle = gr; g.fillRect(0, 0, w, h); g.fillStyle = "#000"; for (let i = 0; i < 32; i++) g.fillRect(i * (w / 32), 0, 3, h); for (let j = 1; j < 4; j++) g.fillRect(0, (h * j) / 4, w, 2); });
-  const dome = new THREE.Mesh(new THREE.SphereGeometry(4.2, 64, 24, 0, Math.PI * 2, 0, Math.PI / 2), new THREE.MeshStandardMaterial({
-    color: 0x0c0e11, metalness: 0.9, roughness: 0.08, envMapIntensity: 1.6, emissive: 0xffffff, emissiveIntensity: 0.32, emissiveMap: ribs }));
-  dome.position.y = 0.6; core.add(dome);
-  const base = new THREE.Mesh(new THREE.CylinderGeometry(5.6, 6.0, 0.6, 64), stoneSlab); base.position.y = 0.3; core.add(base);
-  const trim = new THREE.Mesh(new THREE.TorusGeometry(5.62, 0.05, 8, 128), new THREE.MeshStandardMaterial({ color: 0x8a6a45, metalness: 0.9, roughness: 0.3 }));
+  const base = new THREE.Mesh(new THREE.CylinderGeometry(7.4, 7.9, 0.6, 64), stoneSlab); base.position.y = 0.3; core.add(base);
+  const trim = new THREE.Mesh(new THREE.TorusGeometry(7.42, 0.05, 8, 128), new THREE.MeshStandardMaterial({ color: 0x8a6a45, metalness: 0.9, roughness: 0.3 }));
   trim.rotation.x = Math.PI / 2; trim.position.y = 0.6; core.add(trim);
-  for (let i = 0; i < 10; i++) { // bollard lights
-    const a = (i / 10) * Math.PI * 2, b = new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.12, 0.7, 10), metalMat); b.position.set(Math.cos(a) * 5.0, 0.95, Math.sin(a) * 5.0); core.add(b);
-    const cap = new THREE.Mesh(new THREE.CylinderGeometry(0.105, 0.105, 0.08, 10), new THREE.MeshBasicMaterial({ color: new THREE.Color(2, 1.5, 1) })); cap.position.set(Math.cos(a) * 5.0, 1.25, Math.sin(a) * 5.0); core.add(cap);
+  for (let i = 0; i < 12; i++) { // bollard lights around the plinth
+    const a = (i / 12) * Math.PI * 2, b = new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.12, 0.7, 10), metalMat); b.position.set(Math.cos(a) * 6.9, 0.95, Math.sin(a) * 6.9); core.add(b);
+    const cap = new THREE.Mesh(new THREE.CylinderGeometry(0.105, 0.105, 0.08, 10), new THREE.MeshBasicMaterial({ color: new THREE.Color(2, 1.5, 1) })); cap.position.set(Math.cos(a) * 6.9, 1.25, Math.sin(a) * 6.9); core.add(cap);
   }
+  const g = new THREE.Group(); g.position.y = 0.6; g.rotation.y = 0.32; city.add(g);
+  // old masonry with warm lamplight in the windows: the only amber building in a cool city
+  const mat = facadeMat("office", 55, 1.7, 0.8); mat.emissive = new THREE.Color(1.0, 0.68, 0.36);
+  const spill = new THREE.PointLight(0xffa050, 260, 34, 1.7); spill.position.set(0, 5, 0); core.add(spill); // lamplight spilling onto the plaza
+  const pod = new THREE.Mesh(wallsGeo(7.6, FLOOR * 4, 7.6, 70, BAY * 8, FLOOR * 2.4), shopMat); pod.position.y = FLOOR * 2; g.add(pod);
+  const podRoof = new THREE.Mesh(new THREE.BoxGeometry(7.8, 0.2, 7.8), stoneSlab); podRoof.position.y = FLOOR * 4; g.add(podRoof);
+  let y = FLOOR * 4;
+  for (const [w, hh, k] of [[6.0, 8.0, 0], [4.8, 6.0, 1], [3.6, 4.6, 2]]) {
+    const h = Math.round(hh / FLOOR) * FLOOR;
+    const m = new THREE.Mesh(wallsGeo(w, h, w, 80 + k), mat); m.position.y = y + h / 2; g.add(m);
+    const slab = new THREE.Mesh(new THREE.BoxGeometry(w + 0.22, 0.18, w + 0.22), stoneSlab); slab.position.y = y + h; g.add(slab);
+    y += h;
+  }
+  const fins = [], fw = 3.6;
+  for (let f = 0; f < 24; f++) { const side = Math.floor(f / 6), off = ((f % 6) - 2.5) * (fw / 6); const [x, z, ry] = [[off, fw / 2, 0], [fw / 2, -off, Math.PI / 2], [-off, -fw / 2, 0], [-fw / 2, off, Math.PI / 2]][side]; fins.push(place(new THREE.BoxGeometry(0.07, 1.8, 0.26), x, y + 0.9, z, ry)); }
+  g.add(new THREE.Mesh(mergeGeometries(fins), metalMat));
+  const amber = new THREE.Color("#ffb347");
+  const crown = new THREE.Mesh(new THREE.BoxGeometry(3.75, 0.07, 3.75), new THREE.MeshBasicMaterial({ color: amber.clone().multiplyScalar(1.1) }));
+  crown.position.y = y + 1.82; g.add(crown);
+  const tip = glowSprite("rgba(255,40,24,1)", 0.9); tip.position.set(1.7, y + 2.2, 1.7); g.add(tip);
+  const b = beam("#ffb347", 0.7, 80, 0.12); b.position.y = y + 1.9; g.add(b);
+  LAB_Y = 0.6 + y + 5.2;
+  const hit = new THREE.Mesh(new THREE.BoxGeometry(8, y + 9, 8), new THREE.MeshBasicMaterial({ visible: false }));
+  hit.position.y = (y + 9) / 2; hit.userData.tower = "lab"; g.add(hit); towerHits.push(hit);
+  const top = new THREE.Vector3(0, y + 7.9, 0);
+  TOWERS.forEach((t) => { t.group = g; t.top = top; t.crown = crown; t.crownCol = amber.clone(); t.mats = [mat]; t.body = mat; t.av = tip; t.beamMat = b.userData.mat; t.height = y; });
 }
-const coreBeam = beam("#ffe6c8", 0.8, 90, 0.06); coreBeam.position.y = 4; core.add(coreBeam);
-const kaelisCity = new THREE.Group(); kaelisCity.position.y = 8.2; core.add(kaelisCity);
+const coreBeam = beam("#ffe6c8", 0.8, 90, 0.04); coreBeam.position.y = LAB_Y; core.add(coreBeam);
+const kaelisCity = new THREE.Group(); kaelisCity.position.y = LAB_Y; core.add(kaelisCity);
 kaelisCity.add(glowSprite("rgba(89,231,202,0.22)", 4.5));
 
 // tower light beam: additive shader cylinder, bright at the base, scanning bands moving up
@@ -635,41 +705,6 @@ function beam(color, radius, height, strength = 1) {
   const b = new THREE.Mesh(new THREE.CylinderGeometry(radius * 0.35, radius, height, 24, 1, true), m);
   b.geometry.translate(0, height / 2, 0); b.userData.mat = m; beams.push(m); return b;
 }
-
-// ---- the four job towers: glass curtain walls, setbacks, a finned crown with one thin LED band in the job colour
-const towerHits = [];
-TOWERS.forEach((t, i) => {
-  const g = new THREE.Group(), R = 15.5;
-  g.position.set(Math.cos(t.angle) * R, 0, Math.sin(t.angle) * R);
-  g.lookAt(0, 0, 0);
-  const col = new THREE.Color(t.color), mat = facadeMat("glass", 50 + i, 1);
-  t.mats = [mat];
-  // podium with a lit lobby
-  const pod = new THREE.Mesh(wallsGeo(4.6, FLOOR * 3, 4.6, 70 + i, BAY * 8, FLOOR * 2.4), shopMat); pod.position.y = FLOOR * 1.5; g.add(pod);
-  const podRoof = new THREE.Mesh(new THREE.BoxGeometry(4.7, 0.18, 4.7), stoneSlab); podRoof.position.y = FLOOR * 3; g.add(podRoof);
-  let y = FLOOR * 3;
-  const tiers = [[3.4, t.h * 0.45], [2.8, t.h * 0.33], [2.2, t.h * 0.22]];
-  tiers.forEach(([w, h], k) => {
-    h = Math.round(h / FLOOR) * FLOOR;
-    const m = new THREE.Mesh(wallsGeo(w, h, w, 80 + i * 3 + k), mat); m.position.y = y + h / 2; g.add(m);
-    const slab = new THREE.Mesh(new THREE.BoxGeometry(w + 0.18, 0.16, w + 0.18), stoneSlab); slab.position.y = y + h; g.add(slab);
-    y += h;
-  });
-  // crown: vertical fins around the top, and one LED band in the job colour
-  const fins = [], fw = 2.2;
-  for (let f = 0; f < 16; f++) { const side = Math.floor(f / 4), off = ((f % 4) - 1.5) * (fw / 4); const [x, z, ry] = [[off, fw / 2, 0], [fw / 2, -off, Math.PI / 2], [-off, -fw / 2, 0], [-fw / 2, off, Math.PI / 2]][side]; fins.push(place(new THREE.BoxGeometry(0.06, 1.6, 0.22), x, y + 0.8, z, ry)); }
-  g.add(new THREE.Mesh(mergeGeometries(fins), metalMat));
-  const crown = new THREE.Mesh(new THREE.BoxGeometry(2.3, 0.06, 2.3), new THREE.MeshBasicMaterial({ color: col.clone().multiplyScalar(1.1) }));
-  crown.position.y = y + 1.62; g.add(crown); t.crownCol = col.clone();
-  const ant = new THREE.Mesh(new THREE.CylinderGeometry(0.035, 0.07, 3.2, 6), metalMat); ant.position.y = y + 1.6 + 1.6; g.add(ant);
-  const tip = glowSprite("rgba(255,40,24,1)", 0.9); tip.position.y = y + 3.25; g.add(tip); t.av = tip;
-  const b = beam(t.color, 0.5, 80, 0.12); b.position.y = y + 1.7; g.add(b);
-  y += 1.7;
-  const hit = new THREE.Mesh(new THREE.BoxGeometry(4.6, y + 3, 4.6), new THREE.MeshBasicMaterial({ visible: false }));
-  hit.position.y = (y + 3) / 2; hit.userData.tower = t.id; g.add(hit); towerHits.push(hit);
-  t.group = g; t.top = new THREE.Vector3(0, y + 2.4, 0); t.crown = crown; t.body = mat; t.beamMat = b.userData.mat; t.height = y;
-  city.add(g);
-});
 
 // reflections: render the finished city into a cube map once, so glass and puddles mirror the real lights
 const cubeRT = new THREE.WebGLCubeRenderTarget(small ? 128 : 256, { type: THREE.HalfFloatType });
@@ -686,16 +721,16 @@ function bakeCityEnv() {
 // =================================================================== ROOM (inside a tower)
 const roomParts = {};
 {
-  room.background = new THREE.Color(0x0b0c0f);
-  room.fog = new THREE.Fog(0x0b0c0f, 9, 22);
-  room.add(new THREE.HemisphereLight(0xc9d2de, 0x1c1814, 0.75));
-  const key = new THREE.DirectionalLight(0xfff0dc, 0.95); key.position.set(3, 5, 4); room.add(key);
-  const screenLight = new THREE.PointLight(0x59e7ca, 6, 5, 2); screenLight.position.set(0, 1.5, -0.6); room.add(screenLight);
+  room.background = new THREE.Color(0x070605);
+  room.fog = new THREE.Fog(0x070605, 7, 19);
+  room.add(new THREE.HemisphereLight(0x6b5236, 0x0a0806, 0.2));
+  const key = new THREE.DirectionalLight(0xffd9a8, 0.1); key.position.set(3, 5, 4); room.add(key);
+  const screenLight = new THREE.PointLight(0xffb347, 1.2, 5, 2); screenLight.position.set(0, 1.5, -0.6); room.add(screenLight);
   roomParts.screenLight = screenLight;
 
   // round platform with grid, like a stage
-  const floor = new THREE.Mesh(new THREE.CircleGeometry(4.2, 72), new THREE.MeshStandardMaterial({ color: 0x17181b, roughness: 0.7, metalness: 0.1,
-    emissive: 0xffffff, emissiveIntensity: 0.08, emissiveMap: (() => { const t = gridTex("#b9b3a8", 8, 0.4); t.repeat.set(9, 9); return t; })() }));
+  const floor = new THREE.Mesh(new THREE.CircleGeometry(4.2, 72), new THREE.MeshStandardMaterial({ color: 0x1d150e, roughness: 0.62, metalness: 0.08,
+    emissive: 0xffffff, emissiveIntensity: 0.015, emissiveMap: (() => { const t = gridTex("#b9b3a8", 8, 0.4); t.repeat.set(9, 9); return t; })() }));
   floor.rotation.x = -Math.PI / 2; room.add(floor);
   const edge = new THREE.Mesh(new THREE.TorusGeometry(4.2, 0.02, 6, 128), new THREE.MeshBasicMaterial({ color: new THREE.Color("#8f7dff").multiplyScalar(1.3) }));
   edge.rotation.x = Math.PI / 2; room.add(edge); roomParts.edge = edge;
@@ -719,9 +754,9 @@ const roomParts = {};
       }
     }
   });
-  const win = new THREE.Mesh(new THREE.PlaneGeometry(10, 3.75), new THREE.MeshBasicMaterial({ map: sky, color: new THREE.Color(0.8, 0.8, 0.8) }));
+  const win = new THREE.Mesh(new THREE.PlaneGeometry(10, 3.75), new THREE.MeshStandardMaterial({ color: 0x17100a, roughness: 0.95 })); // a plank wall now; the city stays outside
   win.position.set(0, 2.2, -3.4); room.add(win);
-  const frameMat = new THREE.MeshStandardMaterial({ color: 0x2b2d31, roughness: 0.55, metalness: 0.5 });
+  const frameMat = new THREE.MeshStandardMaterial({ color: 0x2a1e12, roughness: 0.7, metalness: 0.3 });
   for (const [w, h, x, y] of [[10.3, 0.15, 0, 4.1], [10.3, 0.15, 0, 0.3], [0.15, 3.9, -5.1, 2.2], [0.15, 3.9, 5.1, 2.2], [0.08, 3.8, -1.7, 2.2], [0.08, 3.8, 1.7, 2.2]]) {
     const f = new THREE.Mesh(new THREE.BoxGeometry(w, h, 0.15), frameMat); f.position.set(x, y, -3.35); room.add(f);
   }
@@ -761,9 +796,9 @@ const roomParts = {};
   btnBase.position.set(0.82, 0.88, -0.82); room.add(btnBase);
   const btn = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.13, 0.08, 32), new THREE.MeshStandardMaterial({ color: 0xff2d55, emissive: 0xff2d55, emissiveIntensity: 0.6, roughness: 0.3 }));
   btn.position.set(0.82, 0.94, -0.82); room.add(btn); roomParts.btn = btn;
-  const pad = new THREE.Mesh(new THREE.BoxGeometry(0.22, 0.03, 0.22), new THREE.MeshStandardMaterial({ color: 0x59e7ca, emissive: 0x59e7ca, emissiveIntensity: 0.9 }));
+  const pad = new THREE.Mesh(new THREE.BoxGeometry(0.22, 0.03, 0.22), new THREE.MeshStandardMaterial({ color: 0x3a2a14, emissive: 0xffb347, emissiveIntensity: 0.5 }));
   pad.position.set(-0.85, 0.87, -0.8); room.add(pad);
-  const mug = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.055, 0.13, 24), new THREE.MeshStandardMaterial({ color: 0xf0ecff, roughness: 0.3 }));
+  const mug = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.055, 0.13, 24), new THREE.MeshStandardMaterial({ color: 0x9a8a70, roughness: 0.5 }));
   mug.position.set(1.15, 0.92, -0.95); room.add(mug); roomParts.mug = mug;
 
   // gaming chair: black, with a glowing strip down the back
@@ -771,7 +806,7 @@ const roomParts = {};
   const chair = new THREE.Group(); chair.position.set(0, 0, -0.2); room.add(chair); roomParts.chair = chair;
   const seat = new THREE.Mesh(new THREE.BoxGeometry(0.62, 0.1, 0.58), chairMat); seat.position.y = 0.52; chair.add(seat);
   const back = new THREE.Mesh(new THREE.BoxGeometry(0.58, 0.62, 0.1), chairMat); back.position.set(0, 0.9, 0.29); back.rotation.x = -0.08; chair.add(back);
-  const strip = new THREE.Mesh(new THREE.PlaneGeometry(0.05, 0.46), new THREE.MeshBasicMaterial({ color: new THREE.Color("#ffffff").multiplyScalar(1.3) }));
+  const strip = new THREE.Mesh(new THREE.PlaneGeometry(0.05, 0.46), new THREE.MeshBasicMaterial({ color: new THREE.Color("#ffb347").multiplyScalar(0.7) }));
   strip.position.set(0, 0.9, 0.345); strip.rotation.x = -0.08; chair.add(strip); roomParts.strip = strip;
   const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.04, 0.42, 12), chairMat); pole.position.y = 0.26; chair.add(pole);
   for (let i = 0; i < 5; i++) { const a = (i / 5) * Math.PI * 2, leg = new THREE.Mesh(new THREE.BoxGeometry(0.05, 0.04, 0.34), chairMat); leg.position.set(Math.sin(a) * 0.16, 0.04, Math.cos(a) * 0.16); leg.rotation.y = a; chair.add(leg); }
@@ -780,8 +815,8 @@ const roomParts = {};
 // ---------------------------------------------------------------- the robot (Kaelis at work)
 // White shell, one mint eye in a dark visor (Kaelis' eye), glowing ear rings, antenna with an ember tip.
 const robot = (() => {
-  const shell = new THREE.MeshStandardMaterial({ color: 0xc9d0dc, roughness: 0.38, metalness: 0.1 });
-  const joint = new THREE.MeshStandardMaterial({ color: 0x9aa3b5, roughness: 0.4, metalness: 0.6 });
+  const shell = new THREE.MeshStandardMaterial({ color: 0xb9ad96, roughness: 0.5, metalness: 0.12 }); // aged ivory
+  const joint = new THREE.MeshStandardMaterial({ color: 0x7d6a4c, roughness: 0.4, metalness: 0.75 }); // brass
   const dark = new THREE.MeshStandardMaterial({ color: 0x0a0c14, roughness: 0.15, metalness: 0.4 });
   const mint = new THREE.MeshStandardMaterial({ color: 0x0a1a16, emissive: 0x59e7ca, emissiveIntensity: 1.6 });
   const R = new THREE.Group(); R.position.set(0, 0, -0.22); // faces -Z (the desk)
@@ -863,19 +898,19 @@ function drawScreens(id) {
   const W = (s) => s.cv.width, H = (s) => s.cv.height;
   const ls = state.lastScan;
   if (id === "scanner") {
-    screenFrame(ga, W(A), H(A), "Signal scanner · rules " + (K ? K.RULES_VERSION : ""), t.color);
-    if (state.scanning) textLines(ga, [["Scanning " + state.scanning.slice(0, 6) + "…", t.color], "reading mint, pools, LP lock,", "sell route and top holders"], 18, 58);
+    screenFrame(ga, W(A), H(A), "Assay · rules " + (K ? K.RULES_VERSION : ""), t.color);
+    if (state.scanning) textLines(ga, [["Testing " + state.scanning.slice(0, 6) + "…", t.color], "reading mint, pools, LP lock,", "sell route and top holders"], 18, 58);
     else if (ls) {
       const r = ls.result; ga.font = `700 64px ${FONT}`; ga.fillStyle = riskColor(r.score); ga.textBaseline = "top"; ga.fillText(r.score + "/100", 18, 54);
       ga.font = `700 20px ${FONT}`; ga.fillText(bandText(r.band).toUpperCase() + "  ·  $" + ls.symbol, 20, 128);
       textLines(ga, r.checks.slice(0, 6).map((c) => [(c.sev == null ? "n/a " : (c.sev > 0.5 ? "!!  " : c.sev > 0 ? "!   " : "ok  ")) + c.name, c.sev == null ? "#8d87ad" : c.sev > 0.5 ? "#ff4d6a" : c.sev > 0 ? "#ffc24a" : "#59e7ca"]), 20, 168, 16, 25);
-    } else textLines(ga, [["Ready.", t.color], "Paste a Solana token address in", "the panel and press the red button.", "", ["Live: real chain data, no keys needed.", "#9aa1ad"]], 18, 58);
-    screenFrame(gb, W(B), H(B), "Price · last 24h", "#7d6dff");
+    } else textLines(ga, [["Awaiting a specimen.", t.color], "Give Kaelis a Solana token", "address and it runs eight tests.", "", ["Real chain data, sealed on the record.", "#9aa1ad"]], 18, 58);
+    screenFrame(gb, W(B), H(B), "Price · last 24h", "#8a6a45");
     if (ls && ls.data && ls.data.pairs && ls.data.pairs[0]) {
       const p = ls.data.pairs[0], ch = (p.priceChange && p.priceChange.h24) || 0;
       chart(gb, 14, 70, W(B) - 28, H(B) - 120, ch >= 0 ? "#59e7ca" : "#ff4d6a", ls.mint.charCodeAt(0) * 7, ch);
       textLines(gb, [["$" + (p.priceUsd || "?") + "  " + (ch >= 0 ? "+" : "") + ch + "%", ch >= 0 ? "#59e7ca" : "#ff4d6a"]], 14, H(B) - 44, 18);
-    } else { chart(gb, 14, 70, W(B) - 28, H(B) - 120, "rgba(125,109,255,0.6)", 3); textLines(gb, [["waiting for a scan", "#8d87ad"]], 14, H(B) - 44, 16); }
+    } else { chart(gb, 14, 70, W(B) - 28, H(B) - 120, "rgba(125,109,255,0.6)", 3); textLines(gb, [["no specimen yet", "#8d87ad"]], 14, H(B) - 44, 16); }
     screenFrame(gc, W(C), H(C), "Evidence", "#ff8a4d");
     if (ls) textLines(gc, ls.result.checks.filter((c) => c.sev > 0).slice(0, 7).map((c) => [c.detail.slice(0, 44), "#ffd6c2"]).concat(ls.result.checks.some((c) => c.sev > 0) ? [] : [["No red flags found.", "#59e7ca"]]), 14, 56, 13, 22);
     else textLines(gc, [["Every check shows its proof:", "#9aa1ad"], "sell quote, pool size,", "holder share, lock %, authority", "", ["source: " + (state.server ? "Kaelis server" : "your browser"), "#8d87ad"]], 14, 56, 14, 24);
@@ -885,7 +920,7 @@ function drawScreens(id) {
     if (pv && !live) { ga.font = `700 64px ${FONT}`; ga.fillStyle = t.color; ga.textBaseline = "top"; ga.fillText(pv.count != null ? fmt(pv.count) : pv.shown + "+", 18, 60); textLines(ga, [pv.count != null ? "wallets hold this token" : "largest accounts (no Helius key)", ["top 10 hold " + (pv.top10 * 100).toFixed(1) + "%", "#9aa1ad"], ["mint " + pv.mint.slice(0, 6) + "…", "#9aa1ad"]], 20, 140); }
     else if (live) { ga.font = `700 72px ${FONT}`; ga.fillStyle = t.color; ga.textBaseline = "top"; ga.fillText(fmt(state.holders.count), 18, 60); textLines(ga, ["wallets hold $KAEL", ["one lit window each", "#9aa1ad"]], 20, 150); }
     else textLines(ga, [["Goes live at launch", t.color], "$KAEL has no mint address yet.", "When it does, every holder gets", "one window, read from the chain.", "", ["Below: EXAMPLE windows", "#9aa1ad"]], 18, 58);
-    screenFrame(gb, W(B), H(B), live ? "Windows" : "Windows · example", "#7d6dff");
+    screenFrame(gb, W(B), H(B), live ? "Windows" : "Windows · example", "#8a6a45");
     const r = rand(4); for (let y = 0; y < 9; y++) for (let x = 0; x < 16; x++) { gb.fillStyle = r() < 0.55 ? "#ffc24a" : "#1d1838"; gb.fillRect(16 + x * 37, 58 + y * 34, 26, 24); }
     screenFrame(gc, W(C), H(C), "How it works", "#ff8a4d");
     textLines(gc, ["Buy $KAEL → window lights", "Sell all → window goes dark", "Refresh every 2 minutes", "", ["Find yours on tower.html", "#9aa1ad"]], 14, 56, 14, 26);
@@ -895,7 +930,7 @@ function drawScreens(id) {
     if (!state.server) textLines(ga, [["Needs the Kaelis server.", t.color], "Run npm start (or the Railway", "deploy) to switch it on."], 18, 58);
     else if (!rows.length) textLines(ga, [["No builders yet.", t.color], "Be the first: link GitHub and", "a wallet in the panel.", "", ["Merged PRs to other people's", "#9aa1ad"], ["projects earn points.", "#9aa1ad"]], 18, 58);
     else textLines(ga, rows.slice(0, 7).map((b, i) => [`${String(i + 1).padStart(2, "0")}  ${b.github.slice(0, 14).padEnd(14)} ${String(b.weekPoints).padStart(4)} pts`, i === 0 ? t.color : "#e9e5ff"]), 18, 58, 17, 30);
-    screenFrame(gb, W(B), H(B), "Merged this week", "#7d6dff");
+    screenFrame(gb, W(B), H(B), "Merged this week", "#8a6a45");
     const prs = rows.flatMap((b) => b.prs.map((p) => [b.github, p])).sort((a, b) => b[1].points - a[1].points).slice(0, 8);
     textLines(gb, prs.length ? prs.map(([g, p]) => [`+${p.points}  ${p.repo.slice(0, 26)}`, "#ffd6c2"]) : [["Nothing merged yet this week.", "#8d87ad"]], 14, 56, 14, 24);
     screenFrame(gc, W(C), H(C), "Rules", "#ff8a4d");
@@ -912,7 +947,7 @@ function drawScreens(id) {
         [`KIQ  G${last ? last.gen || 0 : 0}         ${last && last.iq != null ? String(last.iq).padStart(8) : "    soon"}`, "#e9e5ff"],
       ].concat(mk.stocks.map((x) => [`${x.sym.padEnd(7)} ${x.name.slice(0, 11).padEnd(11)} ${(x.call ? x.call.grade : "…").padStart(4)}`, gc0(x.call && x.call.grade)])), 18, 56, 16, 26);
     }
-    screenFrame(gb, W(B), H(B), "K-20 vs S&P · indexed 100", "#7d6dff");
+    screenFrame(gb, W(B), H(B), "K-20 vs S&P · indexed 100", "#8a6a45");
     const ser = mk ? mk.series.filter((p) => p.k20 != null && p.spy != null) : [];
     if (ser.length >= 2) {
       const vals = ser.flatMap((p) => [p.k20, p.spy]), lo = Math.min(...vals, 100), hi = Math.max(...vals, 100), x0 = 14, y0 = 62, w = W(B) - 28, hh = H(B) - 110;
@@ -928,9 +963,9 @@ function drawScreens(id) {
   } else if (id === "watch") {
     const w = state.watch;
     screenFrame(ga, W(A), H(A), "Watch mode", t.color);
-    if (!ls) textLines(ga, [["Nothing to watch yet.", t.color], "Scan a token in the Scanner", "tower first. Kaelis then", "re-checks it every 60 seconds."], 18, 58);
+    if (!ls) textLines(ga, [["The Archive.", t.color], "Every tested specimen is kept", "and watched for 7 days.", "Bring one to the Assay Room."], 18, 58);
     else textLines(ga, [["Watching $" + ls.symbol, t.color], "Checks run: " + w.checks, "Risk now: " + ls.result.score + "/100", ["Alerts: liquidity -50%, mint or", "#9aa1ad"], ["freeze back on, score moves 10", "#9aa1ad"]], 18, 58);
-    screenFrame(gb, W(B), H(B), "Liquidity", "#7d6dff");
+    screenFrame(gb, W(B), H(B), "Liquidity", "#8a6a45");
     chart(gb, 14, 70, W(B) - 28, H(B) - 110, t.color, 33, 0);
     screenFrame(gc, W(C), H(C), "Alerts", "#ff4d6a");
     const fl = state.filings && state.filings.filings;
@@ -953,48 +988,48 @@ function drawClock() {
 
 // =================================================================== LABELS + DOCK
 const labelEls = {}, dockEls = {};
-TOWERS.forEach((t) => {
-  const el = document.createElement("div"); el.className = "lbl"; el.style.setProperty("--c", t.color);
-  el.innerHTML = `<span class="n">${t.name}</span><span class="v">…</span><span class="s"></span>`;
-  el.addEventListener("click", () => enterTower(t.id)); $("labels").appendChild(el); labelEls[t.id] = el;
-  const b = document.createElement("button"); b.style.setProperty("--c", t.color);
-  b.innerHTML = `<i></i><small>0${TOWERS.indexOf(t) + 1} · tower</small><b>${t.name}</b><em>…</em>`;
-  b.addEventListener("click", () => enterTower(t.id)); $("dock").appendChild(b); dockEls[t.id] = b;
+{ // one quiet tag on the tower; it does not say what happens inside
+  const el = document.createElement("div"); el.className = "lbl"; el.style.setProperty("--c", "#ffb347");
+  el.innerHTML = `<span class="n">Kaelis Labs</span><span class="v">Enter</span><span class="s"></span>`;
+  el.addEventListener("click", () => enterLab()); $("labels").appendChild(el); labelEls.lab = el;
+}
+ROOMS.forEach((id) => { // the room directory, only shown inside the building
+  const t = byId[id], b = document.createElement("button"); b.style.setProperty("--c", "#8a6a45");
+  b.innerHTML = `<i></i><small>${ROMAN[id]}</small><b>${t.name}</b><em>…</em>`;
+  b.addEventListener("click", () => enterRoom(id)); $("dock").appendChild(b); dockEls[id] = b;
 });
 function labelText(id) {
   const ls = state.lastScan;
-  if (id === "scanner") return ls ? [`${ls.result.score}/100`, `$${ls.symbol} · ${bandText(ls.result.band)}`] : [state.scanning ? "Scanning…" : "Live", "paste a token inside"];
+  if (id === "scanner") return ls ? [`$${ls.symbol} · ${ls.result.grade || ls.result.score}`, ""] : [state.scanning ? "Testing…" : "Awaiting a specimen", ""];
   if (id === "holders") return CFG.kaelMint && state.holders ? [fmt(state.holders.count), "wallets · live"] : ["At launch", "no $KAEL mint yet"];
   if (id === "builders") { const bl = state.builders; if (!state.server) return ["Offline", "needs the Kaelis server"]; if (!bl) return ["…", "loading"]; const pts = bl.builders.reduce((t, b) => t + b.weekPoints, 0); return bl.count ? [`${fmt(pts)} pts`, `${bl.count} builders · ${bl.week}`] : ["Open", "be the first builder"]; }
   if (id === "markets") { const mk = state.markets; if (!state.server) return ["Offline", "needs the Kaelis server"]; if (!mk) return ["…", "loading"];
     const last = mk.series[mk.series.length - 1], rated = mk.stocks.filter((x) => x.call).length;
     return last && last.k20 != null ? [`K-20 ${last.k20.toFixed(1)}`, `S&P ${last.spy != null ? last.spy.toFixed(1) : "–"} · ${rated} stocks rated`] : ["Collecting", `${rated} stocks rated`]; }
-  if (id === "watch") { const fl = state.filings; return ls ? [`$${ls.symbol}`, `${state.watch.checks} checks · ${state.watch.log.filter((l) => l.bad).length} alerts`] : fl ? [`${fl.filed} filings`, `${fl.tracked} tokens watched`] : ["Idle", "scan a token first"]; }
+  if (id === "watch") { const fl = state.filings; return ls ? [`$${ls.symbol}`, `${state.watch.checks} checks · ${state.watch.log.filter((l) => l.bad).length} alerts`] : fl ? [`${fl.filed} filings`, `${fl.tracked} tokens watched`] : ["Sealed specimens", ""]; }
 }
-function refreshLabels() { TOWERS.forEach((t) => { const [v, s] = labelText(t.id); const el = labelEls[t.id]; el.querySelector(".v").textContent = v; el.querySelector(".s").textContent = s; if (dockEls[t.id]) dockEls[t.id].querySelector("em").textContent = v; }); }
+function refreshLabels() { if (CFG.kaelMint && state.holders) labelEls.lab.querySelector(".s").textContent = fmt(state.holders.count) + " holders, one window each";
+  TOWERS.forEach((t) => { if (!dockEls[t.id]) return; const [v] = labelText(t.id); dockEls[t.id].querySelector("em").textContent = v; }); }
 const proj = new THREE.Vector3();
 function placeLabels() {
-  const w = innerWidth, h = innerHeight, show = scene === city;
-  TOWERS.forEach((t) => {
-    const el = labelEls[t.id];
-    proj.copy(t.top).applyMatrix4(t.group.matrixWorld).project(camera);
-    const vis = show && proj.z < 1 && Math.abs(proj.x) < 1.1 && Math.abs(proj.y) < 1.1;
-    el.style.opacity = vis ? 1 : 0; el.style.pointerEvents = vis ? "auto" : "none";
-    if (vis) el.style.left = ((proj.x + 1) / 2) * w + "px", el.style.top = ((1 - proj.y) / 2) * h + "px";
-  });
+  const w = innerWidth, h = innerHeight, el = labelEls.lab, t = TOWERS[0];
+  proj.copy(t.top).applyMatrix4(t.group.matrixWorld).project(camera);
+  const vis = scene === city && proj.z < 1 && Math.abs(proj.x) < 1.1 && Math.abs(proj.y) < 1.1;
+  el.style.opacity = vis ? 1 : 0; el.style.pointerEvents = vis ? "auto" : "none";
+  if (vis) el.style.left = ((proj.x + 1) / 2) * w + "px", el.style.top = ((1 - proj.y) / 2) * h + "px";
 }
 
 // =================================================================== PANEL (inside a tower)
 let current = null;
 function panelHTML(id) {
-  const INK = { "#9aa1ad": "#6b6b6b", "#59e7ca": "#1f7a63", "#ffc24a": "#9a6a00", "#ff8a4d": "#b5521f", "#9d8bff": "#5a48c4", "#ff4d6a": "#c4452c" };
+  const INK = { "#ffb347": "#8a5a00", "#d9b77a": "#7a5a1e", "#e0a04a": "#8a5a00", "#9aa1ad": "#6b6b6b", "#59e7ca": "#1f7a63", "#ffc24a": "#9a6a00", "#ff8a4d": "#b5521f", "#9d8bff": "#5a48c4", "#ff4d6a": "#c4452c" };
   const t = byId[id], ls = state.lastScan, tag = (txt, c) => `<span class="tagx" style="color:${INK[String(c).toLowerCase()] || c}">${txt}</span>`;
-  let h = `<h2>${t.name} tower</h2><p>${t.intro}</p>`;
+  let h = `<h2>${t.name}</h2><p>${t.intro}</p>`;
   if (id === "scanner") {
     h += `<div>${tag("Live data", t.color)} ${tag(state.server ? "Kaelis server" : "In your browser", "#9aa1ad")}</div>
       <label class="sr" for="mint">Token address</label>
-      <div class="row"><input id="mint" placeholder="Token mint address" spellcheck="false" autocomplete="off" value="${ls ? esc(ls.mint) : ""}"><button class="act" id="go">Scan</button></div>
-      <div id="res">${ls ? scanSummary(ls) : `<p class="fine">Try USDC: EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v</p>`}</div>
+      <div class="row"><input id="mint" placeholder="Token mint address" spellcheck="false" autocomplete="off" value="${ls ? esc(ls.mint) : ""}"><button class="act" id="go">Test it</button></div>
+      <div id="res">${ls ? scanSummary(ls) : `<p class="fine">Any Solana token address. Try USDC: EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v</p>`}</div>
       <p class="fine">Kaelis reports risk. It never predicts price or promises profit.</p>`;
   } else if (id === "holders") {
     h += CFG.kaelMint
@@ -1024,10 +1059,11 @@ function panelHTML(id) {
       <div class="row"><button class="act" id="go">Refresh</button><a class="act" href="markets.html" style="text-decoration:none;text-align:center">Open Markets</a></div>`
       : `<div>${tag(state.server ? "Loading" : "Needs the Kaelis server", t.color)}</div><p>Markets data is collected by Patrol on the Kaelis server.</p><a class="act" href="markets.html" style="text-decoration:none;justify-self:start">Open Markets</a>`;
   } else if (id === "watch") {
+    h += pickHTML();
     h += ls ? `<div>${tag("Live data", t.color)}</div><div class="kv"><span>Token</span><span>$${esc(ls.symbol)}</span><span>Checks</span><span id="wChecks">${state.watch.checks}</span><span>Risk now</span><span>${ls.result.score}/100</span></div><button class="act" id="go">Check now</button><div class="out" id="wLog">${state.watch.log.slice(-6).map((l) => esc(l.text)).join("\n") || "No alerts yet."}</div>`
-      : `<div>${tag("Idle", t.color)} ${state.filings ? tag(state.filings.filed + " filings", "#9aa1ad") : ""}</div><p>Scan a token in the Scanner tower to watch it yourself. Meanwhile Kaelis watches the insiders of every token it calls:</p>
+      : `<div>${tag("Idle", t.color)} ${state.filings ? tag(state.filings.filed + " filings", "#9aa1ad") : ""}</div><p>Bring a token to the Assay Room to have it watched. Meanwhile Kaelis watches the insiders of every specimen on the shelf:</p>
         <div class="kv">${state.filings && state.filings.filings.length ? state.filings.filings.slice(0, 5).map((f) => `<span>${esc(f.form)} · ${esc(f.symbol ? "$" + f.symbol : f.mint.slice(0, 6))}</span><span>${esc(f.title)}</span>`).join("") : `<span>No filings yet</span><span>${state.filings ? state.filings.tracked : 0} watched</span>`}</div>
-        <div class="row"><button class="act" id="toScan">Go to Scanner</button><a class="act" href="filings.html" style="text-decoration:none;text-align:center">All filings</a></div>`;
+        <div class="row"><button class="act" id="toScan">To the Assay Room</button><a class="act" href="filings.html" style="text-decoration:none;text-align:center">All filings</a></div>`;
   }
   return h;
 }
@@ -1043,7 +1079,7 @@ function scanSummary(ls) {
 }
 function openPanel(id) {
   const t = byId[id]; current = id;
-  $("panel").style.setProperty("--c", t.color); $("pTitle").textContent = t.name + " tower"; $("pBody").innerHTML = panelHTML(id); $("panel").hidden = false;
+  $("panel").style.setProperty("--c", t.color); $("pTitle").textContent = ROMAN[id] ? ROMAN[id] + " · " + t.name : t.name; for (const r of ROOMS) dockEls[r].classList.toggle("on", r === id); $("pBody").innerHTML = panelHTML(id); $("panel").hidden = false;
   const go = $("go"), mint = $("mint"), toScan = $("toScan");
   if (go) go.addEventListener("click", () => action(id));
   if (mint) { mint.addEventListener("keydown", (e) => { if (e.key === "Enter") action(id); }); if (!small) mint.focus(); }
@@ -1059,14 +1095,14 @@ async function action(id) {
     const mint = ($("mint") && $("mint").value.trim()) || "";
     const res = $("res"), go = $("go");
     if (!mint) { res.innerHTML = `<p>Paste a token address first.</p>`; return; }
-    state.scanning = mint; go.disabled = true; res.innerHTML = `<p>Kaelis is reading the chain…</p>`; drawScreens(id); refreshLabels();
+    state.scanning = mint; go.disabled = true; res.innerHTML = `<p>The test is running…</p>`; say("Let us see what it is made of.", 7000); drawScreens(id); refreshLabels();
     try {
       const out = await scanMint(mint);
       state.lastScan = { ...out, symbol: tokenSymbol(out.data, mint), at: Date.now() };
       state.watch = { log: [{ text: "Started watching $" + state.lastScan.symbol, bad: false }], timer: state.watch.timer, prev: safePulse(out.data), checks: 1 };
       startWatch();
       res.innerHTML = scanSummary(state.lastScan);
-      celebrate(state.lastScan);
+      celebrate(state.lastScan); loadShelf();
     } catch (e) { res.innerHTML = `<p style="color:var(--danger)">${esc(e.message || "Could not reach Solana right now. Try again in a moment.")}</p>`; }
     state.scanning = false; go.disabled = false; drawScreens(id); refreshLabels();
   } else if (id === "holders") {
@@ -1080,7 +1116,7 @@ async function action(id) {
   } else if (id === "builders") {
     await loadBuilders(); openPanel(id); drawScreens(id); refreshLabels(); robotCheer();
   } else if (id === "markets") {
-    await loadMarkets(); openPanel(id); drawScreens(id); refreshLabels(); robotCheer();
+    await loadMarkets(); openPanel(id); drawScreens(id); drawBoard(); refreshLabels(); robotCheer();
   } else if (id === "watch") {
     await watchTick(); openPanel(id); drawScreens(id);
   }
@@ -1129,16 +1165,16 @@ async function watchTick() {
 function startWatch() { clearInterval(state.watch.timer); state.watch.timer = setInterval(watchTick, 60000); }
 
 // =================================================================== MOVING BETWEEN CITY AND ROOM
-const CITY_VIEW = small ? { pos: new THREE.Vector3(46, 30, 56), target: new THREE.Vector3(0, 5, 0) } : { pos: new THREE.Vector3(34, 22, 40), target: new THREE.Vector3(0, 6, 0) };
+const CITY_VIEW = small ? { pos: new THREE.Vector3(48, 34, 60), target: new THREE.Vector3(0, 13, 0) } : { pos: new THREE.Vector3(37, 23, 44), target: new THREE.Vector3(0, 13.5, 0) };
 const ROOM_VIEW = small
-  ? { pos: new THREE.Vector3(1.55, 2.75, 2.75), target: new THREE.Vector3(0.0, 0.55, -0.7) } // phone: robot + screens sit above the bottom sheet
-  : { pos: new THREE.Vector3(2.75, 2.05, 1.55), target: new THREE.Vector3(0.45, 1.15, -0.9) }; // desktop: scene sits left of the panel
+  ? { pos: new THREE.Vector3(1.6, 3.3, 4.6), target: new THREE.Vector3(-0.9, 0.5, -0.9) } // phone: robot + screens sit above the bottom sheet
+  : { pos: new THREE.Vector3(3.5, 2.15, 2.9), target: new THREE.Vector3(-0.75, 1.45, -1.05) }; // desktop: robot and the whole tank sit left of the panel
 function setCityControls() {
   controls.minDistance = 22; controls.maxDistance = small ? 92 : 70; controls.minPolarAngle = 0.35; controls.maxPolarAngle = 1.38;
   controls.autoRotate = !reduce; controls.autoRotateSpeed = 0.35;
 }
 function setRoomControls() {
-  controls.minDistance = 1.6; controls.maxDistance = 5.2; controls.minPolarAngle = 0.5; controls.maxPolarAngle = 1.5;
+  controls.minDistance = 1.6; controls.maxDistance = 7.5; controls.minPolarAngle = 0.5; controls.maxPolarAngle = 1.5;
   controls.minAzimuthAngle = -1.1; controls.maxAzimuthAngle = 1.1; controls.autoRotate = false;
 }
 function tween(ms, fn) {
@@ -1146,46 +1182,348 @@ function tween(ms, fn) {
   return new Promise((done) => { const t0 = performance.now(); const step = (now) => { const k = Math.min(1, (now - t0) / ms); fn(ease(k)); k < 1 ? requestAnimationFrame(step) : done(); }; requestAnimationFrame(step); });
 }
 const fade = (on) => new Promise((r) => { $("fade").classList.toggle("on", on); setTimeout(r, reduce ? 0 : 300); });
-let busy = false, savedCity = null;
-async function enterTower(id) {
-  if (busy) return; busy = true;
-  const t = byId[id];
-  if (scene === city) {
-    savedCity = { pos: camera.position.clone(), target: controls.target.clone() };
-    controls.enabled = false; controls.autoRotate = false;
-    const towerPos = t.group.position.clone(), p0 = camera.position.clone(), q0 = controls.target.clone();
-    const p1 = towerPos.clone().multiplyScalar(1.55).setY(7), q1 = towerPos.clone().setY(5);
-    const fov0 = camera.fov;
-    await tween(1100, (k) => { camera.position.lerpVectors(p0, p1, k); controls.target.lerpVectors(q0, q1, k); camera.lookAt(controls.target); camera.fov = fov0 + Math.pow(k, 3) * 38; camera.updateProjectionMatrix(); });
+// ---------------------------------------------------------------- THE CORRIDOR (one building, four rooms)
+// Dark old-laboratory hallway: plank walls, stone floor, brass lamps. Each door has a lit window that
+// hints at the room behind it and a brass plaque with its number.
+const hall = new THREE.Scene();
+const DOORS = { scanner: { x: -1, z: -3.6 }, watch: { x: 1, z: -3.6 }, markets: { x: -1, z: -8.8 }, builders: { x: 1, z: -8.8 } };
+const doorHits = [], doorGlow = {};
+const hc = { x: 0, z: 2.6, lx: 0, lz: -6 }; // corridor camera: position and look offset
+const HALL_FROM = 2.6, HALL_REST = -0.3;
+{
+  hall.background = new THREE.Color(0x060504);
+  hall.fog = new THREE.Fog(0x060504, 6, 24);
+  hall.add(new THREE.HemisphereLight(0x5a4632, 0x070605, 0.5));
+  const planks = (() => { const t = canvasTex(512, 512, (g, w, h) => { const r = rand(31); g.fillStyle = "#1c140d"; g.fillRect(0, 0, w, h);
+    for (let x = 0; x < w; x += 64) { const v = 22 + r() * 16 | 0; g.fillStyle = `rgb(${v + 8},${v},${v - 8})`; g.fillRect(x + 2, 0, 60, h); for (let i = 0; i < 40; i++) { g.fillStyle = `rgba(0,0,0,${0.05 + r() * 0.12})`; g.fillRect(x + 2 + r() * 58, r() * h, 1 + r() * 2, 30 + r() * 160); } }
+    g.fillStyle = "#0c0906"; g.fillRect(0, h * 0.38, w, 10); }); t.wrapS = t.wrapT = THREE.RepeatWrapping; return t; })();
+  const tiles = (() => { const t = canvasTex(256, 256, (g, w, h) => { const r = rand(8); for (let y = 0; y < 4; y++) for (let x = 0; x < 4; x++) { const d = (x + y) % 2, v = (d ? 34 : 20) + r() * 8 | 0; g.fillStyle = `rgb(${v + 4},${v},${v - 3})`; g.fillRect(x * 64, y * 64, 64, 64); } g.strokeStyle = "#090705"; g.lineWidth = 3; for (let i = 0; i <= 4; i++) { g.beginPath(); g.moveTo(i * 64, 0); g.lineTo(i * 64, h); g.moveTo(0, i * 64); g.lineTo(w, i * 64); g.stroke(); } }); t.wrapS = t.wrapT = THREE.RepeatWrapping; return t; })();
+  const W = 3.4, H = 3.3, L = 17, zc = -5.2;
+  const wallMat = () => { const t = planks.clone(); t.needsUpdate = true; t.repeat.set(L / 3, 1); return new THREE.MeshStandardMaterial({ map: t, roughness: 0.9 }); };
+  for (const s of [-1, 1]) { const wl = new THREE.Mesh(new THREE.PlaneGeometry(L, H), wallMat()); wl.position.set(s * W / 2, H / 2, zc); wl.rotation.y = -s * Math.PI / 2; hall.add(wl); }
+  const ft = tiles.clone(); ft.needsUpdate = true; ft.repeat.set(W / 1.6, L / 1.6);
+  const fl = new THREE.Mesh(new THREE.PlaneGeometry(W, L), new THREE.MeshStandardMaterial({ map: ft, roughness: 0.45, metalness: 0.1 })); fl.rotation.x = -Math.PI / 2; fl.position.z = zc; hall.add(fl);
+  const cl = new THREE.Mesh(new THREE.PlaneGeometry(W, L), new THREE.MeshStandardMaterial({ color: 0x0d0a07, roughness: 1 })); cl.rotation.x = Math.PI / 2; cl.position.set(0, H, zc); hall.add(cl);
+  const brass = new THREE.MeshStandardMaterial({ color: 0x8a6a45, metalness: 0.85, roughness: 0.35 }), iron = new THREE.MeshStandardMaterial({ color: 0x1b1814, metalness: 0.7, roughness: 0.5 });
+  for (const [x, r] of [[-1.25, 0.07], [-1.02, 0.045], [1.2, 0.09]]) { const p = new THREE.Mesh(new THREE.CylinderGeometry(r, r, L, 10), x > 0 ? iron : brass); p.rotation.x = Math.PI / 2; p.position.set(x, H - 0.16, zc); hall.add(p); }
+  for (const z of [0.2, -3.6, -6.2, -8.8, -11.6]) { // hanging lamps
+    const rod = new THREE.Mesh(new THREE.CylinderGeometry(0.012, 0.012, 0.5, 6), iron); rod.position.set(0, H - 0.25, z); hall.add(rod);
+    const shade = new THREE.Mesh(new THREE.ConeGeometry(0.2, 0.16, 20, 1, true), brass); shade.position.set(0, H - 0.56, z); hall.add(shade);
+    const bulb = new THREE.Mesh(new THREE.SphereGeometry(0.05, 12, 10), new THREE.MeshBasicMaterial({ color: new THREE.Color(3, 2.1, 1.1) })); bulb.position.set(0, H - 0.62, z); hall.add(bulb);
+    const pl = new THREE.PointLight(0xffa858, 5, 6, 2); pl.position.set(0, H - 0.75, z); hall.add(pl);
   }
+  // what each window shows: a hint of the room, painted as a silhouette against its light
+  const hint = { scanner: (g) => { g.fillRect(104, 40, 48, 130); g.fillRect(92, 26, 72, 18); g.fillRect(84, 166, 88, 18); },
+    watch: (g) => { for (let y = 0; y < 3; y++) { g.fillRect(20, 60 + y * 46, 216, 6); for (let x = 0; x < 11; x++) g.fillRect(28 + x * 19, 36 + y * 46, 9, 24); } },
+    markets: (g) => { g.lineWidth = 7; g.beginPath(); g.moveTo(20, 150); for (const [x, y] of [[60, 110], [95, 130], [130, 70], [165, 96], [200, 44], [236, 60]]) g.lineTo(x, y); g.stroke(); g.fillRect(20, 168, 216, 5); },
+    builders: (g) => { g.fillRect(70, 138, 116, 22); g.fillRect(104, 160, 48, 26); g.save(); g.translate(150, 90); g.rotate(-0.6); g.fillRect(-8, -60, 16, 90); g.fillRect(-30, -78, 60, 26); g.restore(); } };
+  for (const id of ROOMS) {
+    const d = DOORS[id], s = d.x, wx = s * (W / 2 - 0.02);
+    const tex = canvasTex(256, 192, (g, w, h) => { const gr = g.createRadialGradient(128, 110, 10, 128, 110, 170); gr.addColorStop(0, "#ffd9a0"); gr.addColorStop(0.5, "#c8782c"); gr.addColorStop(1, "#2a1407"); g.fillStyle = gr; g.fillRect(0, 0, w, h); g.fillStyle = g.strokeStyle = "rgba(14,8,4,.9)"; hint[id](g); });
+    const glass = new THREE.Mesh(new THREE.PlaneGeometry(1.5, 1.1), new THREE.MeshBasicMaterial({ map: tex, color: new THREE.Color(0.9, 0.9, 0.9) }));
+    glass.position.set(wx, 1.7, d.z - 1.5); glass.rotation.y = -s * Math.PI / 2; hall.add(glass); doorGlow[id] = glass;
+    for (const [w, h, dy, dz] of [[1.62, 0.07, 0.58, 0], [1.62, 0.07, -0.58, 0], [0.07, 1.2, 0, 0.78], [0.07, 1.2, 0, -0.78], [0.04, 1.1, 0, 0]]) { const f = new THREE.Mesh(new THREE.BoxGeometry(0.06, h, w === 0.07 || w === 0.04 ? w : w), iron); f.geometry = new THREE.BoxGeometry(0.06, h, w); f.position.set(wx - s * 0.02, 1.7 + dy, d.z - 1.5 + dz); hall.add(f); }
+    const door = new THREE.Mesh(new THREE.BoxGeometry(0.08, 2.25, 1.05), new THREE.MeshStandardMaterial({ color: 0x241a11, roughness: 0.7, metalness: 0.15 })); door.position.set(wx - s * 0.03, 1.125, d.z); hall.add(door);
+    for (const dy of [0.35, 1.9]) { const band = new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.07, 1.07), brass); band.position.set(wx - s * 0.035, dy, d.z); hall.add(band); }
+    const knob = new THREE.Mesh(new THREE.SphereGeometry(0.05, 14, 10), brass); knob.position.set(wx - s * 0.1, 1.05, d.z - 0.38); hall.add(knob);
+    const ptex = canvasTex(512, 160, (g, w, h) => { g.fillStyle = "#8a6a45"; g.fillRect(0, 0, w, h); g.strokeStyle = "#3a2a18"; g.lineWidth = 6; g.strokeRect(8, 8, w - 16, h - 16); g.fillStyle = "#1a1109"; g.textAlign = "center"; g.textBaseline = "middle"; g.font = "600 64px Georgia, serif"; g.fillText(ROMAN[id], w / 2, 58); g.font = "500 30px Georgia, serif"; g.fillText(byId[id].name.toUpperCase(), w / 2, 118); });
+    const plaque = new THREE.Mesh(new THREE.PlaneGeometry(0.92, 0.29), new THREE.MeshBasicMaterial({ map: ptex, color: new THREE.Color(0.7, 0.7, 0.7) })); plaque.position.set(s * (W / 2 - 0.5), 2.62, d.z + 0.62); hall.add(plaque); // a blade sign, facing down the corridor
+    const arm = new THREE.Mesh(new THREE.BoxGeometry(0.98, 0.025, 0.025), iron); arm.position.set(s * (W / 2 - 0.5), 2.79, d.z + 0.62); hall.add(arm);
+    const lamp = new THREE.PointLight(0xffb060, 2.2, 3.2, 2); lamp.position.set(wx - s * 0.5, 2.3, d.z); hall.add(lamp);
+    const hit = new THREE.Mesh(new THREE.BoxGeometry(0.5, 2.9, 3.3), new THREE.MeshBasicMaterial({ visible: false })); hit.position.set(wx - s * 0.2, 1.45, d.z - 0.7); hit.userData.room = id; hall.add(hit); doorHits.push(hit);
+  }
+  // far end: a round brass porthole with Kaelis's eye behind it
+  const end = new THREE.Mesh(new THREE.PlaneGeometry(W, H), wallMat()); end.material.map.repeat.set(1, 1); end.position.set(0, H / 2, zc - L / 2); hall.add(end);
+  const port = new THREE.Mesh(new THREE.TorusGeometry(0.55, 0.07, 12, 48), brass); port.position.set(0, 1.75, zc - L / 2 + 0.05); hall.add(port);
+  const eye = new THREE.Mesh(new THREE.CircleGeometry(0.5, 40), new THREE.MeshBasicMaterial({ color: 0x030807 })); eye.position.set(0, 1.75, zc - L / 2 + 0.03); hall.add(eye);
+  const pupil = new THREE.Mesh(new THREE.RingGeometry(0.1, 0.16, 40), new THREE.MeshBasicMaterial({ color: new THREE.Color("#59e7ca").multiplyScalar(2.6), fog: false })); pupil.position.set(0, 1.75, zc - L / 2 + 0.04); hall.add(pupil); hall.userData.pupil = pupil;
+}
+function updateHall(t) {
+  const m = reduce ? 0 : 1;
+  camera.position.set(hc.x + pointer.x * 0.18 * m, 1.62 + Math.sin(t * 1.4) * 0.012 * m, hc.z);
+  camera.lookAt(hc.x + hc.lx + pointer.x * 0.6 * m, 1.55 + pointer.y * 0.25 * m, hc.z + hc.lz);
+  for (const id of ROOMS) doorGlow[id].material.color.setScalar((hoverDoor === id ? 1.25 : 0.86) + Math.sin(t * 2.3 + DOORS[id].z) * 0.04 * m);
+  hall.userData.pupil.position.x = pointer.x * 0.12; hall.userData.pupil.position.y = 1.75 + pointer.y * 0.08;
+}
+let hoverDoor = null;
+
+// ---------------------------------------------------------------- THE SPECIMEN TANK + the shelf of old specimens
+// The token you bring is the specimen. The liquid rises while Kaelis tests it, and its colour is the verdict.
+const TANK = new THREE.Vector3(-2.15, 0, -1.55);
+const tank = { level: 0.3, target: 0.3, c: new THREE.Color("#ffb347"), tc: new THREE.Color("#ffb347"), churn: 0.1, key: "" };
+const tankParts = {};
+{
+  const iron = new THREE.MeshStandardMaterial({ color: 0x16130f, metalness: 0.8, roughness: 0.45 }), brass = new THREE.MeshStandardMaterial({ color: 0x8a6a45, metalness: 0.85, roughness: 0.35 });
+  const g = new THREE.Group(); g.position.copy(TANK); room.add(g);
+  const foot = new THREE.Mesh(new THREE.CylinderGeometry(0.62, 0.7, 0.3, 40), iron); foot.position.y = 0.15; g.add(foot);
+  const ring1 = new THREE.Mesh(new THREE.TorusGeometry(0.5, 0.04, 10, 48), brass); ring1.rotation.x = Math.PI / 2; ring1.position.y = 0.32; g.add(ring1);
+  const H = 1.9, Y0 = 0.32;
+  const liquid = new THREE.Mesh(new THREE.CylinderGeometry(0.36, 0.36, H, 40), new THREE.MeshBasicMaterial({ color: 0xffb347, transparent: true, opacity: 0.92 }));
+  liquid.geometry.translate(0, H / 2, 0); liquid.position.y = Y0; g.add(liquid);
+  const glass = new THREE.Mesh(new THREE.CylinderGeometry(0.42, 0.42, H, 40, 1, true), new THREE.MeshStandardMaterial({ color: 0xcfe0e0, transparent: true, opacity: 0.2, roughness: 0.05, metalness: 0.2, side: THREE.DoubleSide, depthWrite: false }));
+  glass.position.y = Y0 + H / 2; g.add(glass);
+  for (let i = 0; i < 4; i++) { const a = (i / 4) * Math.PI * 2 + 0.4, st = new THREE.Mesh(new THREE.CylinderGeometry(0.022, 0.022, H, 8), brass); st.position.set(Math.cos(a) * 0.44, Y0 + H / 2, Math.sin(a) * 0.44); g.add(st); }
+  const capB = new THREE.Mesh(new THREE.CylinderGeometry(0.5, 0.46, 0.34, 40), iron); capB.position.y = Y0 + H + 0.17; g.add(capB);
+  const ring2 = ring1.clone(); ring2.position.y = Y0 + H; g.add(ring2);
+  // holo ring above the tank: the readout (white while idle, the verdict colour after a test)
+  const cv = document.createElement("canvas"); cv.width = 1024; cv.height = 128;
+  const tex = srgb(new THREE.CanvasTexture(cv)); tex.wrapS = THREE.RepeatWrapping;
+  const holo = new THREE.Mesh(new THREE.CylinderGeometry(0.66, 0.56, 0.36, 48, 1, true), new THREE.MeshBasicMaterial({ map: tex, transparent: true, side: THREE.DoubleSide, blending: THREE.AdditiveBlending, depthWrite: false }));
+  holo.position.y = Y0 + H + 0.62; g.add(holo);
+  // thick cables from the base across the floor, and one up to the ceiling
+  const cable = (pts, r = 0.045) => { const m = new THREE.Mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(pts.map((p) => new THREE.Vector3(...p))), 24, r, 8), iron); g.add(m); };
+  cable([[0.55, 0.18, 0.2], [1.0, 0.05, 0.5], [1.5, 0.05, 0.3], [2.0, 0.4, 0.2]]);
+  cable([[-0.5, 0.2, -0.3], [-0.9, 0.05, -0.6], [-1.3, 0.05, -0.2]], 0.06);
+  cable([[0.1, Y0 + H + 0.3, -0.3], [0.2, Y0 + H + 0.9, -0.7], [0.1, 4.2, -1.2]], 0.035);
+  // bubbles inside the liquid
+  const BN = 46, bg = new THREE.BufferGeometry(); bg.setAttribute("position", new THREE.BufferAttribute(new Float32Array(BN * 3), 3));
+  const bubbles = new THREE.Points(bg, new THREE.PointsMaterial({ color: new THREE.Color(2.2, 2.2, 2.0), size: 0.03, transparent: true, opacity: 0.8, blending: THREE.AdditiveBlending, depthWrite: false }));
+  g.add(bubbles);
+  const seeds = Array.from({ length: BN }, () => [Math.random(), Math.random() * Math.PI * 2, 0.05 + Math.random() * 0.28]);
+  const light = new THREE.PointLight(0xffb347, 6, 11, 1.6); light.position.set(TANK.x + 0.2, 1.4, TANK.z + 0.5); room.add(light);
+  const halo = glowSprite("rgba(255,179,71,0.5)", 3.2); halo.position.set(0, Y0 + H * 0.5, 0); g.add(halo);
+  Object.assign(tankParts, { g, liquid, holo, cv, tex, bubbles, seeds, light, halo, H, Y0 });
+
+}
+function drawHolo(text, color) {
+  const key = text + color; if (tank.key === key) return; tank.key = key;
+  const g = tankParts.cv.getContext("2d"), W = 1024, H = 128; g.clearRect(0, 0, W, H);
+  g.fillStyle = color; g.globalAlpha = 0.16; g.fillRect(0, 0, W, H); g.globalAlpha = 1;
+  g.fillRect(0, 0, W, 5); g.fillRect(0, H - 5, W, 5);
+  g.font = "700 54px JetBrains Mono, monospace"; g.textBaseline = "middle";
+  const unit = text + "   ·   ", w = g.measureText(unit).width, n = Math.max(1, Math.round(W / w));
+  g.save(); g.scale(W / (w * n), 1); for (let i = 0; i < n; i++) g.fillText(unit, i * w, H / 2 + 2); g.restore();
+  tankParts.tex.needsUpdate = true;
+}
+function updateTank(t, dt) {
+  const ls = state.lastScan, sc = current === "scanner", p = tankParts, m = reduce ? 0.2 : 1;
+  p.g.visible = current !== "builders"; if (!p.g.visible) { p.light.intensity = 0; return; }
+  if (sc && state.scanning) { tank.target = 1; tank.tc.set("#ffb347"); tank.churn = 1; drawHolo("TESTING " + String(state.scanning).slice(0, 6), "#ffffff"); }
+  else if (sc && ls) { tank.target = 0.86; tank.tc.set(riskColor(ls.result.score)); tank.churn = 0.3; drawHolo(`$${String(ls.symbol).slice(0, 8)}  ${ls.result.score}/100  ${ls.result.grade || ""}`, riskColor(ls.result.score)); }
+  else { tank.tc.set("#ffb347"); tank.churn = 0.12; drawHolo(sc ? "AWAITING SPECIMEN" : byId[current || "scanner"].name.toUpperCase(), "#ffffff"); if (!sc) tank.target = 0.45; }
+  tank.level += (tank.target - tank.level) * Math.min(1, dt * 1.1);
+  tank.c.lerp(tank.tc, Math.min(1, dt * 2.2));
+  const lv = Math.max(0.01, tank.level + Math.sin(t * 2.2) * 0.006 * m);
+  p.liquid.scale.y = lv; p.liquid.material.color.copy(tank.c).multiplyScalar(1.15 + tank.churn * 0.5);
+  p.light.color.copy(tank.c); p.light.intensity = 6 + tank.level * 34 + Math.sin(t * 9) * tank.churn * 3 * m;
+  p.halo.material.color.copy(tank.c); p.halo.material.opacity = 0.15 + tank.level * 0.55; p.halo.scale.setScalar(2.2 + tank.level * 1.6);
+  p.holo.rotation.y = t * 0.35 * m; p.holo.material.opacity = 0.35 + tank.level * 0.65;
+  const pos = p.bubbles.geometry.attributes.position, top = p.H * lv;
+  p.seeds.forEach(([ph, a, rr], i) => { const k = (ph + t * (0.12 + tank.churn * 0.9) * m) % 1; pos.setXYZ(i, Math.cos(a + k * 3) * rr, p.Y0 + k * top, Math.sin(a + k * 3) * rr); });
+  pos.needsUpdate = true; p.bubbles.material.opacity = 0.25 + tank.churn * 0.6;
+}
+
+// ---------------------------------------------------------------- what makes each room its own
+// II The Archive: the shelf is the real Ledger. One sealed tube per token Kaelis has tested (newest first);
+//    colour = its grade, black = confirmed rug, flickering = an insider filing. Tap a tube to read its label.
+// III The Exchange: one big slate board with K-20 vs S&P, the rated stocks and the fake tickers.
+// IV The Workshop: an anvil where the tank stands in the other rooms; the hammer falls, builders earn.
+const SHELF = { rows: 5, per: 64 };
+const shelfTubes = new THREE.InstancedMesh(new THREE.CylinderGeometry(0.036, 0.036, 0.27, 10), new THREE.MeshBasicMaterial({ color: 0xffffff }), SHELF.rows * SHELF.per);
+{
+  const mt = new THREE.Matrix4(), col = new THREE.Color(), r = rand(17);
+  for (let i = 0; i < shelfTubes.count; i++) {
+    const row = Math.floor(i / SHELF.per), x = -4.75 + (i % SHELF.per) * 0.15;
+    mt.makeTranslation(x, 3.42 - row * 0.56, -3.2); shelfTubes.setMatrixAt(i, mt);
+    col.set("#c98a2e").multiplyScalar(0.18 + r() * 0.25); shelfTubes.setColorAt(i, col); // unlabelled until the Ledger loads
+  }
+  room.add(shelfTubes);
+  for (let row = 0; row < SHELF.rows; row++) { const sh = new THREE.Mesh(new THREE.BoxGeometry(9.8, 0.045, 0.2), new THREE.MeshStandardMaterial({ color: 0x1c140d, roughness: 0.85 })); sh.position.set(0, 3.26 - row * 0.56, -3.18); room.add(sh); }
+}
+const GRADE_COL = (g, rug) => (rug === 1 || g === "D" ? "#140a08" : /^(AAA|AA|A)$/.test(g) ? "#59e7ca" : /^(BBB|BB|B)$/.test(g) ? "#ffc24a" : "#ff4d6a");
+let shelfFlagged = [];
+function paintShelf() {
+  const rows = state.shelf; if (!rows) return;
+  const filed = new Set(((state.filings && state.filings.filings) || []).map((f) => f.mint)), col = new THREE.Color();
+  shelfFlagged = [];
+  for (let i = 0; i < shelfTubes.count; i++) {
+    const c = rows[rows.length - 1 - i]; // newest first, top left
+    if (!c) { col.set("#2a1c10").multiplyScalar(0.5); shelfTubes.setColorAt(i, col); continue; }
+    const dark = c[5] === 1 || c[3] === "D";
+    col.set(GRADE_COL(c[3], c[5])).multiplyScalar(dark ? 1 : 0.36); shelfTubes.setColorAt(i, col);
+    if (filed.has(c[1]) && !dark) shelfFlagged.push(i);
+  }
+  shelfTubes.instanceColor.needsUpdate = true;
+}
+async function loadShelf() {
+  if (!state.server) return;
+  try { const r = await fetch("api/ledger?shelf=1", { cache: "no-store" }); if (r.ok) { state.shelf = (await r.json()).shelf; paintShelf(); } } catch (e) { /* keep the plain shelf */ }
+}
+function pickHTML() {
+  const c = state.pick;
+  if (!c) return `<p class="fine">${state.shelf ? state.shelf.length + " specimens on the shelf. Tap one to read its label." : "The shelf fills from the Kaelis server."}</p>`;
+  const out = c[5] == null ? "Still being watched" : c[5] ? "Rugged" : "Held";
+  return `<div class="kv"><span>Specimen #${c[0]}</span><span>${esc(c[2] ? "$" + c[2] : c[1].slice(0, 6) + "…")}</span><span>Grade</span><span><b style="color:${inkRisk(/^(AAA|AA|A)$/.test(c[3]) ? 0 : /^(BBB|BB|B)$/.test(c[3]) ? 50 : 90)}">${esc(c[3])}</b></span>
+    <span>Rug chance called</span><span>${Math.round(c[4] * 100)}%</span><span>Tested</span><span>${esc(c[6])}</span><span>After 7 days</span><span>${out}</span></div>
+    <a class="act" href="scan.html?mint=${encodeURIComponent(c[1])}" style="text-decoration:none;justify-self:start">Full report</a>`;
+}
+
+// III the exchange board
+const boardCv = document.createElement("canvas"); boardCv.width = 1400; boardCv.height = 800;
+const boardTex = srgb(new THREE.CanvasTexture(boardCv)); boardTex.anisotropy = 8;
+const board = new THREE.Group(); board.position.set(-0.5, 2.42, -3.05); board.visible = false; room.add(board);
+board.add(new THREE.Mesh(new THREE.PlaneGeometry(4.9, 2.8), new THREE.MeshBasicMaterial({ map: boardTex, toneMapped: false, color: new THREE.Color(0.9, 0.9, 0.9) })));
+{ const brass = new THREE.MeshStandardMaterial({ color: 0x8a6a45, metalness: 0.85, roughness: 0.35 });
+  for (const [w, h, x, y] of [[5.1, 0.1, 0, 1.45], [5.1, 0.1, 0, -1.45], [0.1, 3.0, -2.5, 0], [0.1, 3.0, 2.5, 0]]) { const f = new THREE.Mesh(new THREE.BoxGeometry(w, h, 0.08), brass); f.position.set(x, y, 0.02); board.add(f); } }
+function drawBoard() {
+  const g = boardCv.getContext("2d"), W = 1400, H = 800, mk = state.markets, last = mk && mk.series[mk.series.length - 1];
+  g.fillStyle = "#0e0d0b"; g.fillRect(0, 0, W, H);
+  const cream = "#e9dfc8", dim = "#8d8372", F = (px, w = 500) => `${w} ${px}px JetBrains Mono, monospace`;
+  g.textBaseline = "top"; g.fillStyle = dim; g.font = F(24); g.fillText("THE EXCHANGE  ·  INDEXED TO 100", 40, 30);
+  if (!mk) { g.fillStyle = cream; g.font = F(34); g.fillText("The board fills from the Kaelis server.", 40, 120); boardTex.needsUpdate = true; return; }
+  const big = (label, val, x, c) => { g.fillStyle = dim; g.font = F(22); g.fillText(label, x, 84); g.fillStyle = c; g.font = F(118, 700); g.fillText(val, x, 112); };
+  big("K-20  MEMES", last && last.k20 != null ? last.k20.toFixed(1) : "–", 40, "#59e7ca");
+  big("S&P 500", last && last.spy != null ? last.spy.toFixed(1) : "–", 360, "#9fb6e8");
+  big("KIQ  G" + (last ? last.gen || 0 : 0), last && last.iq != null ? String(last.iq) : "soon", 690, cream);
+  // chart
+  const ser = mk.series.filter((p) => p.k20 != null && p.spy != null), x0 = 40, y0 = 290, w = 900, h = 390;
+  g.strokeStyle = "#2c2820"; g.lineWidth = 2; g.strokeRect(x0, y0, w, h);
+  if (ser.length >= 2) {
+    const vals = ser.flatMap((p) => [p.k20, p.spy]), lo = Math.min(...vals, 100) - 1, hi = Math.max(...vals, 100) + 1, Y = (v) => y0 + h - ((v - lo) / (hi - lo)) * h;
+    g.setLineDash([6, 8]); g.strokeStyle = "#5a5346"; g.beginPath(); g.moveTo(x0, Y(100)); g.lineTo(x0 + w, Y(100)); g.stroke();
+    for (const [k, c, dash] of [["k20", "#59e7ca", []], ["spy", "#9fb6e8", [14, 8]]]) { g.setLineDash(dash); g.strokeStyle = c; g.lineWidth = 5; g.beginPath(); ser.forEach((p, i) => { const X = x0 + (i / (ser.length - 1)) * w; i ? g.lineTo(X, Y(p[k])) : g.moveTo(X, Y(p[k])); }); g.stroke(); }
+    g.setLineDash([]);
+  } else { g.fillStyle = dim; g.font = F(26); g.fillText("collecting points, one every 30 minutes", x0 + 30, y0 + 190); }
+  // stocks
+  g.fillStyle = dim; g.font = F(22); g.fillText("TOKENIZED STOCKS", 990, 84);
+  mk.stocks.forEach((s, i) => { const gr = s.call ? s.call.grade : "…"; g.fillStyle = cream; g.font = F(40, 700); g.fillText(s.sym.padEnd(6), 990, 124 + i * 54); g.fillStyle = GRADE_COL(gr, 0); g.fillText(gr, 1210, 124 + i * 54); });
+  g.fillStyle = dim; g.font = F(22); g.fillText("FAKE TICKERS  ·  FLAGGED CC", 990, 410);
+  const fakes = mk.lookalikes || [];
+  (fakes.length ? fakes.slice(0, 6) : [{ copies: "none found", name: "" }]).forEach((f, i) => { g.fillStyle = fakes.length ? "#ff4d6a" : dim; g.font = F(24); g.fillText(`${f.copies}  ${String(f.name || "").slice(0, 16)}`, 990, 450 + i * 40); });
+  g.fillStyle = dim; g.font = F(20); g.fillText("A benchmark, never an investable product.", 40, 720);
+  boardTex.needsUpdate = true;
+}
+
+// IV the forge
+const forge = new THREE.Group(); forge.position.copy(TANK); forge.visible = false; room.add(forge);
+const forgeParts = {};
+{
+  const iron = new THREE.MeshStandardMaterial({ color: 0x17140f, metalness: 0.85, roughness: 0.4 });
+  const block = new THREE.Mesh(new THREE.BoxGeometry(0.7, 0.62, 0.6), new THREE.MeshStandardMaterial({ color: 0x2a1d12, roughness: 0.9 })); block.position.y = 0.31; forge.add(block);
+  const top = new THREE.Mesh(new THREE.BoxGeometry(1.2, 0.26, 0.56), iron); top.position.y = 0.75; forge.add(top);
+  const horn = new THREE.Mesh(new THREE.ConeGeometry(0.2, 0.6, 24), iron); horn.rotation.z = -Math.PI / 2; horn.position.set(-0.88, 0.78, 0); forge.add(horn);
+  const ingot = new THREE.Mesh(new THREE.BoxGeometry(0.46, 0.09, 0.2), new THREE.MeshStandardMaterial({ color: 0x331206, emissive: 0xff8a4d, emissiveIntensity: 1.4, roughness: 0.6 })); ingot.position.y = 0.925; forge.add(ingot);
+  const pivot = new THREE.Group(); pivot.position.set(1.18, 1.02, 0); forge.add(pivot);
+  new GLTFLoader().setMeshoptDecoder(MeshoptDecoder).load("models/hammer.glb", (gl) => {
+    const m = gl.scene, box = new THREE.Box3().setFromObject(m), size = box.getSize(new THREE.Vector3()), k = 1.3 / Math.max(size.x, size.y, size.z);
+    m.scale.setScalar(k); m.position.sub(box.getCenter(new THREE.Vector3()).multiplyScalar(k)); m.position.y += (size.y * k) / 2; // pivot at the end of the handle
+    m.traverse((o) => { if (o.isMesh && o.material.emissiveIntensity > 1) o.material.emissiveIntensity = 2; });
+    pivot.add(m);
+  }, undefined, () => { const h = new THREE.Mesh(new THREE.BoxGeometry(0.4, 0.22, 0.22), iron); h.position.y = 1.2; pivot.add(h); const sft = new THREE.Mesh(new THREE.CylinderGeometry(0.035, 0.035, 1.2), iron); sft.position.y = 0.6; pivot.add(sft); });
+  const light = new THREE.PointLight(0xff8a4d, 0, 10, 1.7); light.position.set(TANK.x, 1.3, TANK.z + 0.5); room.add(light);
+  const SN = 70, sg = new THREE.BufferGeometry(); sg.setAttribute("position", new THREE.BufferAttribute(new Float32Array(SN * 3), 3));
+  const sparks = new THREE.Points(sg, new THREE.PointsMaterial({ color: new THREE.Color(3, 1.5, 0.6), size: 0.035, transparent: true, opacity: 0, blending: THREE.AdditiveBlending, depthWrite: false })); forge.add(sparks);
+  const seeds = Array.from({ length: SN }, () => [(Math.random() - 0.5) * 4, 1 + Math.random() * 3.4, (Math.random() - 0.5) * 4, 0.4 + Math.random() * 0.6]);
+  Object.assign(forgeParts, { ingot, pivot, light, sparks, seeds });
+}
+function updateForge(t) {
+  const on = current === "builders", p = forgeParts; forge.visible = on;
+  if (!on) { p.light.intensity = 0; return; }
+  const c = reduce ? 0.2 : t % 2.6; // one blow every 2.6 s
+  let a = -0.5, heat = 0.15;
+  if (c < 0.9) a = lerp(-0.5, -0.95, c / 0.9); else if (c < 1.1) a = -0.95 + (Math.PI / 2 + 0.95) * Math.pow((c - 0.9) / 0.2, 2.2); else if (c < 1.6) a = Math.PI / 2 - (Math.PI / 2 + 0.5) * ease((c - 1.1) / 0.5);
+  if (c >= 1.1) heat = Math.exp(-(c - 1.1) * 3.2);
+  p.pivot.rotation.z = a; p.ingot.material.emissiveIntensity = 1.2 + heat * 5; p.light.intensity = 14 + heat * 60;
+  const pos = p.sparks.geometry.attributes.position, d = c - 1.1;
+  p.seeds.forEach(([vx, vy, vz, life], i) => { if (d < 0 || d > life) pos.setXYZ(i, 0, -5, 0); else pos.setXYZ(i, vx * d * 0.5, Math.max(0.02, 0.95 + vy * d - 5 * d * d), vz * d * 0.5); });
+  pos.needsUpdate = true; p.sparks.material.opacity = d >= 0 && d < 1 ? 1 - d : 0;
+}
+function dressRoom(id) {
+  board.visible = id === "markets"; shelfTubes.visible = id !== "markets";
+  if (id === "markets") drawBoard();
+  if (id === "watch" || id === "scanner") paintShelf();
+}
+function viewOf(id) {
+  if (id === "watch" || id === "markets") return small
+    ? { pos: new THREE.Vector3(0.4, 3.6, 5.6), target: new THREE.Vector3(-0.4, 1.7, -3.2) }
+    : { pos: new THREE.Vector3(2.7, 2.4, 3.9), target: new THREE.Vector3(-1.0, 2.25, -3.2) }; // faces the shelf / the board
+  return ROOM_VIEW;
+}
+
+// ---------------------------------------------------------------- the robot speaks, and only then asks
+const greetS = { k: 0, target: 0, on: false, run: 0 };
+let skips = [];
+const wait = (ms) => new Promise((res) => { const id = setTimeout(done, ms); function done() { clearTimeout(id); skips = skips.filter((f) => f !== done); res(); } skips.push(done); });
+function skipGreet() { skips.slice().forEach((f) => f()); }
+function say(text, ms) { const el = $("say"); clearTimeout(say.t); if (!text) { el.classList.remove("on"); return; } el.textContent = text; el.classList.add("on"); if (ms) say.t = setTimeout(() => el.classList.remove("on"), ms); }
+const met = () => { try { return localStorage.getItem("kaelis.met") === "1"; } catch (e) { return false; } };
+async function greet() {
+  const run = ++greetS.run, live = () => run === greetS.run && scene === room && current === "scanner";
+  greetS.on = true; tank.target = 0.3;
+  if (!met() && !reduce) {
+    await wait(2300); if (!live()) return;       // it is busy; it has not noticed you
+    greetS.target = 1; await wait(900); if (!live()) return;
+    say("You brought something?"); await wait(1500); if (!live()) return;
+  } else { greetS.target = 1; say(state.lastScan ? "Back again." : "What did you bring?", 4200); await wait(450); if (!live()) return; }
+  tank.target = Math.max(tank.target, 0.45); openPanel("scanner"); greetS.on = false;
+  try { localStorage.setItem("kaelis.met", "1"); } catch (e) { /* private mode */ }
+  setTimeout(() => { if (run === greetS.run) greetS.target = 0; }, 2800);
+}
+
+// ---------------------------------------------------------------- moving: city -> corridor -> room
+let busy = false, savedCity = null;
+function setScene(s) {
+  scene = s; renderPass.scene = s; setBloom(s === city ? "city" : "room");
+  paint.enabled = s !== city; // inside the building everything is an oil painting
+  const pr = s === city ? BASE_PR : 1; renderer.setPixelRatio(pr); composer.setPixelRatio(pr); resize();
+  document.body.classList.toggle("inside", s !== city); document.body.classList.toggle("in-hall", s === hall);
+  $("exitBtn").hidden = s === city; $("exitBtn").textContent = s === room ? "← Corridor" : "← City";
+  $("hint").textContent = s === city ? "Tap the tower to step inside · drag to look around" : s === hall ? "Choose a door" : "Drag to look around";
+  for (const id of ROOMS) dockEls[id].classList.toggle("on", s === room && current === id);
+}
+async function enterLab() {
+  if (busy || scene !== city) return; busy = true;
+  savedCity = { pos: camera.position.clone(), target: controls.target.clone() };
+  controls.enabled = false; controls.autoRotate = false;
+  const p0 = camera.position.clone(), q0 = controls.target.clone(), fov0 = camera.fov;
+  const p1 = p0.clone().setY(0).normalize().multiplyScalar(12).setY(2.4), q1 = new THREE.Vector3(0, 2.2, 0);
+  await tween(1300, (k) => { camera.position.lerpVectors(p0, p1, k); controls.target.lerpVectors(q0, q1, k); camera.lookAt(controls.target); camera.fov = fov0 + Math.pow(k, 3) * 30; camera.updateProjectionMatrix(); });
   await fade(true);
-  scene = room; renderPass.scene = room; setBloom("room"); resize();
-  themeRoom(id); openPanel(id); drawScreens(id);
+  current = null; $("panel").hidden = true; setScene(hall);
+  Object.assign(hc, { x: 0, z: HALL_FROM, lx: 0, lz: -6 }); updateHall(0);
+  await fade(false);
+  const first = !met();
+  await tween(first ? 2600 : 1400, (k) => { hc.z = lerp(HALL_FROM, HALL_REST, k); });
+  busy = false;
+  if (first) enterRoom("scanner"); // first visit: straight through the first door
+}
+async function enterRoom(id) {
+  if (busy || !byId[id]) return; busy = true;
+  if (scene === city) { savedCity = { pos: camera.position.clone(), target: controls.target.clone() }; controls.enabled = false; controls.autoRotate = false; }
+  if (scene === hall) { const d = DOORS[id], a = { ...hc }; await tween(850, (k) => { hc.x = lerp(a.x, d.x * 0.35, k); hc.z = lerp(a.z, d.z + 1.5, k); hc.lx = lerp(a.lx, d.x * 4, k); hc.lz = lerp(a.lz, -1.7, k); }); }
+  await fade(true);
+  greetS.run++; greetS.target = 0; greetS.on = false; skipGreet(); say(null);
+  current = id; $("panel").hidden = true; setScene(room);
+  themeRoom(id); drawScreens(id); dressRoom(id);
+  const view = viewOf(id);
   controls.minAzimuthAngle = -Infinity; controls.maxAzimuthAngle = Infinity;
-  camera.position.copy(ROOM_VIEW.pos).add(new THREE.Vector3(1.2, 0.5, 2)); controls.target.copy(ROOM_VIEW.target);
+  camera.position.copy(view.pos).add(new THREE.Vector3(1.2, 0.5, 2)); controls.target.copy(view.target);
   setRoomControls(); controls.update();
-  $("exitBtn").hidden = false; $("dock").style.display = "none"; document.body.classList.add("inside"); $("hint").textContent = "Drag to look around the room";
   await fade(false);
   const p0 = camera.position.clone();
-  await tween(900, (k) => { camera.position.lerpVectors(p0, ROOM_VIEW.pos, k); camera.lookAt(controls.target); });
+  await tween(1100, (k) => { camera.position.lerpVectors(p0, view.pos, k); camera.lookAt(controls.target); });
   controls.enabled = true; busy = false;
+  if (id === "scanner") greet(); else openPanel(id);
 }
-async function switchTower(id) { await enterTower(id); }
+const enterTower = enterRoom, switchTower = enterRoom;
 async function exitTower() {
-  if (busy || scene !== room) return; busy = true;
+  if (busy || scene === city) return; busy = true;
   await fade(true);
-  scene = city; renderPass.scene = city; setBloom("city"); current = null; $("panel").hidden = true;
-  controls.minAzimuthAngle = -Infinity; controls.maxAzimuthAngle = Infinity; setCityControls();
-  camera.position.copy(savedCity ? savedCity.pos : CITY_VIEW.pos); controls.target.copy(savedCity ? savedCity.target : CITY_VIEW.target); controls.update();
-  $("exitBtn").hidden = true; $("dock").style.display = ""; document.body.classList.remove("inside"); $("hint").textContent = "Drag to look around · tap a tower to step inside";
+  greetS.run++; greetS.target = 0; greetS.on = false; skipGreet(); say(null);
+  $("panel").hidden = true; controls.enabled = false;
+  if (scene === room) { current = null; setScene(hall); Object.assign(hc, { x: 0, z: HALL_REST, lx: 0, lz: -6 }); updateHall(0); }
+  else {
+    setScene(city); controls.minAzimuthAngle = -Infinity; controls.maxAzimuthAngle = Infinity; setCityControls();
+    camera.position.copy(savedCity ? savedCity.pos : CITY_VIEW.pos); controls.target.copy(savedCity ? savedCity.target : CITY_VIEW.target); controls.update(); controls.enabled = true;
+  }
   await fade(false); busy = false;
 }
 $("exitBtn").addEventListener("click", exitTower);
-$("ctaScan").addEventListener("click", () => enterTower("scanner")); $("pClose").addEventListener("click", exitTower);
+$("ctaScan").addEventListener("click", enterLab); $("pClose").addEventListener("click", exitTower);
 addEventListener("keydown", (e) => { if (e.key === "Escape") exitTower(); });
-function themeRoom(id) {
-  const c = new THREE.Color(byId[id].color);
-  roomParts.screenLight.color.copy(c); roomParts.edge.material.color.copy(c).multiplyScalar(2.2); roomParts.lip.material.color.copy(c).multiplyScalar(2);
+function themeRoom() { // every room is lit by the tank and by lamplight
+  roomParts.screenLight.color.set("#ffb347"); roomParts.screenLight.intensity = 1.2;
+  roomParts.edge.material.color.set("#8a6a45").multiplyScalar(0.7); roomParts.lip.material.color.set("#ffb347").multiplyScalar(0.8);
 }
 
 // =================================================================== ROBOT ANIMATION
@@ -1193,13 +1531,14 @@ const robo = { press: 0, cheer: 0, look: 0 };
 function pressButton() { robo.press = 1; }
 function robotCheer() { robo.cheer = 1; }
 function animateRobot(t, dt) {
-  const r = robot, typing = reduce ? 0 : 1;
+  greetS.k += (greetS.target - greetS.k) * Math.min(1, dt * 2.6);
+  const r = robot, typing = (reduce ? 0 : 1) * (1 - greetS.k);
   robo.press = Math.max(0, robo.press - dt * 1.4);
   robo.cheer = Math.max(0, robo.cheer - dt * 0.6);
   // head scans between the three monitors
   const scan = Math.sin(t * 0.55) > 0.35 ? 0.42 : Math.sin(t * 0.55) < -0.35 ? -0.42 : 0;
   robo.look += (scan * typing - robo.look) * Math.min(1, dt * 3);
-  r.neck.rotation.y = robo.look + (robo.cheer > 0 ? Math.sin(robo.cheer * 12) * 0.25 : 0);
+  r.neck.rotation.y = robo.look * (1 - greetS.k) - greetS.k * 0.8 + (robo.cheer > 0 ? Math.sin(robo.cheer * 12) * 0.25 : 0);
   r.neck.rotation.x = -0.12 + Math.sin(t * 1.3) * 0.02 * typing;
   r.hips.position.y = 0.62 + Math.sin(t * 2) * 0.006 * typing;
   // arms: typing, the right one slams the button, both go up on a cheer
@@ -1212,7 +1551,7 @@ function animateRobot(t, dt) {
     shoulder.rotation.set(sx, 0, sz); elbow.rotation.set(ex, 0, 0);
   });
   if (fx.alarm > 0) r.neck.rotation.y = Math.sin(t * 22) * 0.35;
-  r.eyeMat.emissiveIntensity = 1.6 + (robo.press + robo.cheer) * 2.5 + Math.sin(t * 3) * 0.25;
+  r.eyeMat.emissiveIntensity = 1.6 + (robo.press + robo.cheer) * 2.5 + greetS.k * 1.8 + Math.sin(t * 3) * 0.25;
   roomParts.btn.position.y = 0.94 - (robo.press > 0.55 && robo.press < 0.8 ? 0.03 : 0);
   roomParts.btn.material.emissiveIntensity = 0.6 + robo.press * 2.5;
 }
@@ -1237,7 +1576,7 @@ const PK = 48;
 const packets = new THREE.InstancedMesh(new THREE.SphereGeometry(0.06, 6, 6), new THREE.MeshBasicMaterial({ color: new THREE.Color(1.6, 1.6, 1.6) }), PK);
 const pkData = Array.from({ length: PK }, (_, i) => ({ tw: TOWERS[i % TOWERS.length], ph: Math.random(), sp: 0.18 + Math.random() * 0.22, up: i % 2 === 0 }));
 pkData.forEach((d, i) => packets.setColorAt(i, i % 6 ? new THREE.Color(1, 1, 1) : new THREE.Color(d.tw.color))); // mostly white drone lights
-city.add(packets);
+city.add(packets); packets.visible = false; // with one tower there is nothing to fly between
 const _a = new THREE.Vector3(), _b = new THREE.Vector3(), _c = new THREE.Vector3(), _m4 = new THREE.Matrix4();
 
 // --- shooting stars
@@ -1271,7 +1610,7 @@ const blimp = new THREE.Group(); city.add(blimp);
   const bannerCv = document.createElement("canvas"); bannerCv.width = 2048; bannerCv.height = 128;
   const bg = bannerCv.getContext("2d"); bg.fillStyle = "#0b0c0e"; bg.fillRect(0, 0, 2048, 128);
   bg.font = "700 74px JetBrains Mono, monospace"; bg.textBaseline = "middle"; bg.fillStyle = "#efe9dc";
-  bg.fillText("$KAEL  ·  SCAN BEFORE YOU APE  ·  FORGED BY BUILDERS  ·", 20, 66);
+  bg.fillText("$KAEL  ·  KAELIS LABS  ·  WHAT IS IN THE TANK?  ·", 20, 66);
   const bannerTex = srgb(new THREE.CanvasTexture(bannerCv)); bannerTex.wrapS = THREE.RepeatWrapping; bannerTex.repeat.set(0.55, 1);
   for (const side of [1, -1]) {
     const b = new THREE.Mesh(new THREE.PlaneGeometry(8.5, 0.9), new THREE.MeshBasicMaterial({ map: bannerTex, color: new THREE.Color(1.1, 1.1, 1.1) }));
@@ -1335,7 +1674,7 @@ beaconBeam.geometry.translate(0, -1.1, 0); beaconBeam.geometry.rotateZ(Math.PI /
 // result reactions: safe -> chair spin + cheer + coin; danger -> alarm + panic + red coin
 function celebrate(ls) {
   drawCoin(ls); fx.coin = 1;
-  if (ls.result.score >= 70) { fx.alarm = 6; } else { fx.spin = 1; robotCheer(); }
+  if (ls.result.score >= 70) { fx.alarm = 6; say("Do not touch that one.", 7000); } else { fx.spin = 1; robotCheer(); say(ls.result.score >= 40 ? "I would not trust it." : "Clean. For now.", 6000); }
 }
 
 function updateCityFX(t, dt) {
@@ -1381,24 +1720,24 @@ function updateCityFX(t, dt) {
   _a.set(Math.sin(SWEEP_TILT) * SWEEP_LEN, 0, 0).applyAxisAngle(new THREE.Vector3(0, 1, 0), sa); sweepSpot.position.set(_a.x, 0.08, _a.z);
   sweepCone.material.opacity = 0.4 + Math.sin(t * 0.8) * 0.05;
   // blimp
-  const ba = t * 0.045 * (m || 0.2) + 1, R = 46;
-  blimp.position.set(Math.cos(ba) * R, 27 + Math.sin(t * 0.4) * 1.2 * m, Math.sin(ba) * R);
+  const ba = t * 0.045 * (m || 0.2) + 1, R = 62;
+  blimp.position.set(Math.cos(ba) * R, 38 + Math.sin(t * 0.4) * 1.2 * m, Math.sin(ba) * R);
   const vx = -Math.sin(ba), vz = Math.cos(ba); blimp.rotation.set(Math.sin(t * 0.6) * 0.04 * m, Math.atan2(-vz, vx), 0);
   blimp.userData.banner.offset.x = (t * 0.06 * (m || 0.2)) % 1;
   blimp.userData.nose.material.opacity = Math.sin(t * 4) > 0 ? 1 : 0.15; blimp.userData.tail.material.opacity = Math.sin(t * 4 + 2) > 0 ? 1 : 0.15;
   // towers: flicker, hover lift, beam flare after a scan
   TOWERS.forEach((tw, i) => {
-    const on = hovered === tw.id;
-    tw.group.position.y = lerp(tw.group.position.y, on ? 0.6 : 0, 0.12);
+    const on = !!hovered;
+    tw.group.position.y = 0.6;
     if (fx.intro) tw.beamMat.uniforms.uK.value = lerp(tw.beamMat.uniforms.uK.value, (on ? 0.45 : 0.2) + (tw.flare || 0) * 1.2, 0.1);
     if (tw.av) tw.av.material.opacity = Math.sin(t * 2.1 + i * 1.7) > 0.55 ? 1 : 0.06;
     tw.flare = Math.max(0, (tw.flare || 0) - dt * 0.5);
-    (tw.mats || []).forEach((mt, j) => { mt.emissiveIntensity = 0.95 + (m ? Math.sin(t * 0.7 + i * 3 + j) * 0.03 : 0) + (on ? 0.2 : 0); });
+    if (i === 0) tw.mats[0].emissiveIntensity = 1.7 + (m ? Math.sin(t * 0.7) * 0.04 : 0) + (on ? 0.35 : 0);
   });
 }
 
 function updateRoomFX(t, dt) {
-  const m = reduce ? 0 : 1, theme = current ? byId[current].color : "#59e7ca";
+  const m = reduce ? 0 : 1, theme = "#ffb347";
   // steam from the mug
   const mp = roomParts.mug.position;
   steam.forEach((s) => { const k = (t * 0.35 + s.ph) % 1; s.sp.position.set(mp.x + Math.sin(k * 9 + s.ph * 6) * 0.03, mp.y + 0.08 + k * 0.45, mp.z); s.sp.scale.setScalar(0.1 + k * 0.22); s.sp.material.opacity = Math.sin(k * Math.PI) * 0.5 * (m || 0); });
@@ -1411,18 +1750,20 @@ function updateRoomFX(t, dt) {
     fx.glitchAt = t; drawScreens("scanner");
     const s0 = roomParts.screens[0], g = s0.cv.getContext("2d"), W = s0.cv.width, H = s0.cv.height;
     for (let i = 0; i < 5; i++) { const y = Math.random() * H, h = 4 + Math.random() * 18, dx = (Math.random() - 0.5) * 40; g.drawImage(s0.cv, 0, y, W, h, dx, y, W, h); }
-    g.fillStyle = "rgba(89,231,202,0.15)"; g.fillRect(0, (t * 300) % H, W, 10);
+    g.fillStyle = "rgba(255,179,71,0.15)"; g.fillRect(0, (t * 300) % H, W, 10);
     s0.tex.needsUpdate = true;
   }
   // holo coin
   fx.coin = Math.max(0, fx.coin - dt * 0.03);
-  const show = state.lastScan && current === "scanner" ? 1 : 0;
+  const show = 0; // the tank is the readout now
   const cs = lerp(coin.scale.x, show ? 1 : 0.001, 0.08);
   coin.scale.setScalar(Math.max(0.001, cs)); coin.rotation.z = t * 1.6 * (m || 0.2); coin.position.y = 1.3 + Math.sin(t * 1.8) * 0.03 * m;
   coinGlow.material.opacity = cs * 0.8;
   // chair spin on a good result (robot spins with it)
   if (fx.spin > 0) { fx.spin = Math.max(0, fx.spin - dt * 0.55); const k = ease(1 - fx.spin); roomParts.chair.rotation.y = robot.R.rotation.y = k * Math.PI * 2; }
-  else roomParts.chair.rotation.y = robot.R.rotation.y = Math.sin(t * 0.5) * 0.06 * m;
+  else roomParts.chair.rotation.y = robot.R.rotation.y = Math.sin(t * 0.5) * 0.06 * m * (1 - greetS.k) - greetS.k * 1.3;
+  updateTank(t, dt); updateForge(t);
+  if (shelfFlagged.length && shelfTubes.visible) { const c = new THREE.Color(), k = 0.35 + 0.65 * Math.abs(Math.sin(t * 5)); for (const i of shelfFlagged) { c.set("#ff4d6a").multiplyScalar(k); shelfTubes.setColorAt(i, c); } shelfTubes.instanceColor.needsUpdate = true; }
   // alarm on a dangerous result
   fx.alarm = Math.max(0, fx.alarm - dt);
   beacon.visible = fx.alarm > 0; alarmLight.intensity = fx.alarm > 0 ? (8 + Math.sin(t * 14) * 6) : 0;
@@ -1435,16 +1776,26 @@ function updateRoomFX(t, dt) {
 const ray = new THREE.Raycaster(), pointer = new THREE.Vector2(); let hovered = null, downAt = null;
 canvas.addEventListener("pointermove", (e) => {
   pointer.set((e.clientX / innerWidth) * 2 - 1, -(e.clientY / innerHeight) * 2 + 1);
-  if (scene !== city) return;
-  ray.setFromCamera(pointer, camera); const hit = ray.intersectObjects(towerHits)[0];
+  if (scene === room) return;
+  ray.setFromCamera(pointer, camera);
+  if (scene === hall) { const hit = ray.intersectObjects(doorHits)[0]; hoverDoor = hit ? hit.object.userData.room : null; canvas.style.cursor = hoverDoor ? "pointer" : "default"; return; }
+  const hit = ray.intersectObjects(towerHits)[0];
   hovered = hit ? hit.object.userData.tower : null; canvas.style.cursor = hovered ? "pointer" : "grab";
 });
-canvas.addEventListener("pointerdown", (e) => { downAt = [e.clientX, e.clientY]; });
+canvas.addEventListener("pointerdown", (e) => { downAt = [e.clientX, e.clientY]; if (greetS.on) skipGreet(); });
 canvas.addEventListener("pointerup", (e) => {
-  if (!downAt || Math.hypot(e.clientX - downAt[0], e.clientY - downAt[1]) > 6 || scene !== city) return;
+  if (!downAt || Math.hypot(e.clientX - downAt[0], e.clientY - downAt[1]) > 6) return;
+  if (scene === room) {
+    if (current !== "watch" || !state.shelf) return;
+    pointer.set((e.clientX / innerWidth) * 2 - 1, -(e.clientY / innerHeight) * 2 + 1); ray.setFromCamera(pointer, camera);
+    const hit = ray.intersectObject(shelfTubes)[0], c = hit && state.shelf[state.shelf.length - 1 - hit.instanceId];
+    if (c) { state.pick = c; openPanel("watch"); say(c[5] === 1 ? "That one did not make it." : c[5] === 0 ? "It held." : "Still watching that one.", 4000); }
+    return;
+  }
   pointer.set((e.clientX / innerWidth) * 2 - 1, -(e.clientY / innerHeight) * 2 + 1);
-  ray.setFromCamera(pointer, camera); const hit = ray.intersectObjects(towerHits)[0];
-  if (hit) enterTower(hit.object.userData.tower);
+  ray.setFromCamera(pointer, camera);
+  if (scene === hall) { const hit = ray.intersectObjects(doorHits)[0]; if (hit) enterRoom(hit.object.userData.room); return; }
+  if (ray.intersectObjects(towerHits)[0]) enterLab();
 });
 
 // =================================================================== LOOP
@@ -1453,6 +1804,7 @@ function resize() {
   renderer.setSize(w, h, false); composer.setSize(w, h);
   bloom.resolution.set(w * (small ? 0.5 : 0.75), h * (small ? 0.5 : 0.75));
   camera.aspect = w / h; camera.fov = w / h < 0.8 ? 58 : 40; camera.updateProjectionMatrix();
+  renderer.getDrawingBufferSize(paint.uniforms.uRes.value);
 }
 addEventListener("resize", resize); resize();
 camera.position.copy(CITY_VIEW.pos); controls.target.copy(CITY_VIEW.target); setCityControls(); controls.update();
@@ -1464,7 +1816,7 @@ function frame() {
   const dt = Math.min(0.05, clock.getDelta()), t = clock.elapsedTime, m = reduce ? 0 : 1;
   beams.forEach((b) => (b.uniforms.uTime.value = t));
   if (scene === city) {
-    kaelisCity.position.y = 8.2 + Math.sin(t * 1.1) * 0.35 * m;
+    kaelisCity.position.y = LAB_Y + Math.sin(t * 1.1) * 0.35 * m;
     kaelisCity.rotation.y += ((pointer.x * 0.8 + Math.sin(t * 0.3) * 0.3 * m) - kaelisCity.rotation.y) * 0.05;
     kaelisCity.rotation.x += ((-pointer.y * 0.3) - kaelisCity.rotation.x) * 0.05;
     const mtx = new THREE.Matrix4();
@@ -1472,14 +1824,16 @@ function frame() {
     runners.instanceMatrix.needsUpdate = true;
     skyMat.uniforms.uTime.value = t * m;
     avLights.material.opacity = Math.sin(t * 2.4) > 0.55 ? 1 : 0.05;
-    TOWERS.forEach((tw) => { const on = hovered === tw.id; tw.crown.material.color.copy(tw.crownCol).multiplyScalar(on ? 2.4 : 1.1); });
+    TOWERS[0].crown.material.color.copy(TOWERS[0].crownCol).multiplyScalar(hovered ? 2.6 : 1.1);
     updateCityFX(t, dt);
+  } else if (scene === hall) {
+    updateHall(t);
   } else {
     animateRobot(t, dt);
     updateRoomFX(t, dt);
     if (t - lastClock > 10) { drawClock(); lastClock = t; }
   }
-  controls.update();
+  if (scene !== hall) controls.update();
   finish.uniforms.uTime.value = t;
   composer.render();
   placeLabels();
@@ -1491,10 +1845,10 @@ function frame() {
   drawClock(); refreshLabels();
   try { bakeCityEnv(); } catch (e) { /* keep the studio environment */ }
   requestAnimationFrame(frame);
-  await checkHealth(); await Promise.all([loadHolders(), loadBuilders(), loadMarkets(), loadFilings()]); refreshLabels();
-  setInterval(async () => { await Promise.all([loadMarkets(), loadFilings()]); refreshLabels(); if (current === "watch") drawScreens("watch"); if (current === "markets") drawScreens("markets"); }, 5 * 60000);
+  await checkHealth(); await Promise.all([loadHolders(), loadBuilders(), loadMarkets(), loadFilings()]); await loadShelf(); refreshLabels();
+  setInterval(async () => { await Promise.all([loadMarkets(), loadFilings(), loadShelf()]); refreshLabels(); if (current === "markets") drawBoard(); if (current === "watch") drawScreens("watch"); if (current === "markets") drawScreens("markets"); }, 5 * 60000);
   const q = new URLSearchParams(location.search).get("tower");
-  if (q && byId[q]) { TOWERS.forEach((tw) => { tw.group.scale.y = 1; tw.beamMat.uniforms.uK.value = 0.6; }); fx.intro = 1; enterTower(q); }
+  if (q && ROMAN[q]) { TOWERS[0].group.scale.y = 1; TOWERS[0].beamMat.uniforms.uK.value = 0.2; fx.intro = 1; enterRoom(q); }
   else intro();
 })();
 </script>
