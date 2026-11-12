@@ -7,12 +7,14 @@ const { grounded } = require("../lib/explain.js");
 const MINT = "DezXAZ8z7PnrnRJjz3wXBoRgixCa6xjnB7YaB1pPB263";
 const now = Date.now();
 function world(kind) {
-  const risky = kind !== "safe";
+  const risky = kind !== "safe" && kind !== "busy" && kind !== "flaky";
+  let sellCalls = 0;
   return async (url, init) => {
     const ok = (body, status = 200) => ({ ok: status < 400, status, json: async () => body });
     if (/jup\.ag/.test(url)) {
       const sell = new URL(url).searchParams.get("outputMint").startsWith("So111");
       if (kind === "honeypot" && sell) return ok({ errorCode: "COULD_NOT_FIND_ANY_ROUTE" }, 400);
+      if (sell && (kind === "busy" || (kind === "flaky" && sellCalls++ === 0))) return ok({ error: "Too many requests" }, 429);
       return ok({ outAmount: sell ? (risky ? "60000000" : "99000000") : "5000", priceImpactPct: "0.01" });
     }
     if (/dexscreener/.test(url)) return ok({ pairs: [{ chainId: "solana", pairAddress: "pair1", baseToken: { address: MINT, name: "T", symbol: "T" }, quoteToken: {}, liquidity: { usd: risky ? 3200 : 4.2e6 }, txns: { h24: { buys: 140, sells: risky ? 0 : 90 } }, pairCreatedAt: risky ? now - 5 * 3600e3 : now - 600 * 864e5 }] });
@@ -52,6 +54,16 @@ function world(kind) {
     const d = await K.gather(MINT, { fetch: world("honeypot") });
     const r = K.evaluate(d);
     assert.strictEqual(r.checks[0].detail.includes("selling back fails"), true); assert.ok(r.score >= 85);
+  });
+  await t("rate-limited sell quote is never a honeypot", async () => {
+    const d = await K.gather(MINT, { fetch: world("busy") });
+    const r = K.evaluate(d);
+    assert.strictEqual(r.hard, false); assert.strictEqual(r.checks[0].sev, 0);
+    assert.ok(r.checks[0].detail.includes("didn't answer"), r.checks[0].detail);
+  });
+  await t("sell quote retried once after a 429", async () => {
+    const d = await K.gather(MINT, { fetch: world("flaky") });
+    assert.strictEqual(d.jup.sellRoute, true); assert.strictEqual(K.evaluate(d).score, 0);
   });
   await t("watch mode flags pulled liquidity and re-enabled mint", () => {
     const a = K.compare({ liq: 50000, mintAuthority: null, freezeAuthority: null }, { liq: 4000, mintAuthority: "X", freezeAuthority: null });

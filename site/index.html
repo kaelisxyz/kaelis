@@ -1,1226 +1,1539 @@
 <!doctype html>
-<html lang="en" data-reality="real">
+<html lang="en">
+<head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>Kaelis Forge</title>
-<meta name="claude:viewport-fit-sides" content="cover">
+<title>Kaelis</title>
+<meta name="description" content="Kaelis ($KAEL) is a market intelligence on Solana that patrols new tokens, seals every call on a public ledger and evolves its own rules in public. Step into Forge City to see it work.">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' fill='%23f2f0ea'/%3E%3Ctext x='16' y='23' font-family='Arial' font-weight='700' font-size='20' text-anchor='middle' fill='%230b0b0c'%3EK%3C/text%3E%3C/svg%3E">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter+Tight:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500&family=Bitter:wght@300;400&family=Bruno+Ace&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter+Tight:wght@400;500;600&family=JetBrains+Mono:wght@400;500;700&display=swap">
 <style>
-  /* Editorial look: white paper, faint drafting grid, black type with tiny mono labels.
-     "Change reality" flips the whole page into a cobalt blueprint (type, cards and the 3D scene). */
   :root {
-    --paper: #ffffff;
-    --ink: #0b0b0c;
-    --soft: #121212;
-    --mute: #8c8c8c;
-    --rule: #d6d6d6;
-    --grid: rgba(0, 0, 0, 0.06);
-    --ember: #e88150;
-    --blue: #344dbb;
-    --mint: #59e7ca;
+    --night: #0b0c0f; --panel: rgba(13, 14, 17, 0.94); --line: rgba(226, 228, 233, 0.16);
+    --text: #eef0f3; --mute: #9aa1ad; --paper: #f2f0ea; --ink: #0b0b0c; --ok: #2f8f5b; --warn: #c88a12; --bad: #c4452c;
+    --mint: #59e7ca; --amber: #ffc24a; --ember: #ff8a4d; --violet: #9d8bff; --danger: #ff4d6a;
     --f-sans: "Inter Tight", "Helvetica Neue", Arial, system-ui, sans-serif;
-    --f-mono: "JetBrains Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
-    --f-head: var(--f-sans);
-    --f-logo: var(--f-sans);
+    --f-mono: "JetBrains Mono", ui-monospace, Menlo, monospace;
     --gut: max(16px, env(safe-area-inset-left, 0px));
-    color-scheme: light;
+    color-scheme: dark;
   }
-  html[data-reality="blueprint"] {
-    --ink: #344dbb;
-    --soft: #293ca9;
-    --mute: #7f8fd6;
-    --rule: rgba(52, 77, 187, 0.35);
-    --grid: rgba(52, 77, 187, 0.12);
-    --f-head: "Bitter", Georgia, serif;
-    --f-logo: "Bruno Ace", var(--f-sans);
+  * { box-sizing: border-box; }
+  html, body { margin: 0; height: 100%; background: var(--night); color: var(--text); overflow: hidden; }
+  body { font-family: var(--f-sans); -webkit-font-smoothing: antialiased; }
+  canvas#c { position: fixed; inset: 0; width: 100%; height: 100%; display: block; touch-action: none; }
+  a { color: inherit; }
+  .mono { font-family: var(--f-mono); font-size: 11px; letter-spacing: .08em; text-transform: uppercase; }
+
+  header.top { position: fixed; top: 0; left: 0; right: 0; z-index: 5; display: flex; align-items: center; justify-content: space-between; gap: 12px;
+    padding: max(12px, env(safe-area-inset-top, 0px)) var(--gut) 12px; pointer-events: none; }
+  header.top > * { pointer-events: auto; }
+  .brand { display: grid; gap: 2px; text-decoration: none; }
+  .brand b { font-family: var(--f-mono); font-weight: 700; letter-spacing: .3em; font-size: 14px; }
+  .brand span { font-family: var(--f-mono); font-size: 10px; letter-spacing: .14em; color: var(--mute); text-transform: uppercase; }
+  nav.links { display: flex; gap: 6px; flex-wrap: wrap; justify-content: flex-end; }
+  .pill { font-family: var(--f-mono); font-size: 10.5px; letter-spacing: .1em; text-transform: uppercase; text-decoration: none; color: var(--text);
+    border: 1px solid var(--line); background: rgba(10, 7, 24, .6); padding: 8px 12px; border-radius: 999px; cursor: pointer; backdrop-filter: blur(6px); }
+  .pill:hover { border-color: var(--mint); color: var(--mint); }
+  #exitBtn { background: var(--paper); color: var(--ink); border: 1px solid var(--ink); border-radius: 0; backdrop-filter: none; }
+  #exitBtn:hover { background: #e6e3da; }
+  .pill:focus-visible, button:focus-visible, input:focus-visible { outline: 2px solid var(--mint); outline-offset: 2px; }
+
+  /* home: a ticker tape of real Ledger calls on top, a paper spec sheet pinned on the city, a building directory at the bottom */
+  .tape { position: relative; height: 26px; display: flex; background: #e9e6dc; color: var(--ink); border: 1px solid var(--ink);
+    font: 500 10.5px/26px var(--f-mono); letter-spacing: .04em; overflow: hidden; text-decoration: none; }
+  .tape[hidden] { display: none; }
+  .tape .k { flex: none; position: relative; z-index: 1; background: var(--ink); color: var(--paper); padding: 0 9px; letter-spacing: .14em; text-transform: uppercase; }
+  .tape .k::before { content: ""; display: inline-block; width: 6px; height: 6px; border-radius: 50%; background: #3fd18c; margin-right: 8px; vertical-align: 1px; animation: blink 1.6s infinite; }
+  .tape .run { display: flex; white-space: nowrap; animation: tape 80s linear infinite; }
+  .tape:hover .run { animation-play-state: paused; }
+  .tape a { text-decoration: none; color: var(--ink); padding: 0 12px; border-right: 1px solid rgba(0,0,0,.14); }
+  .tape a b { font-weight: 700; margin: 0 6px; } .tape a span { color: #6b6b6b; }
+  .g-ok { color: var(--ok); } .g-warn { color: var(--warn); } .g-bad { color: var(--bad); } .g-d { color: #fff; background: var(--bad); padding: 0 4px; }
+  @keyframes tape { to { transform: translateX(-50%); } }
+  @keyframes blink { 50% { opacity: .3; } }
+
+
+  .hero { position: fixed; z-index: 4; top: 18px; left: var(--gut); width: min(340px, calc(100vw - 2 * var(--gut)));
+    background: var(--paper); color: var(--ink); border: 1px solid var(--ink); padding: 18px 20px 20px; display: grid; grid-template-columns: minmax(0, 1fr); gap: 16px;
+    clip-path: polygon(0 0, 100% 0, 100% calc(100% - 16px), calc(100% - 16px) 100%, 0 100%); transition: opacity .3s, transform .3s; }
+  .hero .mark { display: flex; align-items: baseline; justify-content: space-between; text-decoration: none; color: var(--ink); }
+  .hero .mark b { font: 600 17px var(--f-sans); letter-spacing: .16em; }
+  .hero .mark b i { font-style: normal; } .hero .mark b i:nth-child(even) { color: var(--paper); -webkit-text-stroke: 1px var(--ink); paint-order: stroke fill; }
+  .hero .mark span { font: 500 10px var(--f-mono); letter-spacing: .12em; color: #6b6b6b; text-transform: uppercase; }
+  .hero h1 { margin: 0; font-size: clamp(28px, 2.8vw, 40px); line-height: .98; letter-spacing: -.04em; font-weight: 500; }
+  .live { font: 500 11px var(--f-mono); letter-spacing: .06em; text-transform: uppercase; color: #6b6b6b; text-decoration: none; display: flex; align-items: baseline; gap: 6px; }
+  /* contract address: one quiet bar, label, address, copy */
+  .ca { display: flex; align-items: stretch; border: 1px solid #0b0b0c; background: #fff; color: #0b0b0c; font: 500 12px/1 "JetBrains Mono", ui-monospace, monospace; max-width: 100%; }
+  .ca > b { flex: none; display: grid; place-items: center; padding: 0 10px; background: #0b0b0c; color: #f2f0ea; font-weight: 700; letter-spacing: .14em; }
+  .ca > span { flex: 1; min-width: 0; padding: 10px 12px; letter-spacing: .02em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .ca > span.pending { color: #6b6b6b; letter-spacing: .08em; text-transform: uppercase; font-size: 11px; }
+  .ca > button { flex: none; all: unset; cursor: pointer; padding: 0 12px; border-left: 1px solid #0b0b0c; font: 600 11px "JetBrains Mono", monospace; letter-spacing: .1em; text-transform: uppercase; display: grid; place-items: center; }
+  .ca > button:hover { background: #0b0b0c; color: #f2f0ea; }
+  .ca > button:disabled, .ca > button[aria-disabled="true"] { color: #9a9a9a; cursor: default; background: none; }
+  .ca > button:focus-visible { outline: 2px solid #0b0b0c; outline-offset: -4px; }
+  .live[hidden] { display: none; }
+  .live b { font: 600 13px var(--f-mono); color: var(--ink); } .live i { font-style: normal; }
+  .live:hover b { text-decoration: underline; text-underline-offset: 3px; }
+  .hero p { margin: 0; font-size: 14.5px; line-height: 1.45; color: #3a3a3a; }
+  .stats { display: grid; grid-template-columns: repeat(4, 1fr); border-top: 1px solid var(--ink); border-bottom: 1px solid var(--ink); text-decoration: none; color: var(--ink); }
+  .stats[hidden] { display: none; }
+  .stats div { padding: 7px 8px 6px; border-right: 1px solid rgba(0,0,0,.15); }
+  .stats div:first-child { padding-left: 0; } .stats div:last-child { border-right: 0; }
+  .stats span { display: block; font: 500 9.5px var(--f-mono); letter-spacing: .1em; text-transform: uppercase; color: #6b6b6b; }
+  .stats b { font: 500 20px var(--f-sans); letter-spacing: -.02em; font-variant-numeric: tabular-nums; }
+  .stats:hover b { text-decoration: underline; text-underline-offset: 3px; }
+  .ctas { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 16px; }
+  .cta { font: 600 14px var(--f-sans); text-decoration: none; border-radius: 0; padding: 11px 16px; cursor: pointer; background: var(--ink); color: var(--paper); border: 1px solid var(--ink); }
+  .cta:hover { background: #2a2a2a; }
+  .buy { font: 500 13px var(--f-sans); color: var(--ink); text-underline-offset: 3px; }
+  .buy[aria-disabled="true"] { color: #6b6b6b; cursor: default; }
+  .more { display: flex; gap: 14px; font: 500 10.5px var(--f-mono); letter-spacing: .1em; text-transform: uppercase; border-top: 1px dashed rgba(0,0,0,.25); padding-top: 10px; }
+  .more a { color: var(--ink); text-underline-offset: 3px; }
+  body.inside .hero { opacity: 0; transform: translateY(-8px); pointer-events: none; }
+
+  /* floating tower labels (projected from 3D each frame) */
+  #labels { position: fixed; inset: 0; pointer-events: none; z-index: 3; }
+  .lbl { position: absolute; transform: translate(-50%, -100%); display: grid; gap: 2px; padding: 5px 9px 6px 11px; min-width: 104px;
+    background: var(--paper); color: var(--ink); border-left: 3px solid var(--c, var(--mint)); border-radius: 0; box-shadow: 0 6px 18px -8px rgba(0,0,0,.8);
+    font-family: var(--f-mono); text-transform: uppercase; white-space: nowrap; transition: opacity .25s; pointer-events: auto; cursor: pointer; }
+  .lbl .n { font-size: 9.5px; letter-spacing: .14em; color: #6b6b6b; font-weight: 500; }
+  .lbl .v { font: 600 14px var(--f-sans); letter-spacing: -.01em; text-transform: none; color: var(--ink); }
+  .lbl .s { font-size: 9px; letter-spacing: .08em; color: #6b6b6b; }
+  .lbl::after { content: ""; position: absolute; left: 50%; bottom: -10px; width: 1px; height: 10px; background: var(--paper); }
+
+  /* bottom tower bar: keyboard + touch way in */
+  .dock { position: fixed; left: 50%; transform: translateX(-50%); bottom: max(16px, env(safe-area-inset-bottom, 0px)); z-index: 5; display: grid; grid-template-columns: repeat(5, minmax(128px, 1fr));
+    background: var(--paper); border: 1px solid var(--ink); width: min(900px, calc(100vw - 2 * var(--gut))); }
+  .dock button { all: unset; box-sizing: border-box; cursor: pointer; display: grid; grid-template-columns: auto 1fr; gap: 1px 8px; padding: 9px 12px 10px; color: var(--ink); border-right: 1px solid rgba(0,0,0,.15); }
+  .dock button:last-child { border-right: 0; }
+  .dock button i { grid-row: span 2; width: 3px; align-self: stretch; background: var(--c); }
+  .dock button small { font: 500 9.5px var(--f-mono); letter-spacing: .12em; text-transform: uppercase; color: #6b6b6b; }
+  .dock button b { font: 600 15px var(--f-sans); letter-spacing: -.01em; }
+  .dock button em { grid-column: 2; font: 500 10px var(--f-mono); letter-spacing: .06em; font-style: normal; color: #3a3a3a; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .dock button:hover { background: #e6e3da; } .dock button:focus-visible { outline: 2px solid var(--ink); outline-offset: -3px; }
+  .hint { position: fixed; left: 50%; transform: translateX(-50%); bottom: 96px; z-index: 4; color: var(--mute); pointer-events: none; text-align: center; }
+
+  /* inside a tower: info + actions */
+  .panel { position: fixed; z-index: 6; top: 76px; right: var(--gut); width: min(370px, calc(100vw - 32px)); max-height: calc(100dvh - 160px); overflow: auto;
+    background: var(--paper); color: var(--ink); border: 1px solid var(--ink); border-radius: 0; box-shadow: 0 18px 50px -20px rgba(0,0,0,.8); }
+
+  .panel[hidden] { display: none; }
+  .panel .bar { display: flex; justify-content: space-between; align-items: center; padding: 9px 12px; background: var(--ink); color: var(--paper); border-bottom: 3px solid var(--c); }
+  .panel .bar b { font-family: var(--f-mono); font-size: 11px; letter-spacing: .14em; text-transform: uppercase; }
+  .panel .bar button { background: none; border: 0; color: inherit; font: 700 11px var(--f-mono); letter-spacing: .1em; cursor: pointer; text-transform: uppercase; }
+  .panel .body { padding: 14px; display: grid; gap: 12px; }
+  .panel h2 { margin: 0; font-size: 22px; font-weight: 500; letter-spacing: -.02em; }
+  .panel p { margin: 0; color: #3a3a3a; font-size: 14px; line-height: 1.5; }
+  .panel .row { display: flex; gap: 8px; }
+  .panel input { flex: 1; min-width: 0; font: 13px var(--f-mono); color: var(--ink); background: #fff; border: 1px solid var(--ink); border-radius: 0; padding: 10px; }
+  .act { font: 600 13px var(--f-sans); color: var(--paper); background: var(--ink); border: 0; border-radius: 0; padding: 10px 14px; cursor: pointer; }
+  .act:hover { background: #2a2a2a; }
+  .act:disabled { opacity: .5; cursor: wait; }
+  .kv { display: grid; grid-template-columns: 1fr auto; gap: 6px 12px; font-family: var(--f-mono); font-size: 12px; }
+  .kv span:nth-child(odd) { color: #6b6b6b; }
+  .tagx { display: inline-block; font: 700 9.5px var(--f-mono); letter-spacing: .14em; padding: 3px 6px; border-radius: 3px; border: 1px solid currentColor; text-transform: uppercase; }
+  .out { font-family: var(--f-mono); font-size: 12px; line-height: 1.55; color: var(--ink); white-space: pre-wrap; }
+  .score { font: 700 40px var(--f-mono); letter-spacing: -.02em; }
+  .fine { font-size: 11px !important; }
+
+  .fade { position: fixed; inset: 0; background: #05030c; opacity: 0; pointer-events: none; z-index: 8; transition: opacity .28s ease; }
+  .fade.on { opacity: 1; }
+  .nogl { position: fixed; inset: 0; z-index: 9; display: grid; place-content: center; gap: 12px; text-align: center; padding: 24px; background: var(--night); }
+  .nogl[hidden] { display: none; }
+  .sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
+
+  @media (max-width: 700px) {
+    .panel { top: auto; bottom: 0; right: 0; left: 0; width: 100%; max-height: 52dvh; border-radius: 0; border-width: 1px 0 0; }
+    .hint { bottom: 112px; }
+    .lbl { min-width: 0; padding: 4px 6px; } .lbl .v { font-size: 12px; } .lbl .s { display: none; }
+    nav.links .opt { display: none; }
+    .hero { gap: 10px; padding: 12px 14px 14px; width: calc(100vw - 2 * var(--gut)); } .hero h1 { font-size: 24px; }
+    .stats b { font-size: 17px; } .cta { padding: 10px 14px; font-size: 13.5px; }
+    .dock { grid-template-columns: 1fr 1fr; } .dock button:nth-child(2n) { border-right: 0; } .dock button:nth-child(-n+4) { border-bottom: 1px solid rgba(0,0,0,.15); }
+    .dock button:last-child:nth-child(odd) { grid-column: span 2; border-right: 0; } .dock button { padding: 7px 10px 8px; } .dock button b { font-size: 14px; }
+    .hint { display: none; }
+    header.top { justify-content: flex-end; }
   }
-  html, body { background: var(--paper); color: var(--ink); }
-  body { font-family: var(--f-sans); font-size: 16px; line-height: 1.5; margin: 0; transition: color .5s; }
-  ::selection { background: var(--ink); color: var(--paper); }
-
-  /* drafting grid with crosshairs at the intersections */
-  .paper { position: fixed; inset: 0; z-index: 1; pointer-events: none;
-    --cw: calc((100vw - 2 * var(--gut)) / 4);
-    background:
-      linear-gradient(to right, var(--grid) 1px, transparent 1px) var(--gut) 0 / var(--cw) 100% repeat-x,
-      linear-gradient(to bottom, var(--grid) 1px, transparent 1px) 0 0 / 100% 25vh repeat-y; }
-  .paper::before, .paper::after { content: ""; position: absolute; inset: 0; opacity: .8; }
-  .paper::before { background: repeating-linear-gradient(to bottom, var(--mute) 0 1px, transparent 1px 25vh);
-    -webkit-mask: repeating-linear-gradient(to right, #000 0 9px, transparent 9px var(--cw)) calc(var(--gut) - 4px) 0;
-            mask: repeating-linear-gradient(to right, #000 0 9px, transparent 9px var(--cw)) calc(var(--gut) - 4px) 0; }
-  .paper::after { background: repeating-linear-gradient(to right, var(--mute) 0 1px, transparent 1px var(--cw)) var(--gut) 0;
-    -webkit-mask: repeating-linear-gradient(to bottom, #000 0 9px, transparent 9px 25vh) 0 -4px;
-            mask: repeating-linear-gradient(to bottom, #000 0 9px, transparent 9px 25vh) 0 -4px; }
-  @media (max-width: 640px) { .paper { --cw: calc((100vw - 2 * var(--gut)) / 2); } }
-
-  #stage { position: fixed; inset: 0; width: 100%; height: 100%; display: block; z-index: 0; }
-
-  main { position: relative; z-index: 2; padding-inline: var(--gut); }
-  .beat { box-sizing: border-box; min-height: 100svh; display: flex; align-items: center; padding-block: 14vh; }
-  .beat.right { justify-content: flex-end; }
-
-  /* tiny technical labels */
-  .tag, .hint, .ledger, .note, .toast, .mono { font-family: var(--f-mono); font-size: 10.5px; letter-spacing: .08em; text-transform: uppercase; }
-  .tag { color: var(--ink); }
-  h1, h2, h3 { font-family: var(--f-head); font-weight: 400; margin: 0; text-wrap: balance; letter-spacing: -0.035em; transition: color .5s; }
-  html[data-reality="blueprint"] :is(h1, h2, h3) { font-weight: 300; letter-spacing: -0.04em; }
-  h2 { font-size: clamp(30px, 3.6vw, 52px); line-height: .95; }
-  p { margin: 0; color: var(--soft); max-width: 60ch; }
-  .lead { font-size: 18px; color: var(--ink); }
-  .hint { color: var(--mute); }
-  .ledger { color: var(--mute); display: grid; gap: 4px; font-variant-numeric: tabular-nums; }
-  .ledger b { color: var(--ink); font-weight: 500; }
-
-  /* window cards: black title bar with the label, a close box, white body */
-  .card { max-width: 26rem; min-width: 0; display: grid; gap: 14px; background: var(--paper); border: 1px solid var(--ink);
-    position: relative; clip-path: polygon(0 0, 100% 0, 100% calc(100% - 14px), calc(100% - 14px) 100%, 0 100%); transition: border-color .5s; }
-  .card > * { margin-inline: 18px; }
-  .card > :last-child { margin-bottom: 18px; }
-  .card > .tag:first-child { margin: 0; display: flex; justify-content: space-between; align-items: center; gap: 12px;
-    background: var(--ink); color: var(--paper); padding: 6px 8px 6px 10px; transition: background .5s; }
-  .card > .tag:first-child::after { content: ""; width: 9px; height: 9px; border: 1px solid var(--paper); flex: none; }
-  .card::after { content: ""; position: absolute; right: 0; bottom: 0; width: 14px; height: 14px; pointer-events: none;
-    background: linear-gradient(to top left, transparent calc(50% - 0.7px), var(--ink) calc(50% - 0.7px), var(--ink) calc(50% + 0.7px), transparent calc(50% + 0.7px)); }
-
-  /* hero: huge uppercase statement top-left, technical callouts around the 3D wordmark */
-  .beat.hero { align-items: flex-end; padding-block: 18vh 7vh; position: relative; }
-  .sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
-  .herofoot { width: 100%; display: flex; justify-content: space-between; align-items: flex-end; gap: 16px; }
-  .herofoot .card { max-width: 25rem; }
-  .herofoot .lead { font-size: 15px; }
-  .herofoot .lead b { font-weight: 500; }
-  .callout { position: absolute; z-index: 3; display: grid; gap: 6px; max-width: 200px; font-family: var(--f-mono); font-size: 10px; letter-spacing: .08em; text-transform: uppercase; line-height: 1.4; color: var(--ink); pointer-events: none; }
-  .callout::before { content: ""; position: absolute; width: 7px; height: 7px; background: var(--ink); }
-  .callout i { position: absolute; height: 1px; background: var(--ink); transform-origin: left center; }
-  .callout.c1 { top: 15vh; right: 8vw; }
-  .callout.c1::before { left: -110px; top: 66px; }
-  .callout.c1 i { left: -104px; top: 69px; width: 112px; transform: rotate(-32deg); }
-  .callout.c2 { top: 70vh; right: 10vw; text-align: right; }
-  .callout.c2::before { right: calc(100% + 120px); top: -40px; }
-  .callout.c2 i { right: 100%; top: -37px; width: 128px; transform-origin: right center; transform: rotate(-17deg); }
-  .infocard { position: absolute; z-index: 3; top: 18vh; left: var(--gut); border: 1px solid var(--ink); padding: 10px 12px; display: grid; gap: 4px; font-family: var(--f-mono); font-size: 10px; letter-spacing: .08em; text-transform: uppercase; background: var(--paper); }
-  .infocard b { font-weight: 500; }
-  @media (max-width: 899px) { .callout, .infocard { display: none; } }
-
-  .ledger + .ledger { margin-top: -6px; }
-  .cta { display: flex; flex-wrap: wrap; gap: 10px; }
-  /* pill buttons */
-  .btn { font-family: var(--f-mono); font-weight: 500; font-size: 11px; letter-spacing: .1em; text-transform: uppercase; line-height: 1;
-    padding: 12px 18px; border-radius: 999px; border: 1px solid var(--ink); color: var(--paper); background: var(--ink); cursor: pointer; text-decoration: none; display: inline-flex; align-items: center; gap: 8px; transition: background .25s, color .25s, border-color .5s; }
-  .btn.ghost { background: transparent; color: var(--ink); }
-  .btn:hover { background: var(--paper); color: var(--ink); }
-  .btn.ghost:hover { background: var(--ink); color: var(--paper); }
-  .btn:focus-visible, a:focus-visible, button:focus-visible { outline: 2px solid var(--blue); outline-offset: 3px; }
-  .toast { color: var(--ember); min-height: 1.4em; }
-
-  /* story progress: small numbered index on the right */
-  .rail { position: fixed; z-index: 3; top: 50%; transform: translateY(-50%); right: calc(14px + env(safe-area-inset-right, 0px)); display: grid; gap: 8px; transition: opacity .3s; }
-  .rail a { display: grid; grid-template-columns: auto 18px; align-items: center; gap: 8px; justify-items: end; font-family: var(--f-mono); font-size: 10px; letter-spacing: .1em; text-transform: uppercase; color: var(--mute); text-decoration: none; }
-  .rail a::after { content: ""; width: 18px; height: 6px; border: 1px solid var(--mute);
-    background: repeating-linear-gradient(-45deg, transparent 0 2px, var(--mute) 2px 3px); opacity: .5; }
-  .rail a.on { color: var(--ink); }
-  .rail a.on::after { border-color: var(--ink); background: var(--ink); opacity: 1; }
-  .rail.off { opacity: 0; pointer-events: none; }
-  .clock { transition: opacity .4s; }
-  body.at-hero .clock { opacity: 0; }
-
-  /* header: Built / Blueprint switch, guide, X and buy on the right */
-  .topbar { position: fixed; z-index: 5; top: 0; left: 0; right: 0; display: grid; grid-template-columns: 1fr auto 1fr; align-items: start; gap: 12px;
-    padding: calc(14px + env(safe-area-inset-top, 0px)) var(--gut) 12px; transition: opacity .3s, background .3s; }
-  .topbar.solid { background: color-mix(in srgb, var(--paper) 88%, transparent); backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px); }
-  .logo { font-family: var(--f-logo); font-weight: 600; font-size: 15px; letter-spacing: .14em; color: var(--ink); text-decoration: none; display: grid; gap: 2px; }
-  .mark { font-weight: inherit; display: flex; }
-  .mark i { display: inline; position: static; width: auto; height: auto; border: 0; background: none; font-style: normal; color: var(--ink); }
-  .mark i:nth-child(even) { color: var(--paper); -webkit-text-stroke: 1px var(--ink); paint-order: stroke fill; }
-  .logo span { font-family: var(--f-mono); font-size: 10px; font-weight: 400; letter-spacing: .1em; color: var(--mute); }
-  .reality { display: inline-flex; border: 1px solid var(--ink); border-radius: 999px; padding: 2px; gap: 2px; background: var(--paper); cursor: pointer; font: inherit; color: var(--ink); }
-  .reality span { font-family: var(--f-mono); font-size: 10px; letter-spacing: .1em; text-transform: uppercase; line-height: 1; padding: 7px 10px; border-radius: 999px; transition: background .25s, color .25s; }
-  .reality span:first-child, .reality[aria-pressed="true"] span:last-child { background: var(--ink); color: var(--paper); }
-  .reality[aria-pressed="true"] span:first-child { background: none; color: var(--ink); }
-  .topright { justify-self: end; display: flex; align-items: center; gap: 14px; }
-  .clock { font-family: var(--f-mono); font-size: 10px; letter-spacing: .1em; text-transform: uppercase; color: var(--mute); text-align: right; line-height: 1.5; font-variant-numeric: tabular-nums; }
-  .clock b { color: var(--ink); font-weight: 500; }
-  .topright nav { display: flex; align-items: center; gap: 14px; }
-  .topright nav > a { line-height: 1; }
-  .topright nav a:not(.btn) { font-family: var(--f-mono); font-size: 10.5px; letter-spacing: .1em; text-transform: uppercase; color: var(--ink); text-decoration: none; }
-  .topright nav a:not(.btn):hover { text-decoration: underline; text-underline-offset: 3px; }
-  .btn.sm { padding: 8px 13px; }
-  @media (max-width: 899px) { .hide-sm { display: none !important; } }
-  @media (max-width: 520px) { .reality span { padding: 7px 8px; } }
-
-  /* Keep text and 3D apart: text column on the left (desktop) or at the bottom (phone) */
-  @media (min-width: 900px) {
-    .beat.right { justify-content: flex-start; }
-    .beat:not(.hero) .card { max-width: min(26rem, 34vw); }
-  }
-  @media (max-width: 899px) {
-    .beat:not(.hero) { align-items: flex-end; padding-block: 54svh 5svh; }
-    .beat.hero { padding-block: 34svh 5svh; }
-    .herofoot { flex-direction: column; align-items: stretch; }
-    .herofoot .card { max-width: none; }
-    .beat.right { justify-content: flex-start; }
-    .beat .card { max-width: none; }
-    .rail { display: none; }
-  }
-
-  /* After the story: editorial sections on paper */
-  .info { position: relative; z-index: 2; background: linear-gradient(to bottom, transparent, var(--paper) 18vh); padding-top: 18vh; transition: background .5s; }
-  .info-in { max-width: 80rem; margin-inline: auto; display: grid; gap: 64px; padding: 0 var(--gut) 40px; }
-  .statement { font-family: var(--f-head); font-size: clamp(30px, 4.6vw, 72px); line-height: 1.02; letter-spacing: -0.04em; color: var(--ink); max-width: 20ch; margin-left: auto; text-wrap: pretty; transition: color .5s; }
-  html[data-reality="blueprint"] .statement { font-weight: 300; }
-  .statement .pl { display: inline-block; border: 1px solid currentColor; border-radius: 999px; padding: 0 .28em .04em; line-height: 1; }
-  .statement .gl { display: inline-block; font-size: .6em; vertical-align: .3em; color: var(--ember); }
-  .row-head { display: flex; justify-content: space-between; align-items: baseline; gap: 16px; border-bottom: 1px solid var(--rule); padding-bottom: 10px; }
-  .threads { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 20px; }
-  .thread { display: grid; gap: 12px; align-content: start; }
-  .thread .num { font-family: var(--f-mono); font-size: 10.5px; letter-spacing: .1em; color: var(--mute); }
-  .thread h3 { font-size: 30px; line-height: 1; }
-  .hatch { height: 8px; border: 1px solid var(--ink); background: repeating-linear-gradient(-45deg, transparent 0 3px, var(--ink) 3px 4px); }
-  .hatch i { display: block; height: 100%; background: var(--ink); }
-  .marquee { overflow: hidden; border-block: 1px solid var(--ink); padding: 10px 0; white-space: nowrap; font-family: var(--f-mono); font-size: 11px; letter-spacing: .14em; text-transform: uppercase; }
-  .marquee span { display: inline-block; padding-left: 100%; animation: marq 32s linear infinite; }
-  .marquee b { display: inline-block; width: 9px; height: 9px; border-radius: 50%; background: var(--mint); margin: 0 14px; box-shadow: 0 0 10px var(--mint); vertical-align: 0; }
-  @keyframes marq { to { transform: translateX(-100%); } }
-  .duo { display: grid; grid-template-columns: minmax(0, 640px); gap: 20px; align-items: start; }
-  .duo .card { max-width: none; }
-  .alloc { display: grid; gap: 12px; font-variant-numeric: tabular-nums; }
-  .alloc .row { display: grid; grid-template-columns: 1fr auto; gap: 6px; font-size: 14px; }
-  .alloc .row span:last-of-type { font-family: var(--f-mono); font-size: 12px; }
-  .alloc .hatch { grid-column: 1 / -1; }
-  .note { color: var(--mute); }
-  .quote { font-family: var(--f-head); font-size: clamp(24px, 3vw, 44px); line-height: 1.08; letter-spacing: -0.035em; max-width: 24ch; }
-  .band { display: grid; gap: 14px; justify-items: start; }
-  .band .big { font-family: var(--f-head); font-size: clamp(44px, 9vw, 150px); line-height: .9; letter-spacing: -0.05em; color: var(--ink); text-decoration: none; text-transform: uppercase; }
-  .band .big span { display: inline-block; transition: transform .3s; color: var(--ember); }
-  .band .big:hover span { transform: translate(8px, -8px); }
-  .foot { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 12px 24px; align-items: center; border-top: 1px solid var(--ink); padding-top: 16px; }
-  .foot .logo { font-size: 13px; }
-  /* "Try it": a tiny, example-data simulation of the three Kaelis jobs, right after the landing screen */
-  .sim { display: grid; }
-  .sim .card { max-width: 46rem; width: 100%; }
-  .sim .tabs { display: flex; flex-wrap: wrap; gap: 6px; }
-  .sim .tabs button { font-family: var(--f-mono); font-size: 10.5px; letter-spacing: .1em; text-transform: uppercase; padding: 8px 12px; border-radius: 999px; border: 1px solid var(--ink); background: var(--paper); color: var(--ink); cursor: pointer; }
-  .sim .tabs button[aria-selected="true"] { background: var(--ink); color: var(--paper); }
-  .sim .pane[hidden] { display: none; }
-  .sim .pane { display: grid; gap: 14px; }
-  .sim .row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
-  .sim .tok { font-family: var(--f-mono); font-size: 11px; letter-spacing: .06em; padding: 8px 12px; border: 1px dashed var(--ink); border-radius: 999px; background: var(--paper); color: var(--ink); cursor: pointer; }
-  .sim .tok[aria-pressed="true"] { border-style: solid; background: color-mix(in srgb, var(--ink) 8%, var(--paper)); }
-  .sim .go { margin-left: auto; }
-  .sim .stages { display: grid; grid-template-columns: repeat(4, 1fr); gap: 4px; }
-  .sim .stages span { font-family: var(--f-mono); font-size: 10px; letter-spacing: .1em; text-transform: uppercase; text-align: center; padding: 7px 4px; border: 1px solid var(--rule); color: var(--mute); transition: all .25s; }
-  .sim .stages span.on { border-color: var(--ink); color: var(--paper); background: var(--ink); }
-  .sim .stages span.done { border-color: var(--ink); color: var(--ink); }
-  .sim .checks { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: 1fr 1fr; gap: 0 18px; }
-  .sim .checks li { display: grid; grid-template-columns: 16px 1fr auto; gap: 8px; align-items: center; padding: 6px 0; border-bottom: 1px solid var(--rule); font-size: 13.5px; color: var(--mute); transition: color .2s; }
-  .sim .checks li i { width: 14px; height: 14px; border: 1px solid var(--rule); font-style: normal; font-size: 10px; line-height: 12px; text-align: center; color: #fff; }
-  .sim .checks li em { font-style: normal; font-family: var(--f-mono); font-size: 11px; }
-  .sim .checks li.hit { color: var(--ink); } .sim .checks li.hit i { background: #c4452c; border-color: #c4452c; } .sim .checks li.hit em { color: #c4452c; }
-  .sim .checks li.ok { color: var(--ink); } .sim .checks li.ok i { background: #2f8f5b; border-color: #2f8f5b; }
-  .sim .result { display: grid; grid-template-columns: auto 1fr; gap: 6px 18px; align-items: end; }
-  .sim .num { font-family: var(--f-head); font-size: 64px; line-height: .85; letter-spacing: -0.05em; font-variant-numeric: tabular-nums; }
-  .sim .num small { font-size: 16px; color: var(--mute); letter-spacing: 0; }
-  .sim .meter { position: relative; height: 8px; display: grid; grid-template-columns: 40fr 30fr 30fr; gap: 2px; margin-bottom: 8px; }
-  .sim .meter b { background: #2f8f5b; } .sim .meter b + b { background: #c88a12; } .sim .meter b + b + b { background: #c4452c; }
-  .sim .meter i { position: absolute; top: -5px; bottom: -5px; width: 3px; margin-left: -1px; background: var(--ink); left: 0; transition: left .08s linear; }
-  .sim .band { font-family: var(--f-mono); font-size: 10.5px; letter-spacing: .1em; text-transform: uppercase; justify-self: start; }
-  .sim .say { min-height: 3em; font-size: 15px; color: var(--ink); background: color-mix(in srgb, var(--ink) 5%, var(--paper)); padding: 10px 12px; max-width: none; }
-  .sim .say b { font-family: var(--f-mono); font-size: 10px; letter-spacing: .1em; display: block; color: var(--mute); margin-bottom: 2px; }
-  .sim .city { display: flex; align-items: flex-end; gap: 6px; height: 120px; border-bottom: 1px solid var(--ink); padding: 0 4px; }
-  .sim .city span { flex: 1; background: repeating-linear-gradient(to top, var(--ink) 0 14px, var(--paper) 14px 16px); border: 1px solid var(--ink); transition: height .5s cubic-bezier(.2,.8,.2,1); }
-  .sim .city span.me { background: repeating-linear-gradient(to top, var(--ember) 0 14px, var(--paper) 14px 16px); border-color: var(--ember); }
-  .sim .win { display: grid; grid-template-columns: repeat(12, 1fr); gap: 4px; padding: 10px; border: 1px solid var(--ink); background: var(--ink); }
-  .sim .win i { aspect-ratio: 1; background: #2a2a2e; transition: background .4s, box-shadow .4s; }
-  .sim .win i.lit { background: #f3d9a4; }
-  .sim .win i.me { background: var(--ember); box-shadow: 0 0 10px var(--ember); }
-  .sim .stat { font-family: var(--f-mono); font-size: 11px; letter-spacing: .08em; text-transform: uppercase; color: var(--mute); }
-  .sim .stat b { color: var(--ink); font-weight: 500; }
-  .sim .more { display: flex; justify-content: space-between; gap: 12px; flex-wrap: wrap; border-top: 1px solid var(--rule); padding-top: 12px; }
-  .sim .more a { color: var(--ink); }
-  @media (max-width: 560px) { .sim .checks { grid-template-columns: 1fr; } .sim .go { margin-left: 0; } .sim .num { font-size: 52px; } }
-  .xlink { display: inline-grid; place-items: center; width: 30px; height: 30px; color: var(--ink); }
-  .xlink svg { width: 16px; height: 16px; }
-  .xlink:hover { opacity: .6; }
-  .foot .links { display: flex; flex-wrap: wrap; gap: 8px; }
-  .foot .links a { font-family: var(--f-mono); font-size: 10px; letter-spacing: .1em; text-transform: uppercase; color: var(--ink); text-decoration: none; border: 1px solid var(--ink); border-radius: 999px; padding: 6px 11px; }
-  .foot .links a:hover { background: var(--ink); color: var(--paper); }
-
-
-  @media (max-width: 640px) { .row-head .hint { display: none; } }
-
-  /* Forge City: the full-screen embedded scene, framed as a window */
-  html { scroll-behavior: smooth; }
-  @media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } .marquee span { animation: none; padding-left: 0; } }
+  @media (prefers-reduced-motion: reduce) { .tape .run, .tape .k::before { animation: none; } }
+  @media (prefers-reduced-motion: reduce) { .fade { transition: none; } }
 </style>
+</head>
+<body>
+<canvas id="c" aria-label="Forge City: a city at night with four towers around the Kaelis core"></canvas>
+<div id="labels"></div>
 
-<canvas id="stage" aria-hidden="true"></canvas>
-<div class="paper" aria-hidden="true"></div>
-
-<header class="topbar">
+<header class="top">
   <span aria-hidden="true"></span>
-  <span aria-hidden="true"></span>
-  <div class="topright">
-    <div class="clock hide-sm" aria-hidden="true">Block time<br><b id="clock">UTC 00:00</b></div>
-    <nav aria-label="Main">
-      <button class="reality" id="reality" type="button" aria-pressed="false" aria-label="View: built or blueprint" title="Switch between the built city and its blueprint"><span>Built</span><span>Blueprint</span></button>
-      <a class="hide-sm" href="scan.html">Scanner</a>
-      <a class="hide-sm" href="guide.html">Guide</a>
-      <a class="xlink" href="#" aria-label="Kaelis on X" title="Kaelis on X"><svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg></a>
-      <a class="btn sm" href="#forge">Buy</a>
-    </nav>
-  </div>
+  <nav class="links" aria-label="Tower">
+    <button class="pill" id="exitBtn" hidden>← Back to city</button>
+  </nav>
 </header>
 
-<nav class="rail off" aria-label="Story progress">
-  <a href="#chaos"><span>01 Chaos</span></a>
-  <a href="#block"><span>02 Block</span></a>
-  <a href="#chain"><span>03 Chain</span></a>
-  <a href="#city"><span>04 City</span></a>
-  <a href="#signal"><span>05 Signal</span></a>
-  <a href="#forge"><span>06 Join</span></a>
-</nav>
-
-<main>
-  <section class="beat hero" id="chaos">
-    <h1 class="sr">KAELIS</h1>
-    <div class="herofoot">
-      <div class="card">
-        <div class="tag">[ $KAEL · an agent forged by builders ]</div>
-        <p class="lead"><b>Forged by builders. Awakened by the chain.</b> Before the chain, there was only noise: loose data drifting, with nothing to hold it together.</p>
-      </div>
-    </div>
-  </section>
-
-
-  <section class="beat right" id="block">
-    <div class="card">
-      <div class="tag">01 / The first block</div>
-      <h2>A Forger strikes. The first block holds.</h2>
-      <p>The Forgers are developers. Each strike of the hammer turns raw noise into something that can be verified, kept and built on.</p>
-      <div class="ledger"><span>block <b>#0</b> · nonce <b>0x4b41454c</b> · status <b>sealed</b></span></div>
-    </div>
-  </section>
-
-  <section class="beat" id="chain">
-    <div class="card">
-      <div class="tag">02 / The chain</div>
-      <h2>Block by block, the chain connects.</h2>
-      <p>Every new block points to the one before it. Break one link and everyone can see it. That shared memory is what makes the world trustworthy.</p>
-      <div class="ledger" id="blockLedger"><span>linked blocks <b>1</b> / 30</span></div>
-    </div>
-  </section>
-
-  <section class="beat right" id="city">
-    <div class="card">
-      <div class="tag">03 / The city</div>
-      <h2>The chain rises into a city.</h2>
-      <p>Apps, protocols and tools grow on top of the blocks. The Forgers keep building, and the city lights up one tower at a time.</p>
-    </div>
-  </section>
-
-  <section class="beat" id="signal">
-    <div class="card">
-      <div class="tag">04 / The signal</div>
-      <h2>Beneath the city, something wakes.</h2>
-      <p>Deep in the mempool, a repeating pattern appears in the noise. It is Kaelis, the first agent born from the chain's own data. Move your cursor. It is watching.</p>
-    </div>
-  </section>
-
-  <section class="beat" id="forge">
-    <div class="card">
-      <div class="tag">05 / Join the Forge</div>
-      <h2>Kaelis runs on $KAEL. Builders keep it alive.</h2>
-      <p>Kaelis now patrols a whole city. Builders raise towers with real work, every token you send it gets scanned, and every holder lights a window.</p>
-      <div class="cta">
-        <a class="btn" href="city.html">Enter Forge City ↗</a>
-        <button class="btn ghost" id="buyBtn" type="button">Buy $KAEL</button>
-      </div>
-      <div class="toast" id="toast" role="status"></div>
-    </div>
-  </section>
-</main>
-
-<section class="info" id="token">
-  <div class="info-in">
-    <p class="statement">Kaelis is an agent <span class="gl">✦</span> that <span class="pl">verifies builders</span>, scans every token you send it and lights <span class="pl">one window</span> for every holder.</p>
-
-    <div class="row-head"><span class="tag">[ Core threads of Forge City ]</span><span class="tag hint">01 — 03</span></div>
-    <div class="threads">
-      <div class="thread">
-        <span class="num">01.</span>
-        <h3>Proof-of-Build</h3>
-        <div class="hatch"><i style="width:72%"></i></div>
-        <p>Link your code account and a wallet. Kaelis verifies your real commits, your tower grows a floor and you earn $KAEL.</p>
-      </div>
-      <div class="thread">
-        <span class="num">02.</span>
-        <h3>Scam scanner</h3>
-        <div class="hatch"><i style="width:88%"></i></div>
-        <p>Paste any token. Kaelis runs a real sell test, checks liquidity, holders, mint and freeze authority and traces who funded the top wallets, then gives a risk score from 0 to 100. <a href="scan.html">Try it live →</a></p>
-      </div>
-      <div class="thread">
-        <span class="num">03.</span>
-        <h3>A light in the tower</h3>
-        <div class="hatch"><i style="width:41%"></i></div>
-        <p>Every wallet holding $KAEL lights one window in the Kaelis tower. Sell everything and your light goes out. <a href="tower.html">See the tower →</a></p>
-      </div>
-    </div>
-
-
-    <div class="sim" id="try">
-      <div class="card">
-        <div class="tag">Try it · Simulation</div>
-        <div class="tabs" role="tablist" aria-label="Kaelis jobs">
-          <button type="button" role="tab" id="st-scan" aria-controls="sp-scan" aria-selected="true">01 Scan a token</button>
-          <button type="button" role="tab" id="st-build" aria-controls="sp-build" aria-selected="false" tabindex="-1">02 Build</button>
-          <button type="button" role="tab" id="st-hold" aria-controls="sp-hold" aria-selected="false" tabindex="-1">03 Hold</button>
-        </div>
-
-        <div class="pane" id="sp-scan" role="tabpanel" aria-labelledby="st-scan">
-          <p>Pick a token and press scan. Kaelis reads the chain, runs seven checks and explains the result.</p>
-          <div class="row" role="group" aria-label="Example tokens">
-            <button type="button" class="tok" data-tok="safu" aria-pressed="true">$SAFU</button>
-            <button type="button" class="tok" data-tok="moon" aria-pressed="false">$MOON</button>
-            <button type="button" class="tok" data-tok="rugme" aria-pressed="false">$RUGME</button>
-            <button type="button" class="btn go" id="scanGo">Scan ↗</button>
-          </div>
-          <div class="stages" aria-hidden="true"><span>Read</span><span>Check</span><span>Score</span><span>Explain</span></div>
-          <ul class="checks" id="simChecks"></ul>
-          <div class="result">
-            <div class="num" id="simNum">–<small> / 100</small></div>
-            <div><div class="meter"><b></b><b></b><b></b><i id="simPin"></i></div><span class="band" id="simBand">Waiting for a scan</span></div>
-          </div>
-          <div class="say" aria-live="polite"><b>AI SUMMARY</b><span id="simSay">Press scan to see Kaelis at work.</span></div>
-        </div>
-
-        <div class="pane" id="sp-build" role="tabpanel" aria-labelledby="st-build" hidden>
-          <p>Builders earn by shipping real code. Merged work is verified, and your tower grows a floor.</p>
-          <div class="city" id="simCity" aria-hidden="true"></div>
-          <div class="row"><span class="stat">Your tower · <b id="simFloors">3</b> floors · <b id="simPts">0</b> build points</span><button type="button" class="btn go" id="buildGo">Ship code ↗</button></div>
-          <div class="say" aria-live="polite"><b>KAELIS</b><span id="buildSay">Press ship code to merge a change.</span></div>
-        </div>
-
-        <div class="pane" id="sp-hold" role="tabpanel" aria-labelledby="st-hold" hidden>
-          <p>Every wallet holding $KAEL lights one window in Forge City. Sell everything and it turns off.</p>
-          <div class="win" id="simWin" aria-hidden="true"></div>
-          <div class="row"><span class="stat"><b id="simHolders">41</b> holders · <b id="simLit">41</b> lit windows</span><button type="button" class="btn go" id="holdGo">Hold $KAEL ↗</button></div>
-          <div class="say" aria-live="polite"><b>KAELIS</b><span id="holdSay">Press hold to light your window.</span></div>
-        </div>
-
-        <div class="more"><span class="hint">Simulation with example data</span><span style="display:flex;gap:16px;flex-wrap:wrap"><a class="hint" href="scan.html" style="color:var(--ink)">Scan a real token (beta) →</a><a class="hint" href="guide.html">How it works → Guide</a></span></div>
-    </div>
-    </div>
-
-    <div class="marquee" aria-hidden="true"><span>Forged by builders <b></b> Awakened by the chain <b></b> Every holder lights a window <b></b> Every rug gets caught <b></b> Forged by builders <b></b> Awakened by the chain <b></b></span></div>
-
-    <div class="duo">
-      <div class="card">
-        <div class="tag">Token allocation</div>
-        <div class="alloc">
-          <div class="row"><span>Community &amp; liquidity</span><span>60%</span><div class="hatch"><i style="width:60%"></i></div></div>
-          <div class="row"><span>Proof-of-Build rewards</span><span>20%</span><div class="hatch"><i style="width:20%"></i></div></div>
-          <div class="row"><span>Builder (vested 24 mo)</span><span>10%</span><div class="hatch"><i style="width:10%"></i></div></div>
-          <div class="row"><span>Treasury</span><span>10%</span><div class="hatch"><i style="width:10%"></i></div></div>
-        </div>
-        <div class="note">Example numbers for the demo, not final.</div>
-      </div>
-    </div>
-
-    <p class="quote">A city is only as honest as the people who build it.</p>
-
-    <div class="band">
-      <span class="tag">[ The city is open ]</span>
-      <a class="big" href="city.html">Enter Forge City <span>↗</span></a>
-      <div class="cta"><button class="btn ghost" id="joinBtn" type="button">Join the community</button></div>
-      <div class="toast" id="toast2" role="status"></div>
-    </div>
-    <footer class="foot">
-      <span class="logo"><b class="mark" aria-label="KAELIS"><i>K</i><i>A</i><i>E</i><i>L</i><i>I</i><i>S</i></b></span>
-    </footer>
+<section class="hero" aria-label="Kaelis">
+  <a class="mark" href="index.html" id="backStory"><b aria-label="KAELIS"><i>K</i><i>A</i><i>E</i><i>L</i><i>I</i><i>S</i></b></a>
+  <h1>Every new Solana token, rated.</h1>
+  <a class="live" href="evolution.html" id="live" hidden><b id="lvCalls">–</b> calls on record <i>·</i> IQ <b id="lvIq">–</b></a>
+  <div class="ca" aria-label="$KAEL contract address"><b>CA</b><span class="pending" data-ca>Announced at launch</span><button type="button" data-ca-copy aria-disabled="true">Copy</button></div>
+  <div class="ctas">
+    <button class="cta" id="ctaScan" type="button">Scan a token</button>
+    <a class="buy" href="markets.html">Markets</a>
+    <a class="buy" href="docs.html">How it works</a>
+    <a class="buy" id="ctaBuy" href="#" hidden aria-disabled="true">Buy $KAEL</a>
   </div>
 </section>
 
+<p class="hint mono" id="hint">Tap a tower to step inside · drag to look around</p>
 
-<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js"></script>
-<script>
-let storyPaused = false;
-(function () {
-  const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-  const canvas = document.getElementById("stage");
-  const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: false });
-  renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
-  renderer.setClearColor(0xffffff, 1);
+<div class="dock" id="dock" role="toolbar" aria-label="Towers"></div>
 
-  const scene = new THREE.Scene();
-  scene.fog = new THREE.FogExp2(0xffffff, 0.016);
-  const camera = new THREE.PerspectiveCamera(55, 1, 0.1, 400);
+<aside class="panel" id="panel" hidden aria-live="polite">
+  <div class="bar"><b id="pTitle">Tower</b><button id="pClose" aria-label="Back to the city">Exit ×</button></div>
+  <div class="body" id="pBody"></div>
+</aside>
 
-  scene.add(new THREE.AmbientLight(0xffffff, 0.55));
-  scene.add(new THREE.HemisphereLight(0xffffff, 0xd8d4cc, 0.45));
-  const sun = new THREE.DirectionalLight(0xffffff, 0.85); sun.position.set(10, 16, 12); scene.add(sun);
-  const forgeLight = new THREE.PointLight(0xff8a3d, 2.2, 40);
-  forgeLight.position.set(2, 4, 6);
-  scene.add(forgeLight);
-  const signalLight = new THREE.PointLight(0x8fe3ff, 0, 40);
-  scene.add(signalLight);
+<div class="fade" id="fade"></div>
+<div class="nogl" id="nogl" hidden>
+  <h1 style="margin:0;font-weight:500">Forge City needs WebGL</h1>
+  <p style="margin:0;color:var(--mute)">Your browser can't draw the 3D city. The tools still work:</p>
+  <p style="margin:0"><a class="pill" href="scan.html">Open the scanner</a> <a class="pill" href="tower.html">Holder tower</a></p>
+</div>
 
-  const EMBER = new THREE.Color(0xe88150);
-  const SIGNAL = new THREE.Color(0x59e7ca);
-  // paper palette: ink on white; "Change reality" eases everything to cobalt line art (bp 0 -> 1)
-  const INK = new THREE.Color(0x111111), BLUE = new THREE.Color(0x344dbb), WHITE = new THREE.Color(0xffffff);
-  const STONE = new THREE.Color(0xe7e3dc);
-  let bp = document.documentElement.dataset.reality === "blueprint" ? 1 : 0;
-  const bpGrid = new THREE.GridHelper(80, 40, 0x344dbb, 0x344dbb);
-  bpGrid.material.transparent = true; bpGrid.material.opacity = 0; bpGrid.position.y = -0.02; scene.add(bpGrid);
+<script src="js/kaelis-config.js?v=1.3.0"></script>
+<script src="js/kaelis-core.js?v=1.3.0"></script>
+<script type="importmap">
+{ "imports": {
+  "three": "https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.js",
+  "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.170.0/examples/jsm/"
+} }
+</script>
+<script type="module">
+import * as THREE from "three";
+import { OrbitControls } from "three/addons/controls/OrbitControls.js";
+import { EffectComposer } from "three/addons/postprocessing/EffectComposer.js";
+import { RenderPass } from "three/addons/postprocessing/RenderPass.js";
+import { UnrealBloomPass } from "three/addons/postprocessing/UnrealBloomPass.js";
+import { OutputPass } from "three/addons/postprocessing/OutputPass.js";
+import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
+import { MeshoptDecoder } from "three/addons/libs/meshopt_decoder.module.js";
+import { RoomEnvironment } from "three/addons/environments/RoomEnvironment.js";
+import { ShaderPass } from "three/addons/postprocessing/ShaderPass.js";
+import { mergeGeometries } from "three/addons/utils/BufferGeometryUtils.js";
 
-  // helpers
-  const clamp = (v, a, b) => Math.min(b, Math.max(a, v));
-  const smooth = (a, b, v) => { const t = clamp((v - a) / (b - a), 0, 1); return t * t * (3 - 2 * t); };
-  const lerp = (a, b, t) => a + (b - a) * t;
+const K = window.KaelisCore, CFG = window.KAELIS_CONFIG || {};
+const $ = (id) => document.getElementById(id);
+const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
+const small = matchMedia("(max-width: 700px)").matches;
+const clamp = (v, a, b) => Math.min(b, Math.max(a, v));
+const lerp = (a, b, t) => a + (b - a) * t;
+const ease = (t) => (t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2);
+const fmt = (n) => Number(n).toLocaleString("en-US");
+const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 
-  function glowTexture(color) {
-    const c = document.createElement("canvas");
-    c.width = c.height = 128;
-    const g = c.getContext("2d");
-    const grd = g.createRadialGradient(64, 64, 0, 64, 64, 64);
-    grd.addColorStop(0, color);
-    grd.addColorStop(0.25, color.replace("1)", "0.45)"));
-    grd.addColorStop(1, "rgba(0,0,0,0)");
-    g.fillStyle = grd;
-    g.fillRect(0, 0, 128, 128);
-    return new THREE.CanvasTexture(c);
+// When the city is shown inside the story page, "back" talks to the parent instead of navigating
+if (window.parent !== window) $("backStory").addEventListener("click", (e) => { e.preventDefault(); window.parent.postMessage({ kaelis: "story" }, "*"); });
+
+// ---------------------------------------------------------------- towers (one per Kaelis job)
+const TOWERS = [
+  { id: "scanner", name: "Scanner", color: "#59e7ca", angle: -0.55, h: 15, intro: "Kaelis checks a Solana token before you buy: a sell test, liquidity, top holders, locked LP, mint and freeze authority, Token-2022 controls and pool age. Live data." },
+  { id: "holders", name: "Holders", color: "#ffc24a", angle: 0.85, h: 18, intro: "One lit window for every wallet that holds $KAEL, read from the chain. Sell everything and the window goes dark. Before launch you can try it with any token." },
+  { id: "builders", name: "Builders", color: "#ff8a4d", angle: 2.35, h: 13, intro: "Proof-of-Build: link your GitHub and a Solana wallet. Kaelis counts your pull requests merged into other people's projects every week and keeps your points. Points convert to $KAEL at launch." },
+  { id: "markets", name: "Markets", color: "#5b8def", angle: -1.38, h: 16.5, intro: "Memes measured with Wall Street's yardstick. Kaelis rates tokenized stocks (SPYx, QQQx, NVDAx, TSLAx, AAPLx) with the same rules, tracks its 20 best-rated memecoins (K-20) next to the S&P 500, and flags tokens that copy a stock's ticker." },
+  { id: "watch", name: "Watch", color: "#9d8bff", angle: -2.2, h: 11.5, intro: "Keep an eye on a token you scanned. Kaelis re-checks it every 60 seconds while this page is open and warns you when liquidity drops or an authority comes back." },
+];
+const byId = Object.fromEntries(TOWERS.map((t) => [t.id, t]));
+
+// ---------------------------------------------------------------- shared live state
+const state = {
+  server: false, health: null,
+  lastScan: null,          // { mint, symbol, result, data, at, source }
+  scanning: false,
+  holders: null,           // { count, complete } when $KAEL is live
+  holdersPreview: null,    // { mint, count, complete, top10 } for any token before launch
+  builders: null,          // leaderboard from /api/builders
+  markets: null,           // /api/markets: stocks, K-20 vs S&P series, look-alikes
+  filings: null,           // /api/filings: insider sales, pulled pools, authority back on
+  join: { wallet: null },
+  watch: { log: [], timer: null, prev: null, checks: 0 },
+};
+
+async function checkHealth() {
+  try {
+    const r = await fetch("api/health", { cache: "no-store" });
+    if (r.ok) { state.health = await r.json(); state.server = !!state.health.ok; }
+  } catch (e) { state.server = false; }
+}
+function tokenSymbol(data, mint) {
+  const p = (data && data.pairs && data.pairs[0]) || null;
+  const t = p ? (p.baseToken && p.baseToken.address === mint ? p.baseToken : p.quoteToken) : null;
+  return (t && t.symbol) || mint.slice(0, 4) + "…";
+}
+async function scanMint(mint) {
+  mint = String(mint || "").trim();
+  if (!K || !K.isAddress(mint)) throw new Error("That doesn't look like a Solana token address (32 to 44 characters).");
+  if (state.server) {
+    try {
+      const r = await fetch("api/scan?mint=" + encodeURIComponent(mint));
+      if (r.ok) { const j = await r.json(); if (j.result) return { mint, data: j.data, result: j.result, source: "Kaelis server", explain: j.explain }; }
+    } catch (e) { /* fall back to the browser */ }
   }
-  // crisp ink dot: on paper a soft additive glow turns into grey blur, so points are drawn as small hard circles
-  const dotTex = (() => { const c = document.createElement("canvas"); c.width = c.height = 64; const g = c.getContext("2d");
-    g.fillStyle = "#fff"; g.beginPath(); g.arc(32, 32, 26, 0, Math.PI * 2); g.fill(); return new THREE.CanvasTexture(c); })();
+  const data = await K.gather(mint, { rpcUrls: CFG.rpcUrls });
+  return { mint, data, result: K.evaluate(data), source: "your browser" };
+}
+async function loadHolders() {
+  const mint = CFG.kaelMint;
+  if (!mint) return;
+  try {
+    const r = await fetch("api/holders?mint=" + encodeURIComponent(mint));
+    if (r.ok) { const j = await r.json(); state.holders = { count: j.count != null ? j.count : (j.holders || []).length, complete: !!j.complete }; }
+  } catch (e) { /* stays "at launch" */ }
+}
+async function loadBuilders() {
+  if (!state.server) return;
+  try { const r = await fetch("api/builders", { cache: "no-store" }); if (r.ok) state.builders = await r.json(); } catch (e) { /* keep last */ }
+}
+async function loadMarkets() {
+  if (!state.server) return;
+  try { const r = await fetch("api/markets", { cache: "no-store" }); if (r.ok) state.markets = await r.json(); } catch (e) { /* keep last */ }
+}
+async function loadFilings() {
+  if (!state.server) return;
+  try { const r = await fetch("api/filings", { cache: "no-store" }); if (r.ok) state.filings = await r.json(); } catch (e) { /* keep last */ }
+}
+async function previewHolders(mint) {
+  mint = String(mint || "").trim();
+  if (!K.isAddress(mint)) throw new Error("That doesn't look like a Solana token address.");
+  if (!state.server) throw new Error("The holder count needs the Kaelis server (npm start).");
+  const r = await fetch("api/holders?mint=" + encodeURIComponent(mint)), j = await r.json();
+  if (!r.ok) throw new Error(j.error || "Holder lookup failed.");
+  const list = j.holders || [];
+  state.holdersPreview = { mint, count: j.count, complete: !!j.complete, shown: list.length, top10: list.slice(0, 10).reduce((t, h) => t + (h.share || 0), 0) };
+}
+// watch baseline; tolerate partial data (a failed RPC read must not break the scan)
+const safePulse = (d) => { try { return K.pulse ? K.pulse(d) : null; } catch (e) { return null; } };
+const walletProvider = () => (window.phantom && window.phantom.solana) || window.solflare || window.solana || null;
+const riskColor = (s) => (s >= 70 ? "#ff4d6a" : s >= 40 ? "#ffc24a" : "#59e7ca");
+const inkRisk = (s) => (s >= 70 ? "#c4452c" : s >= 40 ? "#9a6a00" : "#2f8f5b"); // on paper
+const bandText = (b) => (b === "dangerous" ? "Danger" : b === "suspicious" ? "Suspicious" : "Low risk");
 
-  // 1. Chaos particles
-  const P = 4200;
-  const pHome = new Float32Array(P * 3);
-  const pPos = new Float32Array(P * 3);
-  const pText = new Float32Array(P * 3);
-  const pSeed = new Float32Array(P);
-  for (let i = 0; i < P; i++) {
-    const r = 6 + Math.random() * 24;
-    const th = Math.random() * Math.PI * 2;
-    const ph = Math.acos(2 * Math.random() - 1);
-    pHome[i * 3] = r * Math.sin(ph) * Math.cos(th);
-    pHome[i * 3 + 1] = r * Math.cos(ph) * 0.7;
-    pHome[i * 3 + 2] = r * Math.sin(ph) * Math.sin(th);
-    pSeed[i] = Math.random();
-  }
-  pPos.set(pHome);
-  pText.set(pHome);
 
-  // Sample the KAELIS wordmark into particle targets (16 units wide, centred above the hero copy)
-  let textReady = false, introStart = 0;
-  function sampleWordmark() {
-    const c = document.createElement("canvas");
-    c.width = 1200; c.height = 300;
-    const g = c.getContext("2d");
-    g.fillStyle = "#fff";
-    g.textAlign = "center"; g.textBaseline = "middle";
-    g.font = '600 250px "Inter Tight", "Helvetica Neue", Arial, sans-serif';
-    g.fillText("KAELIS", 600, 160);
-    const data = g.getImageData(0, 0, c.width, c.height).data;
-    const pts = [];
-    for (let y = 0; y < c.height; y += 3) for (let x = 0; x < c.width; x += 3) if (data[(y * c.width + x) * 4 + 3] > 140) pts.push([x, y]);
-    for (let i = pts.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [pts[i], pts[j]] = [pts[j], pts[i]]; }
-    if (!pts.length) return;
-    // the wordmark is built from towers: one tower per filled cell of a coarse grid over the letters
-    // letter edges, so every other letter can be built in black or white
-    const word = "KAELIS", left = 600 - g.measureText(word).width / 2, edges = [];
-    for (let i = 1; i < word.length; i++) edges.push(left + g.measureText(word.slice(0, i)).width);
-    const STEP = 11, cells = [];
-    for (let y = STEP / 2; y < c.height; y += STEP) for (let x = STEP / 2; x < c.width; x += STEP) if (data[(Math.floor(y) * c.width + Math.floor(x)) * 4 + 3] > 140) cells.push([(x / c.width - 0.5) * 16, (y / c.height - 0.5) * 4, edges.filter(e => x > e).length]);
-    buildTowers(cells, (STEP / c.width) * 16);
-    textReady = true;
-    introStart = performance.now();
-    document.documentElement.classList.add("gl");
-  }
-  (document.fonts && document.fonts.ready ? document.fonts.ready : Promise.resolve()).then(sampleWordmark, sampleWordmark);
-  let textScale = 1, vw = 1, vh = 1, wideView = true;
-  const TEXT_Y = 0.9; // the wordmark fills the first screen, centred
-  const mouseRay = new THREE.Raycaster(), zPlane = new THREE.Plane(new THREE.Vector3(0, 0, 1), 0), mWorld = new THREE.Vector3();
-  const pGeo = new THREE.BufferGeometry();
-  pGeo.setAttribute("position", new THREE.BufferAttribute(pPos, 3));
-  const pMat = new THREE.PointsMaterial({ size: 0.22, map: dotTex, color: 0x111111, transparent: true,
-    depthWrite: false, opacity: 0.9 });
-  const chaos = new THREE.Points(pGeo, pMat);
-  scene.add(chaos);
+// ---------------------------------------------------------------- renderer
+const canvas = $("c");
+let renderer;
+try {
+  renderer = new THREE.WebGLRenderer({ canvas, antialias: !small, powerPreference: "high-performance" });
+} catch (e) { $("nogl").hidden = false; throw e; }
+renderer.setPixelRatio(Math.min(devicePixelRatio || 1, small ? 1.5 : 2));
+renderer.outputColorSpace = THREE.SRGBColorSpace;
+renderer.toneMapping = THREE.AgXToneMapping;   // AgX keeps sodium and LED lights natural instead of neon
+renderer.toneMappingExposure = 1.15;
+const pmrem = new THREE.PMREMGenerator(renderer);
+const envTex = pmrem.fromScene(new RoomEnvironment(), 0.04).texture;
 
-  // 2. Blocks
-  const N = 30;
-  const cubeGeo = new THREE.BoxGeometry(1, 1, 1);
-  const edgeGeo = new THREE.EdgesGeometry(cubeGeo);
-  const cubes = [];
-  const cols = 6, rows = 5, gap = 2.3;
-  for (let i = 0; i < N; i++) {
-    const mat = new THREE.MeshStandardMaterial({ color: 0xe7e3dc, emissive: 0xe88150, emissiveIntensity: 0.05,
-      roughness: 0.8, metalness: 0.05, transparent: true, opacity: 1 });
-    const mesh = new THREE.Mesh(cubeGeo, mat);
-    const edges = new THREE.LineSegments(edgeGeo, new THREE.LineBasicMaterial({ color: 0x111111, transparent: true }));
-    mesh.add(edges);
-    const t = i / (N - 1);
-    const chainPos = new THREE.Vector3((t - 0.5) * 26, Math.sin(t * Math.PI * 3) * 1.4, Math.cos(t * Math.PI * 2) * 2);
-    const cx = (i % cols - (cols - 1) / 2) * gap;
-    const cz = (Math.floor(i / cols) - (rows - 1) / 2) * gap;
-    const h = 1 + Math.pow(Math.random(), 1.6) * 6 + (Math.abs(cx) + Math.abs(cz) < 3 ? 2 : 0);
-    const scatter = new THREE.Vector3((Math.random() - 0.5) * 40, (Math.random() - 0.5) * 20, (Math.random() - 0.5) * 30);
-    cubes.push({ mesh, edges, chainPos, cityPos: new THREE.Vector3(cx, 0, cz), h, scatter });
-    scene.add(mesh);
-  }
+const camera = new THREE.PerspectiveCamera(small ? 52 : 40, 1, 0.1, 600);
+const controls = new OrbitControls(camera, canvas);
+controls.enableDamping = true; controls.dampingFactor = 0.07; controls.enablePan = false;
 
-  // Facades: when the blocks settle into the city they get the same skin as Forge City
-  // (window grid, CC0 normal maps, glass that reflects a real blue-hour HDRI)
-  const texLoader = new THREE.TextureLoader();
-  const nrmTex = (f) => { const t = texLoader.load("textures/" + f); t.wrapS = t.wrapT = THREE.RepeatWrapping; return t; };
-  const NRM = { concrete: nrmTex("normal_0015.webp"), brick: nrmTex("normal_0006.webp"), glass: nrmTex("normal_0021.webp") };
-  let hdrEnv = null; const glassFacades = [];
-  texLoader.load("textures/city_env_rgbe.png", (t) => {
-    t.encoding = THREE.RGBEEncoding; t.minFilter = t.magFilter = THREE.NearestFilter; t.generateMipmaps = false;
-    t.mapping = THREE.EquirectangularReflectionMapping;
-    hdrEnv = new THREE.PMREMGenerator(renderer).fromEquirectangular(t).texture; t.dispose();
-    glassFacades.forEach((m) => { m.envMap = hdrEnv; m.needsUpdate = true; });
+const city = new THREE.Scene();
+const room = new THREE.Scene();
+city.environment = envTex; city.environmentIntensity = 0.35;
+room.environment = envTex; room.environmentIntensity = 0.5;
+let scene = city;
+
+const composer = new EffectComposer(renderer, new THREE.WebGLRenderTarget(innerWidth, innerHeight, { type: THREE.HalfFloatType, samples: small ? 2 : 4 }));
+const renderPass = new RenderPass(city, camera);
+const bloom = new UnrealBloomPass(new THREE.Vector2(256, 256), 0.6, 0.45, 0.82);
+const BLOOM = { city: [small ? 0.3 : 0.38, 0.5, 0.9], room: [0.22, 0.3, 0.93] };
+const setBloom = (k) => { [bloom.strength, bloom.radius, bloom.threshold] = BLOOM[k]; };
+setBloom("city");
+const finish = new ShaderPass({ // lens vignette + fine film grain, after tone mapping
+  uniforms: { tDiffuse: { value: null }, uTime: { value: 0 } },
+  vertexShader: "varying vec2 vUv; void main(){ vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position,1.); }",
+  fragmentShader: "uniform sampler2D tDiffuse; uniform float uTime; varying vec2 vUv; float h(vec2 p){ return fract(sin(dot(p, vec2(12.9898, 78.233)) + uTime * 7.3) * 43758.5453); } void main(){ vec4 c = texture2D(tDiffuse, vUv); vec2 q = vUv - .5; c.rgb *= 1. - dot(q, q) * .62; c.rgb += (h(vUv * 1024.) - .5) * .022; gl_FragColor = c; }",
+});
+composer.addPass(renderPass); composer.addPass(bloom); composer.addPass(new OutputPass()); composer.addPass(finish);
+
+// ---------------------------------------------------------------- texture helpers
+const srgb = (t) => { t.colorSpace = THREE.SRGBColorSpace; return t; };
+function canvasTex(w, h, draw) { const c = document.createElement("canvas"); c.width = w; c.height = h; draw(c.getContext("2d"), w, h); return srgb(new THREE.CanvasTexture(c)); }
+function rand(seed) { let s = seed >>> 0; return () => ((s = (s * 1664525 + 1013904223) >>> 0) / 4294967296); }
+
+function gridTex(color, cells = 8, alpha = 0.55) {
+  const t = canvasTex(256, 256, (g, w, h) => {
+    g.fillStyle = "#000"; g.fillRect(0, 0, w, h);
+    g.strokeStyle = color; g.globalAlpha = alpha; g.lineWidth = 2;
+    for (let i = 0; i <= cells; i++) { const p = (i / cells) * w; g.beginPath(); g.moveTo(p, 0); g.lineTo(p, h); g.stroke(); g.beginPath(); g.moveTo(0, p); g.lineTo(w, p); g.stroke(); }
   });
-  // one tile = 3 window columns x 4 floors; colour map plus a lit-window mask for the emissive glow
-  function facadeTiles(style, seed) {
-    let a = seed * 9301 + 49297; const rnd = () => (a = (a * 16807) % 2147483647) / 2147483647;
-    const COLS = style === "glass" ? 5 : 4, W = 256, H = 256, fh = H / 4, cw = W / COLS;
-    const wall = document.createElement("canvas"), lit = document.createElement("canvas");
-    wall.width = lit.width = W; wall.height = lit.height = H;
-    const g = wall.getContext("2d"), l = lit.getContext("2d");
-    g.fillStyle = style === "concrete" ? "#4a4652" : style === "glass" ? "#141a26" : "#5a3a30"; g.fillRect(0, 0, W, H);
-    for (let i = 0; i < 900; i++) { g.fillStyle = `rgba(${rnd() < 0.5 ? "255,255,255" : "0,0,0"},${rnd() * 0.07})`; g.fillRect(rnd() * W, rnd() * H, 2, 2); }
-    if (style === "brick") { g.fillStyle = "rgba(0,0,0,0.3)"; for (let y = 0; y < H; y += 6) g.fillRect(0, y, W, 1); }
-    l.fillStyle = "#000"; l.fillRect(0, 0, W, H);
-    for (let f = 0; f < 4; f++) {
-      g.fillStyle = "rgba(0,0,0,0.5)"; g.fillRect(0, f * fh, W, 3); // floor slab line
-      for (let c = 0; c < COLS; c++) {
-        const ix = style === "glass" ? 3 : 14, iy = style === "glass" ? 5 : 15;
-        const x = c * cw + ix, y = f * fh + iy, w = cw - ix * 2, h = fh - iy * 2;
-        g.fillStyle = "#1b1d24"; g.fillRect(x - 3, y - 3, w + 6, h + 6);          // frame
-        g.fillStyle = style === "glass" ? "#0c1422" : "#06080d"; g.fillRect(x, y, w, h);                          // dark pane
-        if (rnd() < 0.3) { const warm = rnd() < 0.75; l.fillStyle = warm ? "#c9a274" : "#9fb4cc"; l.fillRect(x, y, w, h); g.fillStyle = warm ? "#b89870" : "#97a8bf"; g.fillRect(x, y, w, h); }
-        g.fillStyle = "rgba(0,0,0,0.45)"; g.fillRect(x - 3, y + h + 3, w + 6, 3); // sill shadow
+  t.wrapS = t.wrapT = THREE.RepeatWrapping; t.anisotropy = 8; return t;
+}
+function glowSprite(color, size) {
+  const tex = canvasTex(128, 128, (g) => { const gr = g.createRadialGradient(64, 64, 0, 64, 64, 64); gr.addColorStop(0, "#fff"); gr.addColorStop(0.25, color); gr.addColorStop(1, "rgba(0,0,0,0)"); g.fillStyle = gr; g.fillRect(0, 0, 128, 128); });
+  const s = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex, blending: THREE.AdditiveBlending, depthWrite: false, transparent: true }));
+  s.scale.setScalar(size); return s;
+}
+
+const beams = [];
+// =================================================================== CITY
+// A real city at night, just after rain. Physically based facades (albedo, lit windows and roughness
+// drawn in one pass so they line up), wet asphalt with puddles, sodium street lamps with light pools,
+// low clouds lit from below, and a reflection map rendered from the city itself (bakeCityEnv) so glass
+// and puddles mirror what is actually around them. Every building shares a handful of materials and is
+// merged into a few meshes, so the whole skyline costs about a dozen draw calls.
+
+// ---- facade textures
+const FACADE = { cols: 8, rows: 16 }, BAY = 0.62, FLOOR = 0.42;
+const TILE_W = FACADE.cols * BAY, TILE_H = FACADE.rows * FLOOR;
+function facadeSet(kind, seed) {
+  const r = rand(seed), W = 256, H = 512, cw = W / FACADE.cols, rh = H / FACADE.rows;
+  const mk = () => { const c = document.createElement("canvas"); c.width = W; c.height = H; return [c, c.getContext("2d")]; };
+  const [ca, a] = mk(), [ce, e] = mk(), [cr, ro] = mk();
+  const P = {
+    glass:  { wall: "#1a2027", frame: "#56606b", win: "#0b1016", rough: 150, roughWin: 18, inset: 0.05, winH: 0.84, lit: 0.2 },
+    office: { wall: "#4b4844", frame: "#33312e", win: "#0b0d10", rough: 230, roughWin: 34, inset: 0.2, winH: 0.58, lit: 0.26 },
+    home:   { wall: "#5b4b40", frame: "#3a3029", win: "#0d0c0b", rough: 240, roughWin: 40, inset: 0.28, winH: 0.52, lit: 0.24 },
+  }[kind];
+  const gray = (v) => `rgb(${v},${v},${v})`;
+  a.fillStyle = P.wall; a.fillRect(0, 0, W, H);
+  e.fillStyle = "#000"; e.fillRect(0, 0, W, H);
+  ro.fillStyle = gray(P.rough); ro.fillRect(0, 0, W, H);
+  for (let i = 0; i < 90; i++) { a.fillStyle = `rgba(0,0,0,${0.04 + r() * 0.06})`; a.fillRect(r() * W, r() * H, 1 + r() * 2, 20 + r() * 120); } // rain streaks
+  for (let y = 0; y < FACADE.rows; y++) {
+    const floorLit = r() < 0.08 ? 0.85 : r() < 0.3 ? 0.02 : P.lit * (0.4 + r());
+    const cool = kind === "glass" ? r() < 0.55 : kind === "office" ? r() < 0.35 : r() < 0.08;
+    for (let x = 0; x < FACADE.cols; x++) {
+      const x0 = x * cw + (cw * P.inset) / 2, ww = cw * (1 - P.inset), hh = rh * P.winH, y0 = y * rh + (rh - hh) * 0.4;
+      a.fillStyle = P.win; a.fillRect(x0, y0, ww, hh);
+      ro.fillStyle = gray(P.roughWin); ro.fillRect(x0, y0, ww, hh);
+      if (r() < floorLit) {
+        const k = r(), c = cool ? (k < 0.8 ? [196, 214, 255] : [255, 214, 160]) : (k < 0.82 ? [255, 184, 112] : [255, 228, 188]);
+        const b = 0.32 + r() * 0.68;
+        const gr = e.createLinearGradient(0, y0, 0, y0 + hh);
+        gr.addColorStop(0, `rgb(${(c[0] * b) | 0},${(c[1] * b) | 0},${(c[2] * b) | 0})`);
+        gr.addColorStop(1, `rgb(${(c[0] * b * 0.45) | 0},${(c[1] * b * 0.45) | 0},${(c[2] * b * 0.45) | 0})`);
+        e.fillStyle = gr; e.fillRect(x0, y0, ww, hh);
+        if (kind === "home" && r() < 0.6) { e.fillStyle = "rgba(0,0,0,.55)"; e.fillRect(x0, y0, ww * 0.18, hh); e.fillRect(x0 + ww * 0.82, y0, ww * 0.18, hh); } // curtains
+        else if (r() < 0.3) { e.fillStyle = "rgba(0,0,0,.65)"; e.fillRect(x0, y0, ww, hh * (0.15 + r() * 0.6)); } // blinds
       }
+      a.strokeStyle = P.frame; a.lineWidth = kind === "glass" ? 1.5 : 2.5; a.strokeRect(x0, y0, ww, hh);
+      if (kind === "glass") { a.beginPath(); a.moveTo(x0 + ww / 2, y0); a.lineTo(x0 + ww / 2, y0 + hh); a.stroke(); e.fillStyle = "#000"; e.fillRect(x0 + ww / 2 - 0.75, y0, 1.5, hh); }
     }
-    const mk = (cv) => { const t = new THREE.CanvasTexture(cv); t.wrapS = t.wrapT = THREE.RepeatWrapping; t.anisotropy = Math.min(8, renderer.capabilities.getMaxAnisotropy()); return t; };
-    return { map: mk(wall), lit: mk(lit) };
+    if (kind === "glass") { a.fillStyle = "#232931"; a.fillRect(0, y * rh + rh * 0.88, W, rh * 0.12); ro.fillStyle = gray(110); ro.fillRect(0, y * rh + rh * 0.88, W, rh * 0.12); }
+    if (kind === "home") { a.fillStyle = "#6c5e53"; a.fillRect(0, y * rh + rh * 0.84, W, rh * 0.09); a.fillStyle = "rgba(20,18,16,.8)"; for (let x = 0; x < W; x += 6) a.fillRect(x, y * rh + rh * 0.66, 1, rh * 0.18); }
   }
-  const STYLES = ["concrete", "glass", "brick"];
-  const facadeBox = new THREE.BoxGeometry(1.01, 1.0, 1.01);
-  cubes.forEach((c, i) => {
-    const style = STYLES[(i * 7) % 3], t = facadeTiles(style, i + 1), floors = Math.max(4, Math.round(c.h * 3));
-    [t.map, t.lit].forEach((x) => x.repeat.set(1, floors / 4));
-    const glass = style === "glass";
-    const side = new THREE.MeshStandardMaterial({ map: t.map, emissiveMap: t.lit, emissive: 0xffffff, emissiveIntensity: 0.9,
-      normalMap: NRM[style], normalScale: new THREE.Vector2(glass ? 0.15 : 0.8, glass ? 0.15 : 0.8),
-      roughness: glass ? 0.12 : 0.85, metalness: glass ? 0.85 : 0.05, envMapIntensity: glass ? 1.4 : 0.3, transparent: true, opacity: 0 });
-    if (glass) { glassFacades.push(side); if (hdrEnv) side.envMap = hdrEnv; }
-    const roof = new THREE.MeshStandardMaterial({ color: 0x1f1c24, roughness: 0.9, transparent: true, opacity: 0 });
-    c.facade = new THREE.Mesh(facadeBox, [side, side, roof, roof, side, side]);
-    c.facade.visible = false;
-    c.mesh.add(c.facade);
-  });
+  const t = (c, color) => { const tx = new THREE.CanvasTexture(c); if (color) tx.colorSpace = THREE.SRGBColorSpace; tx.wrapS = tx.wrapT = THREE.RepeatWrapping; tx.anisotropy = 8; return tx; };
+  return { map: t(ca, true), em: t(ce, true), ro: t(cr, false) };
+}
+function facadeMat(kind, seed, glow = 1) {
+  const t = facadeSet(kind, seed);
+  return new THREE.MeshStandardMaterial({ map: t.map, emissiveMap: t.em, emissive: 0xffffff, emissiveIntensity: glow, roughnessMap: t.ro, roughness: 1,
+    metalness: kind === "glass" ? 0.55 : 0.04, envMapIntensity: kind === "glass" ? 1.5 : 0.5 });
+}
+// box walls (no top / bottom) with UVs in world units, so one material fits every building without stretching
+function wallsGeo(w, h, d, seed, tileW = TILE_W, tileH = TILE_H) {
+  const g = new THREE.BoxGeometry(w, h, d), uv = g.attributes.uv, r = rand(seed);
+  const uo = Math.floor(r() * FACADE.cols) / FACADE.cols, vo = Math.floor(r() * FACADE.rows) / FACADE.rows, widths = [d, d, w, w, w, w];
+  for (let f = 0; f < 6; f++) for (let k = 0; k < 4; k++) { const i = f * 4 + k; uv.setXY(i, uo + (uv.getX(i) * widths[f]) / tileW, vo + (uv.getY(i) * h) / tileH); }
+  const idx = Array.from(g.index.array); g.setIndex([...idx.slice(0, 12), ...idx.slice(24, 36)]); g.clearGroups();
+  return g;
+}
+const place = (g, x, y, z, ry = 0) => g.applyMatrix4(new THREE.Matrix4().compose(new THREE.Vector3(x, y, z), new THREE.Quaternion().setFromEuler(new THREE.Euler(0, ry, 0)), new THREE.Vector3(1, 1, 1)));
 
-  // KAELIS skyline: each letter is a block of small towers standing on a board tilted toward the camera
-  const towerBoard = new THREE.Group();
-  towerBoard.rotation.x = 1.22; // ~70 deg: the letters read from the front, the towers point up and out
-  scene.add(towerBoard);
-  let towers = null;
-  function buildTowers(cells, cell) {
-    const n = cells.length; if (!n) return;
-    const geo = new THREE.BoxGeometry(1, 1, 1); geo.translate(0, 0.5, 0);
-    const t = facadeTiles("concrete", 77); t.map.repeat.set(1, 1); t.lit.repeat.set(1, 1);
-    const mat = new THREE.MeshStandardMaterial({ map: t.map, emissiveMap: t.lit, emissive: 0xffffff, emissiveIntensity: 0.55, color: 0xffffff,
-      normalMap: NRM.concrete, normalScale: new THREE.Vector2(0.6, 0.6), roughness: 0.85, metalness: 0.05, transparent: true });
-    const mesh = new THREE.InstancedMesh(geo, mat, n);
-    const tint = new THREE.Color();
-    const data = cells.map(([u, v, letter], i) => {
-      // taller towers toward the middle of each stroke, a few spires
-      const r = Math.random();
-      const h = (0.6 + Math.pow(r, 2.2) * 2.2 + (r > 0.97 ? 1.4 : 0)) * cell * 1.05;
-      // two-tone wordmark: K, E, I in black stone, A, L, S in white stone
-      const dark = letter % 2 === 0, shade = Math.random();
-      if (dark) tint.setHSL(0.08, 0.02, 0.05 + shade * 0.04);
-      else tint.setRGB(1.25, 1.25, 1.25);
-      mesh.setColorAt(i, tint);
-      return { u, v, h, d: Math.random(), dark, shade };
-    });
-    mesh.instanceColor.needsUpdate = true;
-    towerBoard.add(mesh);
-    // blueprint outlines: instanced edges of a unit box, scaled per tower in the vertex shader
-    const eg = new THREE.EdgesGeometry(geo);
-    const lg = new THREE.InstancedBufferGeometry();
-    lg.setAttribute("position", eg.getAttribute("position"));
-    const offs = new Float32Array(n * 3), scl = new Float32Array(n * 3);
-    lg.setAttribute("iOff", new THREE.InstancedBufferAttribute(offs, 3));
-    lg.setAttribute("iScl", new THREE.InstancedBufferAttribute(scl, 3));
-    lg.instanceCount = n;
-    const lmat = new THREE.ShaderMaterial({
-      uniforms: { uColor: { value: new THREE.Color(0x111111) }, uAlpha: { value: 0.2 } },
-      vertexShader: "attribute vec3 iOff; attribute vec3 iScl; void main() { gl_Position = projectionMatrix * modelViewMatrix * vec4(position * iScl + iOff, 1.0); }",
-      fragmentShader: "uniform vec3 uColor; uniform float uAlpha; void main() { gl_FragColor = vec4(uColor, uAlpha); }",
-      transparent: true, depthWrite: false
-    });
-    const lines = new THREE.LineSegments(lg, lmat); lines.frustumCulled = false;
-    towerBoard.add(lines);
-    // ground slab under the word
-    const slab = new THREE.Mesh(new THREE.PlaneGeometry(1, 1), new THREE.MeshStandardMaterial({ color: 0xf1eee8, roughness: 1, transparent: true }));
-    slab.rotation.x = -Math.PI / 2; towerBoard.add(slab);
-    towers = { mesh, lines, data, cell, offs, scl, slab, lmat, mat, mapRef: mat.map };
-  }
-  const towerTint = new THREE.Color();
-  const tMat = new THREE.Matrix4(), tPos = new THREE.Vector3(), tScale = new THREE.Vector3(), tQuat = new THREE.Quaternion();
-  const boardPlane = new THREE.Plane(), boardHit = new THREE.Vector3(), boardInv = new THREE.Matrix4();
-  function updateTowers(rise, time) {
-    if (!towers) return;
-    const T = towers, k = textScale * (wideView ? 0.82 : 1.25), c = T.cell * k;
-    towerBoard.visible = rise > 0.005;
-    if (!towerBoard.visible) return;
-    towerBoard.position.set(0, TEXT_Y - 0.4 * k, 0);
-    towerBoard.updateMatrixWorld();
-    // cursor: towers near it grow, like a district lighting up
-    let mx = 1e9, mz = 1e9;
-    if (mouseMoved && !reduce) {
-      boardPlane.setFromNormalAndCoplanarPoint(new THREE.Vector3(0, 1, 0).applyQuaternion(towerBoard.quaternion), towerBoard.position);
-      mouseRay.setFromCamera({ x: mouse.x, y: mouse.y }, camera);
-      if (mouseRay.ray.intersectPlane(boardPlane, boardHit)) { boardInv.copy(towerBoard.matrixWorld).invert(); boardHit.applyMatrix4(boardInv); mx = boardHit.x; mz = boardHit.z; }
+// ---- shared materials
+const KINDS = ["glass", "office", "home"];
+const facadeMats = {}; KINDS.forEach((k, i) => { facadeMats[k] = [facadeMat(k, 300 + i * 7, 0.8), facadeMat(k, 301 + i * 7, 0.8)]; });
+const farMats = { glass: facadeMat("glass", 360, 0.55), office: facadeMat("office", 361, 0.55) };
+const roofMat = new THREE.MeshStandardMaterial({ color: 0x232325, roughness: 0.95 });
+const metalMat = new THREE.MeshStandardMaterial({ color: 0x55585d, roughness: 0.55, metalness: 0.6 });
+const stoneSlab = new THREE.MeshStandardMaterial({ color: 0x3a3936, roughness: 0.75 });
+const shopTex = (() => {
+  const W = 256, H = 64, c = document.createElement("canvas"); c.width = W; c.height = H; const g = c.getContext("2d"), r = rand(77);
+  g.fillStyle = "#000"; g.fillRect(0, 0, W, H);
+  for (let x = 0; x < 8; x++) { if (r() < 0.25) continue; const k = r(), col = k < 0.6 ? "255,196,130" : k < 0.85 ? "220,232,255" : "255,236,210"; const gr = g.createLinearGradient(0, 8, 0, H); gr.addColorStop(0, `rgba(${col},1)`); gr.addColorStop(1, `rgba(${col},.35)`); g.fillStyle = gr; g.fillRect(x * 32 + 3, 10, 26, H - 14); }
+  const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; t.wrapS = t.wrapT = THREE.RepeatWrapping; return t;
+})();
+const shopMat = new THREE.MeshStandardMaterial({ color: 0x15161a, roughness: 0.35, metalness: 0.3, emissive: 0xffffff, emissiveIntensity: 1.1, emissiveMap: shopTex });
+
+// ---- sky: black-blue overhead, warm sodium haze low, slow clouds lit from below by the city
+const skyMat = new THREE.ShaderMaterial({
+  side: THREE.BackSide, depthWrite: false, uniforms: { uTime: { value: 0 } },
+  vertexShader: "varying vec3 vP; void main(){ vP = position; gl_Position = projectionMatrix * modelViewMatrix * vec4(position,1.); }",
+  fragmentShader: `uniform float uTime; varying vec3 vP;
+    float hash(vec3 p){ p = fract(p * 0.3183099 + .1); p *= 17.0; return fract(p.x * p.y * p.z * (p.x + p.y + p.z)); }
+    float noise(vec3 x){ vec3 i = floor(x), f = fract(x); f = f * f * (3. - 2. * f);
+      return mix(mix(mix(hash(i), hash(i + vec3(1,0,0)), f.x), mix(hash(i + vec3(0,1,0)), hash(i + vec3(1,1,0)), f.x), f.y),
+                 mix(mix(hash(i + vec3(0,0,1)), hash(i + vec3(1,0,1)), f.x), mix(hash(i + vec3(0,1,1)), hash(i + vec3(1,1,1)), f.x), f.y), f.z); }
+    float fbm(vec3 p){ float a = .5, s = 0.; for (int i = 0; i < 5; i++) { s += a * noise(p); p *= 2.03; a *= .5; } return s; }
+    void main(){
+      vec3 d = normalize(vP); float h = clamp(d.y, 0., 1.);
+      vec3 top = vec3(.003,.005,.012), mid = vec3(.016,.022,.036), hor = vec3(.16,.105,.07);
+      vec3 c = mix(hor, mid, smoothstep(0., .16, h)); c = mix(c, top, smoothstep(.16, .8, h));
+      vec2 uv = d.xz / max(d.y, .07) * .32 + vec2(uTime * .003, uTime * .0015);
+      float n = fbm(vec3(uv * 1.5, uTime * .006));
+      float cl = smoothstep(.46, .8, n) * smoothstep(.02, .22, h) * (1. - smoothstep(.6, .95, h));
+      vec3 lit = mix(vec3(.13,.09,.06), vec3(.028,.032,.042), smoothstep(.04, .5, h));
+      gl_FragColor = vec4(mix(c, lit, cl * .9), 1.);
+    }`,
+});
+city.add(new THREE.Mesh(new THREE.SphereGeometry(400, 48, 24), skyMat));
+{
+  const n = 260, pos = new Float32Array(n * 3), r = rand(7);
+  for (let i = 0; i < n; i++) { const th = r() * Math.PI * 2, ph = Math.acos(0.45 + r() * 0.55), R = 380; pos.set([R * Math.sin(ph) * Math.cos(th), R * Math.cos(ph), R * Math.sin(ph) * Math.sin(th)], i * 3); }
+  const g = new THREE.BufferGeometry(); g.setAttribute("position", new THREE.BufferAttribute(pos, 3));
+  city.add(new THREE.Points(g, new THREE.PointsMaterial({ color: 0xd9dee8, size: 0.8, sizeAttenuation: true, depthWrite: false, transparent: true, opacity: 0.45, fog: false })));
+}
+city.fog = new THREE.FogExp2(0x121419, 0.0085);
+
+// ---- ground: wet asphalt with puddles, a granite plaza, a ring road with lane markings
+const plaza = new THREE.Group(); city.add(plaza);
+{
+  const puddles = (() => { // roughness: dry asphalt ~0.8, puddles ~0.05 (mirror-like)
+    const S = 512, c = document.createElement("canvas"); c.width = c.height = S; const g = c.getContext("2d"), r = rand(12);
+    g.fillStyle = "rgb(200,200,200)"; g.fillRect(0, 0, S, S);
+    for (let i = 0; i < 2200; i++) { const v = 170 + r() * 70 | 0; g.fillStyle = `rgb(${v},${v},${v})`; g.fillRect(r() * S, r() * S, 2, 2); }
+    for (let i = 0; i < 26; i++) { const x = r() * S, y = r() * S, rad = 14 + r() * 60, gr = g.createRadialGradient(x, y, 0, x, y, rad); gr.addColorStop(0, "rgb(12,12,12)"); gr.addColorStop(0.7, "rgb(30,30,30)"); gr.addColorStop(1, "rgba(200,200,200,0)"); g.fillStyle = gr; g.beginPath(); g.ellipse(x, y, rad, rad * (0.5 + r() * 0.5), r() * 3, 0, 7); g.fill(); }
+    const t = new THREE.CanvasTexture(c); t.wrapS = t.wrapT = THREE.RepeatWrapping; t.repeat.set(14, 14); t.anisotropy = 8; return t;
+  })();
+  const asphalt = new THREE.Mesh(new THREE.CircleGeometry(170, 96), new THREE.MeshStandardMaterial({ color: 0x0c0d10, roughness: 1, roughnessMap: puddles, metalness: 0, envMapIntensity: 1.1 }));
+  asphalt.rotation.x = -Math.PI / 2; plaza.add(asphalt);
+  const tiles = (() => {
+    const S = 512, c = document.createElement("canvas"), cr = document.createElement("canvas"); c.width = c.height = cr.width = cr.height = S;
+    const g = c.getContext("2d"), q = cr.getContext("2d"), r = rand(21), n = 8, s = S / n;
+    g.fillStyle = "#2a2927"; g.fillRect(0, 0, S, S); q.fillStyle = "rgb(60,60,60)"; q.fillRect(0, 0, S, S); // joints hold water
+    for (let y = 0; y < n; y++) for (let x = 0; x < n; x++) { const v = 58 + r() * 18 | 0; g.fillStyle = `rgb(${v},${v - 2},${v - 5})`; g.fillRect(x * s + 2, y * s + 2, s - 4, s - 4); const rv = 120 + r() * 70 | 0; q.fillStyle = `rgb(${rv},${rv},${rv})`; q.fillRect(x * s + 2, y * s + 2, s - 4, s - 4); }
+    const a = new THREE.CanvasTexture(c), b = new THREE.CanvasTexture(cr); a.colorSpace = THREE.SRGBColorSpace;
+    [a, b].forEach((t) => { t.wrapS = t.wrapT = THREE.RepeatWrapping; t.repeat.set(22, 22); t.anisotropy = 8; }); return [a, b];
+  })();
+  const plazaDisc = new THREE.Mesh(new THREE.CircleGeometry(23.4, 96), new THREE.MeshStandardMaterial({ map: tiles[0], roughnessMap: tiles[1], roughness: 1, envMapIntensity: 1 }));
+  plazaDisc.rotation.x = -Math.PI / 2; plazaDisc.position.y = 0.02; plaza.add(plazaDisc);
+  const curb = new THREE.Mesh(new THREE.TorusGeometry(23.5, 0.12, 6, 160), stoneSlab); curb.rotation.x = Math.PI / 2; curb.position.y = 0.05; plaza.add(curb);
+  const paint = (c, k) => new THREE.MeshStandardMaterial({ color: new THREE.Color(c).multiplyScalar(k), roughness: 0.6 });
+  for (const [ri, ro] of [[24.25, 24.35], [28.65, 28.75]]) { const m = new THREE.Mesh(new THREE.RingGeometry(ri, ro, 200), paint("#d8d2c4", 0.55)); m.rotation.x = -Math.PI / 2; m.position.y = 0.025; plaza.add(m); }
+  const dash = new THREE.InstancedMesh(new THREE.PlaneGeometry(0.09, 1.1), paint("#e6c26a", 0.6), 96), mt = new THREE.Matrix4(), q = new THREE.Quaternion();
+  for (let i = 0; i < 96; i++) { const a = (i / 96) * Math.PI * 2; q.setFromEuler(new THREE.Euler(-Math.PI / 2, 0, -a)); mt.compose(new THREE.Vector3(Math.cos(a) * 26.5, 0.026, Math.sin(a) * 26.5), q, new THREE.Vector3(1, 1, 1)); dash.setMatrixAt(i, mt); }
+  plaza.add(dash);
+}
+
+// ---- cars on the ring road: white headlights one way, red tail lights the other
+const CARS = 44;
+const runners = new THREE.InstancedMesh(new THREE.SphereGeometry(0.09, 8, 6), new THREE.MeshBasicMaterial({ color: 0xffffff }), CARS);
+{ const head = new THREE.Color(2.2, 2.0, 1.7), tail = new THREE.Color(2.2, 0.12, 0.06); for (let i = 0; i < CARS; i++) runners.setColorAt(i, i < CARS / 2 ? head : tail); }
+const carPhase = Array.from({ length: CARS }, (_, i) => ({ a: (i % (CARS / 2)) / (CARS / 2) * Math.PI * 2 + Math.random() * 0.12, sp: 0.09 + Math.random() * 0.05 }));
+city.add(runners);
+
+// ---- street lamps: poles merged, heads and light pools instanced
+const avPos = [];
+{
+  const spots = [];
+  for (let i = 0; i < 24; i++) { const a = (i / 24) * Math.PI * 2 + 0.13; spots.push([Math.cos(a) * 29.4, Math.sin(a) * 29.4, a + Math.PI]); }
+  for (let i = 0; i < 12; i++) { const a = (i / 12) * Math.PI * 2; spots.push([Math.cos(a) * 22.6, Math.sin(a) * 22.6, a]); }
+  const poles = [], heads = new THREE.InstancedMesh(new THREE.BoxGeometry(0.5, 0.08, 0.22), new THREE.MeshBasicMaterial({ color: new THREE.Color(2.4, 1.75, 1.05) }), spots.length);
+  const glowTex = canvasTex(128, 128, (g) => { const gr = g.createRadialGradient(64, 64, 0, 64, 64, 64); gr.addColorStop(0, "rgba(255,255,255,.9)"); gr.addColorStop(0.18, "rgba(255,255,255,.45)"); gr.addColorStop(0.55, "rgba(255,255,255,.08)"); gr.addColorStop(1, "rgba(255,255,255,0)"); g.fillStyle = gr; g.fillRect(0, 0, 128, 128); });
+  const pools = new THREE.InstancedMesh(new THREE.PlaneGeometry(1, 1), new THREE.MeshBasicMaterial({ map: glowTex, color: new THREE.Color(1.0, 0.64, 0.32).multiplyScalar(0.22), transparent: true, blending: THREE.AdditiveBlending, depthWrite: false }), spots.length);
+  const mt = new THREE.Matrix4(), q = new THREE.Quaternion();
+  spots.forEach(([x, z, a], i) => {
+    const dx = Math.cos(a), dz = Math.sin(a);
+    poles.push(place(new THREE.CylinderGeometry(0.05, 0.08, 4.4, 6), x, 2.2, z), place(new THREE.BoxGeometry(1.0, 0.06, 0.06), x + dx * 0.45, 4.35, z + dz * 0.45, -a));
+    q.setFromEuler(new THREE.Euler(0, -a, 0)); mt.compose(new THREE.Vector3(x + dx * 0.95, 4.3, z + dz * 0.95), q, new THREE.Vector3(1, 1, 1)); heads.setMatrixAt(i, mt);
+    q.setFromEuler(new THREE.Euler(-Math.PI / 2, 0, 0)); mt.compose(new THREE.Vector3(x + dx * 0.95, 0.04, z + dz * 0.95), q, new THREE.Vector3(3.6, 3.6, 1)); pools.setMatrixAt(i, mt);
+  });
+  plaza.add(new THREE.Mesh(mergeGeometries(poles), metalMat), heads, pools);
+}
+
+// ---- the city: blocks on a street grid around the plaza, merged by material
+{
+  const r = rand(2024), parts = { roof: [], metal: [], shop: [] }, fac = {};
+  const add = (key, g) => (fac[key] = fac[key] || []).push(g);
+  const ROT = 0.32, cos = Math.cos(ROT), sin = Math.sin(ROT), STEP = 15, LIMIT = small ? 112 : 100, LOW = small ? 84 : 74; // camera orbits inside LOW
+  let seed = 1;
+  for (let gx = -LIMIT; gx <= LIMIT; gx += STEP) for (let gz = -LIMIT; gz <= LIMIT; gz += STEP) {
+    const bx = gx * cos - gz * sin, bz = gx * sin + gz * cos, dist = Math.hypot(bx, bz);
+    if (dist < 36 || dist > LIMIT + 6) continue;
+    const lots = r() < 0.35 ? 1 : r() < 0.6 ? 2 : 4, size = 11;
+    for (let l = 0; l < lots; l++) {
+      const lw = lots === 1 ? size : size / 2 - 0.4, ld = lots === 4 ? size / 2 - 0.4 : size;
+      const ox = lots === 1 ? 0 : ((l % 2) - 0.5) * (size / 2), oz = lots === 4 ? (Math.floor(l / 2) - 0.5) * (size / 2) : 0;
+      const w = lw * (0.72 + r() * 0.26), d = ld * (0.72 + r() * 0.26);
+      const far = clamp((dist - LOW) / 30, 0, 1);
+      const kind = r() < 0.32 + far * 0.25 ? "glass" : r() < 0.62 ? "office" : "home";
+      let h = kind === "home" ? 3 + r() * 6 : kind === "office" ? 5 + r() * 12 : 9 + r() * 18;
+      if (r() < 0.1 + far * 0.15) h *= 1.7; // a few landmarks
+      if (dist < LOW) h = Math.min(h, 2.4 + r() * 3.6); // low-rise ring, so the camera can circle without hitting buildings
+      h = Math.round(h / FLOOR) * FLOOR;
+      const cx = bx + ox * cos - oz * sin, cz = bz + ox * sin + oz * cos, s = seed++;
+      const mat = kind + ((s % 2) ? 1 : 0);
+      let base = 0;
+      if (kind !== "home" && r() < 0.65) { // podium with shops
+        const pw = w + 0.6, pd = d + 0.6, ph = FLOOR * 2.4;
+        parts.shop.push(place(wallsGeo(pw, ph, pd, s, BAY * 8, FLOOR * 2.4), cx, ph / 2, cz, ROT));
+        parts.roof.push(place(new THREE.PlaneGeometry(pw, pd).rotateX(-Math.PI / 2), cx, ph, cz, ROT));
+        base = ph;
+      }
+      add(mat, place(wallsGeo(w, h, d, s), cx, base + h / 2, cz, ROT));
+      let top = base + h, tw = w, td = d;
+      if (kind !== "home" && h > 14 && r() < 0.55) { // setback
+        const sh = Math.round((h * (0.18 + r() * 0.2)) / FLOOR) * FLOOR; tw = w * 0.68; td = d * 0.68;
+        parts.roof.push(place(new THREE.PlaneGeometry(w, d).rotateX(-Math.PI / 2), cx, top, cz, ROT));
+        add(mat, place(wallsGeo(tw, sh, td, s + 9), cx, top + sh / 2, cz, ROT)); top += sh;
+      }
+      parts.roof.push(place(new THREE.PlaneGeometry(tw, td).rotateX(-Math.PI / 2), cx, top, cz, ROT));
+      parts.roof.push(place(new THREE.BoxGeometry(tw + 0.1, 0.22, 0.12), cx, top + 0.1, cz + td / 2, ROT)); // parapet front
+      const clutter = 1 + Math.floor(r() * 3);
+      for (let k = 0; k < clutter; k++) {
+        const u = (r() - 0.5) * tw * 0.6, v = (r() - 0.5) * td * 0.6, px = cx + u * cos - v * sin, pz = cz + u * sin + v * cos;
+        if (kind !== "glass" && r() < 0.35) parts.metal.push(place(new THREE.CylinderGeometry(0.35, 0.35, 0.8, 10), px, top + 0.75, pz)); // water tank
+        else parts.metal.push(place(new THREE.BoxGeometry(0.4 + r() * 0.6, 0.3 + r() * 0.3, 0.4 + r() * 0.5), px, top + 0.25, pz, ROT));
+      }
+      if (top > 20) { parts.metal.push(place(new THREE.CylinderGeometry(0.03, 0.06, 2.4, 5), cx, top + 1.2, cz)); avPos.push(new THREE.Vector3(cx, top + 2.45, cz)); }
     }
-    const R = 2.2 * k;
-    T.data.forEach((d, i) => {
-      const grow = clamp(rise * 1.6 - d.d * 0.6, 0, 1), g = grow * grow * (3 - 2 * grow);
-      const x = d.u * k, z = d.v * k;
-      const dist = Math.hypot(x - mx, z - mz);
-      const boost = dist < R ? (1 - dist / R) * 1.2 : 0;
-      const wob = reduce ? 0 : Math.sin(time * 0.8 + d.u * 0.9 + d.v) * 0.04;
-      const h = Math.max(0.0001, d.h * k * g * (1 + boost + wob));
-      tPos.set(x, 0, z); tScale.set(c * 0.84, h, c * 0.84);
-      tMat.compose(tPos, tQuat, tScale); T.mesh.setMatrixAt(i, tMat);
-      T.offs[i * 3] = x; T.offs[i * 3 + 1] = 0; T.offs[i * 3 + 2] = z;
-      T.scl[i * 3] = c * 0.84; T.scl[i * 3 + 1] = h; T.scl[i * 3 + 2] = c * 0.84;
-    });
-    T.mesh.instanceMatrix.needsUpdate = true;
-    T.lines.geometry.attributes.iOff.needsUpdate = true; T.lines.geometry.attributes.iScl.needsUpdate = true;
-    T.slab.scale.set(17 * k, 5 * k, 1);
-    // built: textured stone towers; blueprint: white blocks with cobalt outlines
-    T.mat.opacity = Math.min(1, rise * 2);
-    T.mat.color.copy(WHITE);
-    // same two-tone towers in both realities; in blueprint the dark letters turn cobalt
-    T.mat.emissiveIntensity = 0.55 * (1 - bp * 0.5);
-    if (Math.abs((T.lastBp ?? -1) - bp) > 0.01) {
-      T.lastBp = bp;
-      T.data.forEach((d, i) => {
-        if (!d.dark) return;
-        towerTint.setHSL(0.08, 0.02, 0.05 + d.shade * 0.04).lerp(BLUE, bp);
-        T.mesh.setColorAt(i, towerTint);
-      });
-      T.mesh.instanceColor.needsUpdate = true;
-    }
-    T.lmat.uniforms.uColor.value.copy(INK).lerp(BLUE, bp);
-    T.lmat.uniforms.uAlpha.value = lerp(0.45, 0.95, bp) * Math.min(1, rise * 2);
-    T.slab.material.opacity = 0.9 * Math.min(1, rise * 2) * (1 - bp);
   }
-
-  const linkGeo = new THREE.BufferGeometry();
-  const linkPos = new Float32Array(N * 3);
-  linkGeo.setAttribute("position", new THREE.BufferAttribute(linkPos, 3));
-  const links = new THREE.Line(linkGeo, new THREE.LineBasicMaterial({ color: 0x111111, transparent: true, opacity: 0 }));
-  scene.add(links);
-
-  // Hammer of light
-  const hammer = new THREE.Group();
-  const hMat = new THREE.MeshStandardMaterial({ color: 0x2a2a2e, emissive: 0xe88150, emissiveIntensity: 0.12, roughness: 0.35, metalness: 0.6, transparent: true });
-  const head = new THREE.Mesh(new THREE.BoxGeometry(1.8, 0.8, 0.8), hMat);
-  head.position.set(0, 3.2, 0);
-  const handle = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.14, 3.2, 12), hMat);
-  handle.position.set(0, 1.6, 0);
-  const hammerArm = new THREE.Group();
-  hammerArm.add(head, handle);
-  hammer.add(hammerArm);
-  const hGlow = new THREE.Sprite(new THREE.SpriteMaterial({ map: glowTexture("rgba(232,129,80,1)"), transparent: true, depthWrite: false }));
-  hGlow.scale.set(5, 5, 1);
-  hGlow.position.set(0, 3.2, 0);
-  hammerArm.add(hGlow);
-  hammer.position.set(2.2, -0.2, 0.4);
-  scene.add(hammer);
-
-  const spark = new THREE.Sprite(new THREE.SpriteMaterial({ map: glowTexture("rgba(232,129,80,1)"), transparent: true, depthWrite: false, opacity: 0 }));
-  scene.add(spark);
-
-  // 3. Kaelis
-  const kaelis = new THREE.Group();
-  const core = new THREE.Mesh(new THREE.IcosahedronGeometry(1.1, 1),
-    new THREE.MeshStandardMaterial({ color: 0x1a1f2e, emissive: 0x59e7ca, emissiveIntensity: 0.35, flatShading: true, roughness: 0.25, metalness: 0.4 }));
-  const shell = new THREE.Mesh(new THREE.IcosahedronGeometry(1.9, 1),
-    new THREE.MeshBasicMaterial({ color: 0x111111, wireframe: true, transparent: true, opacity: 0.3 }));
-  const eye = new THREE.Mesh(new THREE.SphereGeometry(0.32, 20, 20), new THREE.MeshBasicMaterial({ color: 0x59e7ca }));
-  eye.position.set(0, 0, 1.05);
-  const kGlow = new THREE.Sprite(new THREE.SpriteMaterial({ map: glowTexture("rgba(89,231,202,1)"), transparent: true, depthWrite: false }));
-  kGlow.scale.set(9, 9, 1);
-  const ring = new THREE.Mesh(new THREE.TorusGeometry(2.8, 0.025, 8, 120),
-    new THREE.MeshBasicMaterial({ color: 0x111111, transparent: true, opacity: 0.6 }));
-  ring.rotation.x = Math.PI / 2.4;
-  const head2 = new THREE.Group();
-  head2.add(core, eye);
-  kaelis.add(head2, shell, kGlow, ring);
-  scene.add(kaelis);
-
-  // Agents swarm
-  const A = 900;
-  const aPos = new Float32Array(A * 3);
-  const aSeed = [];
-  for (let i = 0; i < A; i++) aSeed.push({ r: 6 + Math.random() * 26, a: Math.random() * Math.PI * 2,
-    y: (Math.random() - 0.5) * 14, s: 0.05 + Math.random() * 0.25 });
-  const aGeo = new THREE.BufferGeometry();
-  aGeo.setAttribute("position", new THREE.BufferAttribute(aPos, 3));
-  const aMat = new THREE.PointsMaterial({ size: 0.2, map: dotTex, color: 0x111111, transparent: true, opacity: 0, depthWrite: false });
-  const agents = new THREE.Points(aGeo, aMat);
-  scene.add(agents);
-
-  // Optional models: drop .glb files from Meshy / Luma / Kaedim / Spline into models/ and they replace the simple shapes
-  function fit(obj, size) {
-    const box = new THREE.Box3().setFromObject(obj);
-    const dim = box.getSize(new THREE.Vector3());
-    const k = size / (Math.max(dim.x, dim.y, dim.z) || 1);
-    obj.scale.setScalar(k);
-    obj.position.sub(box.getCenter(new THREE.Vector3()).multiplyScalar(k));
-    const wrap = new THREE.Group();
-    wrap.add(obj);
-    return wrap;
+  for (const [key, list] of Object.entries(fac)) city.add(new THREE.Mesh(mergeGeometries(list), facadeMats[key.replace(/\d$/, "")][+key.slice(-1)]));
+  city.add(new THREE.Mesh(mergeGeometries(parts.roof), roofMat));
+  city.add(new THREE.Mesh(mergeGeometries(parts.metal.filter(Boolean)), metalMat));
+  city.add(new THREE.Mesh(mergeGeometries(parts.shop), shopMat));
+  // far skyline: tall silhouettes beyond the grid, dimmer, fading into the haze
+  const farG = { glass: [], office: [] };
+  for (let i = 0; i < (small ? 36 : 60); i++) {
+    const a = (i / (small ? 36 : 60)) * Math.PI * 2 + r() * 0.06, dd = LIMIT + 22 + r() * 40, w = 5 + r() * 8, h = Math.round((14 + r() * 46) / FLOOR) * FLOOR, kind = r() < 0.5 ? "glass" : "office";
+    farG[kind].push(place(wallsGeo(w, h, w * (0.7 + r() * 0.5), 900 + i), Math.cos(a) * dd, h / 2, Math.sin(a) * dd, r() * Math.PI));
+    if (h > 40) avPos.push(new THREE.Vector3(Math.cos(a) * dd, h + 1, Math.sin(a) * dd));
   }
-  function tryModel(url, onLoad) {
-    if (!THREE.GLTFLoader) return;
-    try { new THREE.GLTFLoader().load(url, (g) => onLoad(g.scene), undefined, () => {}); } catch (e) { /* keep the simple shapes */ }
+  for (const k of ["glass", "office"]) city.add(new THREE.Mesh(mergeGeometries(farG[k]), farMats[k]));
+}
+// red aviation lights on every tall roof, blinking together like a real skyline
+const avLights = new THREE.InstancedMesh(new THREE.SphereGeometry(0.16, 8, 6), new THREE.MeshBasicMaterial({ color: new THREE.Color(2.6, 0.12, 0.06), transparent: true }), Math.max(1, avPos.length));
+avPos.forEach((p, i) => avLights.setMatrixAt(i, new THREE.Matrix4().makeTranslation(p.x, p.y, p.z)));
+city.add(avLights);
+
+// ---- central core: granite plinth, glass dome with bronze ribs lit from inside, Kaelis floating above
+const core = new THREE.Group(); city.add(core);
+{
+  const ribs = canvasTex(512, 128, (g, w, h) => { const gr = g.createLinearGradient(0, 0, 0, h); gr.addColorStop(0, "#5a3f26"); gr.addColorStop(1, "#ffcf9a"); g.fillStyle = gr; g.fillRect(0, 0, w, h); g.fillStyle = "#000"; for (let i = 0; i < 32; i++) g.fillRect(i * (w / 32), 0, 3, h); for (let j = 1; j < 4; j++) g.fillRect(0, (h * j) / 4, w, 2); });
+  const dome = new THREE.Mesh(new THREE.SphereGeometry(4.2, 64, 24, 0, Math.PI * 2, 0, Math.PI / 2), new THREE.MeshStandardMaterial({
+    color: 0x0c0e11, metalness: 0.9, roughness: 0.08, envMapIntensity: 1.6, emissive: 0xffffff, emissiveIntensity: 0.32, emissiveMap: ribs }));
+  dome.position.y = 0.6; core.add(dome);
+  const base = new THREE.Mesh(new THREE.CylinderGeometry(5.6, 6.0, 0.6, 64), stoneSlab); base.position.y = 0.3; core.add(base);
+  const trim = new THREE.Mesh(new THREE.TorusGeometry(5.62, 0.05, 8, 128), new THREE.MeshStandardMaterial({ color: 0x8a6a45, metalness: 0.9, roughness: 0.3 }));
+  trim.rotation.x = Math.PI / 2; trim.position.y = 0.6; core.add(trim);
+  for (let i = 0; i < 10; i++) { // bollard lights
+    const a = (i / 10) * Math.PI * 2, b = new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.12, 0.7, 10), metalMat); b.position.set(Math.cos(a) * 5.0, 0.95, Math.sin(a) * 5.0); core.add(b);
+    const cap = new THREE.Mesh(new THREE.CylinderGeometry(0.105, 0.105, 0.08, 10), new THREE.MeshBasicMaterial({ color: new THREE.Color(2, 1.5, 1) })); cap.position.set(Math.cos(a) * 5.0, 1.25, Math.sin(a) * 5.0); core.add(cap);
   }
-  tryModel("models/kaelis.glb", (m) => {
-    core.visible = false;
-    eye.visible = false;
-    head2.add(fit(m, 2.6));
+}
+const coreBeam = beam("#ffe6c8", 0.8, 90, 0.06); coreBeam.position.y = 4; core.add(coreBeam);
+const kaelisCity = new THREE.Group(); kaelisCity.position.y = 8.2; core.add(kaelisCity);
+kaelisCity.add(glowSprite("rgba(89,231,202,0.22)", 4.5));
+
+// tower light beam: additive shader cylinder, bright at the base, scanning bands moving up
+function beam(color, radius, height, strength = 1) {
+  const m = new THREE.ShaderMaterial({
+    transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, side: THREE.DoubleSide,
+    uniforms: { uColor: { value: new THREE.Color(color) }, uTime: { value: 0 }, uK: { value: strength } },
+    vertexShader: "varying vec2 vUv; void main(){ vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position,1.); }",
+    fragmentShader: "uniform vec3 uColor; uniform float uTime; uniform float uK; varying vec2 vUv; void main(){ float fall = pow(1.0 - vUv.y, 1.6); float band = 0.75 + 0.25 * sin(vUv.y * 60.0 - uTime * 4.0); float edge = 0.55 + 0.45 * sin(vUv.x * 6.2832 * 3.0); float a = fall * band * edge * uK; gl_FragColor = vec4(uColor * a * 2.2, a); }",
   });
-  tryModel("models/hammer.glb", (m) => {
-    head.visible = false;
-    handle.visible = false;
-    const w = fit(m, 4.2);
-    w.position.set(0, 2, 0);
-    hammerArm.add(w);
+  const b = new THREE.Mesh(new THREE.CylinderGeometry(radius * 0.35, radius, height, 24, 1, true), m);
+  b.geometry.translate(0, height / 2, 0); b.userData.mat = m; beams.push(m); return b;
+}
+
+// ---- the four job towers: glass curtain walls, setbacks, a finned crown with one thin LED band in the job colour
+const towerHits = [];
+TOWERS.forEach((t, i) => {
+  const g = new THREE.Group(), R = 15.5;
+  g.position.set(Math.cos(t.angle) * R, 0, Math.sin(t.angle) * R);
+  g.lookAt(0, 0, 0);
+  const col = new THREE.Color(t.color), mat = facadeMat("glass", 50 + i, 1);
+  t.mats = [mat];
+  // podium with a lit lobby
+  const pod = new THREE.Mesh(wallsGeo(4.6, FLOOR * 3, 4.6, 70 + i, BAY * 8, FLOOR * 2.4), shopMat); pod.position.y = FLOOR * 1.5; g.add(pod);
+  const podRoof = new THREE.Mesh(new THREE.BoxGeometry(4.7, 0.18, 4.7), stoneSlab); podRoof.position.y = FLOOR * 3; g.add(podRoof);
+  let y = FLOOR * 3;
+  const tiers = [[3.4, t.h * 0.45], [2.8, t.h * 0.33], [2.2, t.h * 0.22]];
+  tiers.forEach(([w, h], k) => {
+    h = Math.round(h / FLOOR) * FLOOR;
+    const m = new THREE.Mesh(wallsGeo(w, h, w, 80 + i * 3 + k), mat); m.position.y = y + h / 2; g.add(m);
+    const slab = new THREE.Mesh(new THREE.BoxGeometry(w + 0.18, 0.16, w + 0.18), stoneSlab); slab.position.y = y + h; g.add(slab);
+    y += h;
   });
+  // crown: vertical fins around the top, and one LED band in the job colour
+  const fins = [], fw = 2.2;
+  for (let f = 0; f < 16; f++) { const side = Math.floor(f / 4), off = ((f % 4) - 1.5) * (fw / 4); const [x, z, ry] = [[off, fw / 2, 0], [fw / 2, -off, Math.PI / 2], [-off, -fw / 2, 0], [-fw / 2, off, Math.PI / 2]][side]; fins.push(place(new THREE.BoxGeometry(0.06, 1.6, 0.22), x, y + 0.8, z, ry)); }
+  g.add(new THREE.Mesh(mergeGeometries(fins), metalMat));
+  const crown = new THREE.Mesh(new THREE.BoxGeometry(2.3, 0.06, 2.3), new THREE.MeshBasicMaterial({ color: col.clone().multiplyScalar(1.1) }));
+  crown.position.y = y + 1.62; g.add(crown); t.crownCol = col.clone();
+  const ant = new THREE.Mesh(new THREE.CylinderGeometry(0.035, 0.07, 3.2, 6), metalMat); ant.position.y = y + 1.6 + 1.6; g.add(ant);
+  const tip = glowSprite("rgba(255,40,24,1)", 0.9); tip.position.y = y + 3.25; g.add(tip); t.av = tip;
+  const b = beam(t.color, 0.5, 80, 0.12); b.position.y = y + 1.7; g.add(b);
+  y += 1.7;
+  const hit = new THREE.Mesh(new THREE.BoxGeometry(4.6, y + 3, 4.6), new THREE.MeshBasicMaterial({ visible: false }));
+  hit.position.y = (y + 3) / 2; hit.userData.tower = t.id; g.add(hit); towerHits.push(hit);
+  t.group = g; t.top = new THREE.Vector3(0, y + 2.4, 0); t.crown = crown; t.body = mat; t.beamMat = b.userData.mat; t.height = y;
+  city.add(g);
+});
 
-  // Holographic glass panels orbiting Kaelis
-  const HOLO_TEXT = [["$KAEL", "ENERGY", "supply 1,000,000,000"], ["SCAN", "RISK 88/100", "honeypot detected"], ["BUILD", "+22 COMMITS", "0xbima · verified"]];
-  // small window cards orbiting Kaelis: black title bar, close box, mono readout (cobalt in blueprint)
-  function holoTexture(lines, blue) {
-    const c = document.createElement("canvas");
-    c.width = 384; c.height = 512;
-    const g = c.getContext("2d"), ink = blue ? "#344dbb" : "#111111";
-    g.fillStyle = "#ffffff"; g.fillRect(0, 0, 384, 512);
-    g.strokeStyle = ink; g.lineWidth = 3; g.strokeRect(1.5, 1.5, 381, 509);
-    g.fillStyle = ink; g.fillRect(0, 0, 384, 44);
-    g.strokeStyle = "#ffffff"; g.lineWidth = 2; g.strokeRect(346, 13, 18, 18);
-    g.fillStyle = "#ffffff"; g.font = '500 18px "JetBrains Mono", monospace'; g.fillText(lines[1].split(" ")[0], 16, 29);
-    g.fillStyle = ink; g.font = (blue ? '300 92px "Bitter", serif' : '500 88px "Inter Tight", sans-serif'); g.fillText(lines[0], 22, 160);
-    g.font = '500 26px "JetBrains Mono", monospace'; g.fillText(lines[1], 24, 222);
-    g.fillStyle = blue ? "#7f8fd6" : "#8c8c8c"; g.font = '400 20px "JetBrains Mono", monospace'; g.fillText(lines[2].toUpperCase(), 24, 262);
-    g.strokeStyle = ink; g.lineWidth = 2; g.strokeRect(24, 300, 336, 22);
-    for (let x = 24; x < 360; x += 8) { g.beginPath(); g.moveTo(x, 322); g.lineTo(x + 22, 300); g.stroke(); }
-    g.fillStyle = ink; g.fillRect(24, 300, 336 * (0.3 + Math.random() * 0.6), 22);
-    g.fillStyle = blue ? "#7f8fd6" : "#8c8c8c"; g.font = '400 18px "JetBrains Mono", monospace';
-    for (let i = 0; i < 4; i++) g.fillText("0" + (i + 1) + ". " + ["block", "scan", "holders", "risk"][i] + " ........ " + Math.floor(Math.random() * 900 + 100), 24, 370 + i * 30);
-    const t = new THREE.CanvasTexture(c); t.anisotropy = 4; return t;
-  }
-  const holos = HOLO_TEXT.map((lines, i) => {
-    const mat = new THREE.MeshBasicMaterial({ map: holoTexture(lines, false), transparent: true, opacity: 0, depthWrite: false, side: THREE.DoubleSide, fog: false });
-    const mesh = new THREE.Mesh(new THREE.PlaneGeometry(3, 4), mat);
-    mesh.userData = { a: (i / 3) * Math.PI * 2, maps: [mat.map, null] };
-    mesh.visible = false;
-    scene.add(mesh);
-    return mesh;
-  });
-  const holoMaps = () => holos.forEach((m, i) => { m.userData.maps = [holoTexture(HOLO_TEXT[i], false), holoTexture(HOLO_TEXT[i], true)]; m.material.map = m.userData.maps[bp > 0.5 ? 1 : 0]; m.material.needsUpdate = true; });
-  if (document.fonts && document.fonts.ready) document.fonts.ready.then(holoMaps); else holoMaps();
-  window.addEventListener("kaelis-reality", (e) => { bpTarget = e.detail === "blueprint" ? 1 : 0; });
-  let bpTarget = bp;
+// reflections: render the finished city into a cube map once, so glass and puddles mirror the real lights
+const cubeRT = new THREE.WebGLCubeRenderTarget(small ? 128 : 256, { type: THREE.HalfFloatType });
+const cubeCam = new THREE.CubeCamera(0.5, 450, cubeRT); cubeCam.position.set(9, 3.2, 19); city.add(cubeCam);
+function bakeCityEnv() {
+  const saved = TOWERS.map((tw) => tw.group.scale.y); TOWERS.forEach((tw) => (tw.group.scale.y = 1));
+  const prev = city.environment; city.environment = envTex;
+  cubeCam.update(renderer, city);
+  city.environment = pmrem.fromCubemap(cubeRT.texture).texture; city.environmentIntensity = 1;
+  TOWERS.forEach((tw, i) => (tw.group.scale.y = saved[i]));
+  return prev;
+}
 
-  // Camera keyframes per beat
-  const camKeys = [
-    { p: [0, 1, 18], t: [0, 0, 0] },
-    { p: [3, 2.5, 9], t: [0, 0.6, 0] },
-    { p: [0, 5, 24], t: [0, 0, 0] },
-    { p: [13, 12, 17], t: [0, 2.5, 0] },
-    { p: [0, 9, 15], t: [0, 8.5, 0] },
-    { p: [0, 15, 29], t: [0, 6.5, 0] }
-  ];
-  const camT = new THREE.Vector3();
-  function camAt(s) {
-    const i = clamp(Math.floor(s), 0, camKeys.length - 2);
-    const f = smooth(0, 1, s - i);
-    const a = camKeys[i], b = camKeys[i + 1];
-    camera.position.set(lerp(a.p[0], b.p[0], f), lerp(a.p[1], b.p[1], f), lerp(a.p[2], b.p[2], f));
-    camT.set(lerp(a.t[0], b.t[0], f), lerp(a.t[1], b.t[1], f), lerp(a.t[2], b.t[2], f));
-  }
+// =================================================================== ROOM (inside a tower)
+const roomParts = {};
+{
+  room.background = new THREE.Color(0x0b0c0f);
+  room.fog = new THREE.Fog(0x0b0c0f, 9, 22);
+  room.add(new THREE.HemisphereLight(0xc9d2de, 0x1c1814, 0.75));
+  const key = new THREE.DirectionalLight(0xfff0dc, 0.95); key.position.set(3, 5, 4); room.add(key);
+  const screenLight = new THREE.PointLight(0x59e7ca, 6, 5, 2); screenLight.position.set(0, 1.5, -0.6); room.add(screenLight);
+  roomParts.screenLight = screenLight;
 
-  // Input
-  let target = 0, s = 0;
-  const mouse = { x: 0, y: 0 };
-  let mouseMoved = false;
-  const beats = Array.from(document.querySelectorAll(".beat"));
-  const railEl = document.querySelector(".rail");
-  const topEl = document.querySelector(".topbar");
-  function readScroll() {
-    const y = window.scrollY;
-    let v = 0;
-    for (let i = 0; i < beats.length - 1; i++) {
-      const a = beats[i].offsetTop, b = beats[i + 1].offsetTop;
-      if (y >= a) v = i + Math.min(1, (y - a) / Math.max(1, b - a));
-    }
-    target = clamp(v, 0, 5);
-    const last = beats[beats.length - 1];
-    const atHero = y < innerHeight * 0.5;
-    railEl.classList.toggle("off", atHero || y > last.offsetTop + last.offsetHeight * 0.6);
-    document.body.classList.toggle("at-hero", atHero);
-    topEl.classList.toggle("solid", y > last.offsetTop + last.offsetHeight * 0.6);
-  }
-  window.addEventListener("scroll", readScroll, { passive: true });
-  window.addEventListener("pointermove", (e) => {
-    mouseMoved = true;
-    mouse.x = (e.clientX / window.innerWidth) * 2 - 1;
-    mouse.y = -((e.clientY / window.innerHeight) * 2 - 1);
-  }, { passive: true });
+  // round platform with grid, like a stage
+  const floor = new THREE.Mesh(new THREE.CircleGeometry(4.2, 72), new THREE.MeshStandardMaterial({ color: 0x17181b, roughness: 0.7, metalness: 0.1,
+    emissive: 0xffffff, emissiveIntensity: 0.08, emissiveMap: (() => { const t = gridTex("#b9b3a8", 8, 0.4); t.repeat.set(9, 9); return t; })() }));
+  floor.rotation.x = -Math.PI / 2; room.add(floor);
+  const edge = new THREE.Mesh(new THREE.TorusGeometry(4.2, 0.02, 6, 128), new THREE.MeshBasicMaterial({ color: new THREE.Color("#8f7dff").multiplyScalar(1.3) }));
+  edge.rotation.x = Math.PI / 2; room.add(edge); roomParts.edge = edge;
 
-  function resize() {
-    const w = window.innerWidth, h = window.innerHeight;
-    renderer.setSize(w, h, false);
-    camera.aspect = w / h;
-    camera.fov = w < 640 ? 70 : 55;
-    const wide = w >= 900;
-    camera.zoom = wide ? 0.85 : 0.95;
-    vw = w; vh = h; wideView = wide;
-    camera.updateProjectionMatrix();
-    const visW = (2 * 18 * Math.tan((camera.fov * Math.PI) / 360) * camera.aspect) / camera.zoom;
-    textScale = Math.min(3, (visW * (wide ? 1.25 : 0.9)) / 16); // KAELIS spans the screen
-    readScroll();
-  }
-  window.addEventListener("resize", resize);
-  resize();
-
-  // Rail + ledger
-  const railLinks = Array.from(document.querySelectorAll(".rail a"));
-  const ledger = document.getElementById("blockLedger");
-  let lastBeat = -1, lastLinked = -1;
-
-  const tmp = new THREE.Vector3();
-  const clock = new THREE.Clock();
-
-  function frame() {
-    const dt = Math.min(clock.getDelta(), 0.05);
-    const time = clock.elapsedTime;
-    s += (target - s) * (reduce ? 1 : Math.min(1, dt * 4));
-    bp += (bpTarget - bp) * (reduce ? 1 : Math.min(1, dt * 4));
-    bpGrid.material.opacity = bp * 0.22;
-    bpGrid.visible = bp > 0.01;
-
-    // chaos
-    const chaosFade = 1 - smooth(1.5, 2.8, s);
-    pMat.opacity = 0.9 * chaosFade + 0.08;
-    const intro = textReady ? (reduce ? 1 : smooth(300, 2600, performance.now() - introStart)) : 0;
-    const form = intro * (1 - smooth(0.06, 0.7, s));
-    chaos.rotation.y = (time * (reduce ? 0 : 0.03) + s * 0.4) * (1 - form);
-    const pull = smooth(0.2, 1.0, s) * (1 - smooth(1.2, 2, s));
-    chaos.scale.setScalar(1 - pull * 0.55);
-    if (form > 0.001 || intro < 1) {
-      mouseRay.setFromCamera({ x: mouse.x, y: mouse.y }, camera);
-      const hitM = mouseRay.ray.intersectPlane(zPlane, mWorld);
-      const R2 = 2.6 * 2.6;
-      for (let i = 0; i < P; i++) {
-        const e0 = clamp(form * 1.25 - pSeed[i] * 0.25, 0, 1);
-        const e = e0 * e0 * (3 - 2 * e0);
-        const i3 = i * 3;
-        let x = lerp(pHome[i3], pText[i3] * textScale, e);
-        let y = lerp(pHome[i3 + 1], (pText[i3 + 1] - TEXT_Y) * textScale + TEXT_Y, e);
-        let z = lerp(pHome[i3 + 2], pText[i3 + 2], e);
-        if (e > 0.6 && hitM && !reduce && mouseMoved) {
-          const dx = x - mWorld.x, dy = y - mWorld.y, d2 = dx * dx + dy * dy;
-          if (d2 < R2) { const d = Math.sqrt(d2) || 0.001, push = (1 - d2 / R2) * 1.4; x += (dx / d) * push; y += (dy / d) * push; z += push * 1.5; }
+  // panoramic window: night skyline painted once
+  const sky = canvasTex(2048, 768, (g, w, h) => {
+    const gr = g.createLinearGradient(0, 0, 0, h); gr.addColorStop(0, "#04060b"); gr.addColorStop(0.6, "#0d1018"); gr.addColorStop(1, "#3a2a1c");
+    g.fillStyle = gr; g.fillRect(0, 0, w, h);
+    const r = rand(5); g.fillStyle = "#fff";
+    for (let i = 0; i < 70; i++) { const s = r() * 1.8; g.globalAlpha = 0.25 + r() * 0.4; g.fillRect(r() * w, r() * h * 0.6, s, s); }
+    g.globalAlpha = 1;
+    for (let layer = 0; layer < 2; layer++) {
+      let x = 0;
+      while (x < w) {
+        const bw = 60 + r() * 120, bh = (layer ? 160 : 260) + r() * (layer ? 220 : 330);
+        g.fillStyle = layer ? "#121418" : "#0a0b0d"; g.fillRect(x, h - bh, bw, bh);
+        for (let wy = h - bh + 16; wy < h - 10; wy += 22) for (let wx = x + 10; wx < x + bw - 10; wx += 18) {
+          if (r() < (layer ? 0.16 : 0.24)) { const k = r(); g.fillStyle = k < 0.7 ? "#e8b56e" : k < 0.9 ? "#c9d6ec" : "#f3dcb4"; g.globalAlpha = 0.45 + r() * 0.55; g.fillRect(wx, wy, 8, 11); g.globalAlpha = 1; }
         }
-        if (!reduce) { x += Math.sin(time * 1.7 + pSeed[i] * 40) * 0.025 * e; y += Math.cos(time * 1.3 + pSeed[i] * 30) * 0.025 * e; }
-        pPos[i3] = x; pPos[i3 + 1] = y; pPos[i3 + 2] = z;
+        x += bw + 6 + r() * 30;
       }
-      pGeo.attributes.position.needsUpdate = true;
     }
-    pMat.size = 0.1;
-    pMat.opacity *= lerp(1, 0.35, form); // dust thins out while the towers stand
-    updateTowers(form, time);
-    pMat.color.setHex(0x9a9a9a).lerp(INK, form).lerp(BLUE, bp);
-
-    // hammer
-    const hamIn = smooth(0.15, 0.55, s) * (1 - smooth(1.25, 1.7, s));
-    hMat.opacity = hamIn;
-    hGlow.material.opacity = hamIn * 0.25 * (1 - bp);
-    hammer.visible = hamIn > 0.01;
-    const strikePhase = clamp((s - 0.45) / 0.45, 0, 1);
-    const swing = reduce ? 0.2 : Math.sin(strikePhase * Math.PI * 3) * 0.9;
-    hammerArm.rotation.z = 0.8 - Math.max(0, swing) * 1.2 - strikePhase * 0.3;
-    const hit = s > 0.45 && s < 1.1 ? Math.pow(Math.abs(Math.sin(strikePhase * Math.PI * 3)), 8) : 0;
-    spark.material.opacity = hit;
-    spark.scale.setScalar(2 + hit * 4);
-    forgeLight.intensity = (0.6 + hit * 3 + smooth(2.5, 3.2, s) * 0.6) * (1 - bp);
-    hMat.wireframe = bp > 0.5;
-
-    // blocks
-    let linked = 0;
-    cubes.forEach((c, i) => {
-      const m = c.mesh;
-      // appear: first block in beat 1, the rest during beat 2
-      const appear = i === 0 ? smooth(0.55, 0.95, s) : smooth(1.05 + (i / N) * 0.75, 1.15 + (i / N) * 0.75, s);
-      if (appear > 0.5) linked++;
-      const toChain = i === 0 ? smooth(1.0, 1.6, s) : 1;
-      const toCity = smooth(2.05 + (i % 6) * 0.05, 2.7 + (i % 6) * 0.05, s);
-
-      // origin position for block 0 is the anvil, others fly in from scatter
-      const start = i === 0 ? tmp.set(0, 0, 0) : tmp.copy(c.scatter);
-      const p = new THREE.Vector3().copy(start).lerp(c.chainPos, i === 0 ? toChain : appear);
-      const cityTop = new THREE.Vector3(c.cityPos.x, c.h / 2, c.cityPos.z);
-      p.lerp(cityTop, toCity);
-      m.position.copy(p);
-
-      const sz = i === 0 ? lerp(1.3, 0.9, toChain) : 0.9;
-      m.scale.set(sz * appear || 0.0001, lerp(sz, c.h, toCity) * appear || 0.0001, sz * appear || 0.0001);
-      m.rotation.set(
-        (1 - appear) * 3 + (1 - toCity) * (reduce ? 0 : Math.sin(time * 0.5 + i) * 0.15),
-        (1 - toCity) * (i * 0.3 + (reduce ? 0 : time * 0.2)), 0);
-      m.visible = appear > 0.01;
-
-      const glow = 0.15 + hit * (i === 0 ? 2 : 0) + toCity * (0.25 + 0.35 * (0.5 + 0.5 * Math.sin(time * 1.3 + i * 1.7)));
-      m.material.emissiveIntensity = glow * 0.25 * (1 - bp * 0.5);
-      const sig = smooth(3.3, 4.3, s) * ((i * 7) % 3 === 0 ? 1 : 0.35);
-      m.material.emissive.copy(EMBER).lerp(SIGNAL, sig);
-      m.material.color.copy(STONE).lerp(BLUE, bp * 0.35);
-      c.edges.material.color.copy(INK).lerp(BLUE, bp);
-      c.edges.material.opacity = lerp(0.7 - toCity * 0.45, 0.6, bp);
-      // facade skin fades in as the block lands (both realities); lit windows pick up the story's ember -> signal tint
-      const skin = smooth(0.55, 1, toCity);
-      c.facade.visible = skin > 0.01;
-      if (c.facade.visible) {
-        const fm = c.facade.material;
-        fm[0].opacity = fm[2].opacity = skin;
-        fm[0].emissive.setRGB(1, 0.92, 0.8).lerp(SIGNAL, sig * 0.4).lerp(WHITE, bp);
-        fm[0].color.setRGB(1, 1, 1).lerp(BLUE, bp * 0.45);
-        fm[0].emissiveIntensity = 0.7 + 0.12 * Math.sin(time * 0.7 + i);
-      }
-
-      linkPos[i * 3] = m.position.x;
-      linkPos[i * 3 + 1] = m.position.y;
-      linkPos[i * 3 + 2] = m.position.z;
-    });
-    linkGeo.attributes.position.needsUpdate = true;
-    linkGeo.setDrawRange(0, Math.max(0, linked));
-    links.material.opacity = smooth(1.1, 1.5, s) * (1 - smooth(2.1, 2.5, s)) * 0.9;
-    links.material.color.copy(INK).lerp(BLUE, bp);
-    links.visible = links.material.opacity > 0.01;
-
-    // Kaelis rises from beneath the city
-    const rise = smooth(3.15, 4.0, s);
-    kaelis.position.set(0, lerp(-10, 8.5, rise), 0);
-    kaelis.visible = rise > 0.01;
-    kaelis.scale.setScalar(lerp(0.4, 1, rise));
-    signalLight.position.copy(kaelis.position);
-    signalLight.intensity = rise * 3;
-    const pulse = reduce ? 1 : 0.85 + Math.sin(time * 2.2) * 0.15;
-    kGlow.material.opacity = rise * 0.35 * pulse * (1 - bp);
-    core.material.wireframe = bp > 0.5;
-    core.material.color.setHex(0x1a1f2e).lerp(BLUE, bp);
-    shell.material.color.copy(INK).lerp(BLUE, bp);
-    ring.material.color.copy(INK).lerp(BLUE, bp);
-    shell.rotation.y = time * (reduce ? 0 : 0.25);
-    shell.rotation.x = time * (reduce ? 0 : 0.12);
-    ring.rotation.z = time * (reduce ? 0 : 0.4);
-    // eye tracks the cursor
-    head2.rotation.y += ((mouse.x * 0.9) - head2.rotation.y) * 0.08;
-    head2.rotation.x += ((-mouse.y * 0.6) - head2.rotation.x) * 0.08;
-
-    // window cards: appear with Kaelis and orbit it
-    const holoFade = smooth(3.6, 4.2, s);
-    holos.forEach((m, i) => {
-      m.material.opacity = holoFade;
-      m.visible = holoFade > 0.01;
-      const want = bp > 0.5 ? 1 : 0;
-      if (m.userData.maps[want] && m.material.map !== m.userData.maps[want]) { m.material.map = m.userData.maps[want]; m.material.needsUpdate = true; }
-      if (!m.visible) return;
-      const a = m.userData.a + time * (reduce ? 0 : 0.22);
-      const r = lerp(3.5, 5.2, holoFade);
-      m.position.set(kaelis.position.x + Math.cos(a) * r, kaelis.position.y + Math.sin(time * 0.9 + i * 2) * 0.4 * (reduce ? 0 : 1), kaelis.position.z + Math.sin(a) * r);
-      m.lookAt(camera.position);
-    });
-
-    // agents
-    const swarm = smooth(4.1, 4.9, s);
-    aMat.opacity = swarm * 0.7;
-    aMat.color.copy(INK).lerp(BLUE, bp);
-    agents.visible = swarm > 0.01;
-    if (agents.visible) {
-      for (let i = 0; i < A; i++) {
-        const d = aSeed[i];
-        const ang = d.a + (reduce ? 0 : time * d.s);
-        const r = lerp(2, d.r, swarm);
-        aPos[i * 3] = Math.cos(ang) * r;
-        aPos[i * 3 + 1] = 8.5 + d.y * swarm;
-        aPos[i * 3 + 2] = Math.sin(ang) * r;
-      }
-      aGeo.attributes.position.needsUpdate = true;
-    }
-
-    // hero: the scene is centred so KAELIS owns the screen; later beats shift it into the area the text does not use
-    const shift = smooth(0.25, 0.9, s);
-    if (wideView) camera.setViewOffset(vw, vh, -vw * 0.2 * shift, 0, vw, vh);
-    else camera.setViewOffset(vw, vh, 0, vh * 0.2 * shift, vw, vh);
-    camAt(s);
-    if (!reduce) {
-      camera.position.x += mouse.x * 0.6;
-      camera.position.y += mouse.y * 0.4;
-    }
-    camera.lookAt(camT);
-
-    // UI sync
-    const beat = clamp(Math.round(target), 0, 5);
-    if (beat !== lastBeat) {
-      railLinks.forEach((a, i) => a.classList.toggle("on", i === beat));
-      lastBeat = beat;
-    }
-    if (linked !== lastLinked && ledger) {
-      ledger.innerHTML = "<span>linked blocks <b>" + Math.max(1, linked) + "</b> / " + N + "</span>";
-      lastLinked = linked;
-    }
-
-    if (!storyPaused) renderer.render(scene, camera); // the story scene sleeps while Forge City fills the screen
-    requestAnimationFrame(frame);
+  });
+  const win = new THREE.Mesh(new THREE.PlaneGeometry(10, 3.75), new THREE.MeshBasicMaterial({ map: sky, color: new THREE.Color(0.8, 0.8, 0.8) }));
+  win.position.set(0, 2.2, -3.4); room.add(win);
+  const frameMat = new THREE.MeshStandardMaterial({ color: 0x2b2d31, roughness: 0.55, metalness: 0.5 });
+  for (const [w, h, x, y] of [[10.3, 0.15, 0, 4.1], [10.3, 0.15, 0, 0.3], [0.15, 3.9, -5.1, 2.2], [0.15, 3.9, 5.1, 2.2], [0.08, 3.8, -1.7, 2.2], [0.08, 3.8, 1.7, 2.2]]) {
+    const f = new THREE.Mesh(new THREE.BoxGeometry(w, h, 0.15), frameMat); f.position.set(x, y, -3.35); room.add(f);
   }
+
+  // wall clock (real time)
+  const clockCv = document.createElement("canvas"); clockCv.width = clockCv.height = 256;
+  const clockTex = srgb(new THREE.CanvasTexture(clockCv));
+  const clock = new THREE.Mesh(new THREE.CircleGeometry(0.42, 48), new THREE.MeshBasicMaterial({ map: clockTex, transparent: true }));
+  clock.position.set(-3.6, 3.15, -3.25); room.add(clock); roomParts.clock = { cv: clockCv, tex: clockTex };
+
+  // desk
+  const deskMat = new THREE.MeshStandardMaterial({ color: 0x2e2822, roughness: 0.6, metalness: 0.1 });
+  const top = new THREE.Mesh(new THREE.BoxGeometry(2.9, 0.07, 1.0), deskMat); top.position.set(0, 0.82, -1.05); room.add(top);
+  const lip = new THREE.Mesh(new THREE.BoxGeometry(2.9, 0.02, 0.02), new THREE.MeshBasicMaterial({ color: new THREE.Color("#59e7ca").multiplyScalar(2) }));
+  lip.material.color.multiplyScalar(0.6); lip.position.set(0, 0.84, -0.54); room.add(lip); roomParts.lip = lip;
+  for (const x of [-1.35, 1.35]) for (const z of [-1.45, -0.65]) { const leg = new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.8, 0.06), deskMat); leg.position.set(x, 0.4, z); room.add(leg); }
+
+  // monitors (canvas screens updated with live data)
+  roomParts.screens = [];
+  const monMat = new THREE.MeshStandardMaterial({ color: 0x0b0918, roughness: 0.4, metalness: 0.5 });
+  for (const [w, h, x, y, z, ry] of [[1.25, 0.74, 0, 1.38, -1.38, 0], [0.92, 0.6, -1.08, 1.3, -1.22, 0.42], [0.92, 0.6, 1.08, 1.3, -1.22, -0.42]]) {
+    const grp = new THREE.Group(); grp.position.set(x, y, z); grp.rotation.y = ry; room.add(grp);
+    const bezel = new THREE.Mesh(new THREE.BoxGeometry(w + 0.06, h + 0.06, 0.05), monMat); grp.add(bezel);
+    const cv = document.createElement("canvas"); cv.width = 640; cv.height = Math.round(640 * h / w);
+    const tex = srgb(new THREE.CanvasTexture(cv)); tex.anisotropy = 8;
+    const scr = new THREE.Mesh(new THREE.PlaneGeometry(w, h), new THREE.MeshBasicMaterial({ map: tex, toneMapped: false, color: new THREE.Color(0.92, 0.92, 0.92) }));
+    scr.position.z = 0.028; grp.add(scr);
+    const stand = new THREE.Mesh(new THREE.BoxGeometry(0.05, y - 0.86 - h / 2 + 0.05, 0.05), monMat); stand.position.y = -h / 2 - (y - 0.86 - h / 2) / 2; grp.add(stand);
+    roomParts.screens.push({ cv, tex });
+  }
+
+  // keyboard (lit keys), red action button, mint pad, mug
+  const kbTex = canvasTex(256, 96, (g, w, h) => { g.fillStyle = "#0b0c0e"; g.fillRect(0, 0, w, h); g.fillStyle = "#3b3f46"; for (let y = 0; y < 4; y++) for (let x = 0; x < 14; x++) g.fillRect(6 + x * 17.6, 8 + y * 21, 13, 15); });
+  const kb = new THREE.Mesh(new THREE.BoxGeometry(0.8, 0.025, 0.26), new THREE.MeshStandardMaterial({ color: 0x1a1b1e, emissive: 0xffffff, emissiveIntensity: 0.35, emissiveMap: kbTex, roughness: 0.6 }));
+  kb.position.set(-0.05, 0.87, -0.78); room.add(kb);
+  const btnBase = new THREE.Mesh(new THREE.CylinderGeometry(0.16, 0.18, 0.05, 32), new THREE.MeshStandardMaterial({ color: 0x26272a, metalness: 0.6, roughness: 0.35 }));
+  btnBase.position.set(0.82, 0.88, -0.82); room.add(btnBase);
+  const btn = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.13, 0.08, 32), new THREE.MeshStandardMaterial({ color: 0xff2d55, emissive: 0xff2d55, emissiveIntensity: 0.6, roughness: 0.3 }));
+  btn.position.set(0.82, 0.94, -0.82); room.add(btn); roomParts.btn = btn;
+  const pad = new THREE.Mesh(new THREE.BoxGeometry(0.22, 0.03, 0.22), new THREE.MeshStandardMaterial({ color: 0x59e7ca, emissive: 0x59e7ca, emissiveIntensity: 0.9 }));
+  pad.position.set(-0.85, 0.87, -0.8); room.add(pad);
+  const mug = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.055, 0.13, 24), new THREE.MeshStandardMaterial({ color: 0xf0ecff, roughness: 0.3 }));
+  mug.position.set(1.15, 0.92, -0.95); room.add(mug); roomParts.mug = mug;
+
+  // gaming chair: black, with a glowing strip down the back
+  const chairMat = new THREE.MeshStandardMaterial({ color: 0x08070f, roughness: 0.55, metalness: 0.2 });
+  const chair = new THREE.Group(); chair.position.set(0, 0, -0.2); room.add(chair); roomParts.chair = chair;
+  const seat = new THREE.Mesh(new THREE.BoxGeometry(0.62, 0.1, 0.58), chairMat); seat.position.y = 0.52; chair.add(seat);
+  const back = new THREE.Mesh(new THREE.BoxGeometry(0.58, 0.62, 0.1), chairMat); back.position.set(0, 0.9, 0.29); back.rotation.x = -0.08; chair.add(back);
+  const strip = new THREE.Mesh(new THREE.PlaneGeometry(0.05, 0.46), new THREE.MeshBasicMaterial({ color: new THREE.Color("#ffffff").multiplyScalar(1.3) }));
+  strip.position.set(0, 0.9, 0.345); strip.rotation.x = -0.08; chair.add(strip); roomParts.strip = strip;
+  const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.04, 0.42, 12), chairMat); pole.position.y = 0.26; chair.add(pole);
+  for (let i = 0; i < 5; i++) { const a = (i / 5) * Math.PI * 2, leg = new THREE.Mesh(new THREE.BoxGeometry(0.05, 0.04, 0.34), chairMat); leg.position.set(Math.sin(a) * 0.16, 0.04, Math.cos(a) * 0.16); leg.rotation.y = a; chair.add(leg); }
+}
+
+// ---------------------------------------------------------------- the robot (Kaelis at work)
+// White shell, one mint eye in a dark visor (Kaelis' eye), glowing ear rings, antenna with an ember tip.
+const robot = (() => {
+  const shell = new THREE.MeshStandardMaterial({ color: 0xc9d0dc, roughness: 0.38, metalness: 0.1 });
+  const joint = new THREE.MeshStandardMaterial({ color: 0x9aa3b5, roughness: 0.4, metalness: 0.6 });
+  const dark = new THREE.MeshStandardMaterial({ color: 0x0a0c14, roughness: 0.15, metalness: 0.4 });
+  const mint = new THREE.MeshStandardMaterial({ color: 0x0a1a16, emissive: 0x59e7ca, emissiveIntensity: 1.6 });
+  const R = new THREE.Group(); R.position.set(0, 0, -0.22); // faces -Z (the desk)
+
+  const hips = new THREE.Group(); hips.position.y = 0.62; R.add(hips);
+  const pelvis = new THREE.Mesh(new THREE.SphereGeometry(0.17, 24, 16), joint); pelvis.scale.set(1.25, 0.7, 1); hips.add(pelvis);
+  const torso = new THREE.Mesh(new THREE.CapsuleGeometry(0.2, 0.26, 8, 20), shell); torso.position.y = 0.3; torso.scale.set(1.1, 1, 0.85); hips.add(torso);
+  const chest = new THREE.Mesh(new THREE.BoxGeometry(0.16, 0.05, 0.02), mint); chest.position.set(0, 0.38, -0.175); hips.add(chest);
+
+  const neck = new THREE.Group(); neck.position.y = 0.62; hips.add(neck);
+  const head = new THREE.Group(); head.position.y = 0.2; neck.add(head);
+  const skull = new THREE.Mesh(new THREE.SphereGeometry(0.23, 40, 28), shell); skull.scale.set(1.08, 0.95, 1); head.add(skull);
+  const visor = new THREE.Mesh(new THREE.SphereGeometry(0.205, 40, 20, Math.PI * 1.12, Math.PI * 0.76, Math.PI * 0.3, Math.PI * 0.4), dark);
+  visor.scale.set(1.13, 1, 1.07); head.add(visor);
+  const eyeRing = new THREE.Mesh(new THREE.TorusGeometry(0.07, 0.012, 10, 40), mint); eyeRing.position.set(0, 0.01, -0.222); head.add(eyeRing);
+  const eye = new THREE.Mesh(new THREE.CircleGeometry(0.045, 32), mint); eye.position.set(0, 0.01, -0.223); eye.rotation.y = Math.PI; head.add(eye);
+  for (const s of [-1, 1]) {
+    const ear = new THREE.Mesh(new THREE.CylinderGeometry(0.075, 0.075, 0.05, 28), shell); ear.rotation.z = Math.PI / 2; ear.position.x = s * 0.25; head.add(ear);
+    const ring = new THREE.Mesh(new THREE.TorusGeometry(0.06, 0.012, 8, 32), mint); ring.rotation.y = Math.PI / 2; ring.position.x = s * 0.278; head.add(ring);
+  }
+  const ant = new THREE.Mesh(new THREE.CylinderGeometry(0.01, 0.014, 0.18, 8), joint); ant.position.set(0.08, 0.27, 0); ant.rotation.z = -0.25; head.add(ant);
+  const antTip = new THREE.Mesh(new THREE.SphereGeometry(0.03, 12, 12), new THREE.MeshStandardMaterial({ color: 0x2a0f05, emissive: 0xff8a4d, emissiveIntensity: 2.5 }));
+  antTip.position.set(0.105, 0.36, 0); head.add(antTip);
+
+  // arms: shoulder -> elbow -> hand, posed over the keyboard
+  const arms = [];
+  for (const s of [-1, 1]) {
+    const shoulder = new THREE.Group(); shoulder.position.set(s * 0.29, 0.5, 0); hips.add(shoulder);
+    shoulder.add(new THREE.Mesh(new THREE.SphereGeometry(0.075, 16, 12), joint));
+    const upper = new THREE.Mesh(new THREE.CapsuleGeometry(0.05, 0.2, 6, 12), shell); upper.position.y = -0.15; shoulder.add(upper);
+    const elbow = new THREE.Group(); elbow.position.y = -0.29; shoulder.add(elbow);
+    elbow.add(new THREE.Mesh(new THREE.SphereGeometry(0.055, 14, 10), joint));
+    const fore = new THREE.Mesh(new THREE.CapsuleGeometry(0.045, 0.2, 6, 12), shell); fore.position.y = -0.14; elbow.add(fore);
+    const hand = new THREE.Mesh(new THREE.SphereGeometry(0.06, 14, 10), joint); hand.scale.set(1, 0.7, 1.2); hand.position.y = -0.3; elbow.add(hand);
+    arms.push({ s, shoulder, elbow });
+  }
+  // legs: thighs forward on the seat, shins down
+  for (const s of [-1, 1]) {
+    const thigh = new THREE.Mesh(new THREE.CapsuleGeometry(0.075, 0.26, 6, 12), shell); thigh.rotation.x = Math.PI / 2; thigh.position.set(s * 0.12, -0.02, -0.2); hips.add(thigh);
+    const shin = new THREE.Mesh(new THREE.CapsuleGeometry(0.065, 0.32, 6, 12), shell); shin.position.set(s * 0.12, -0.27, -0.4); hips.add(shin);
+    const foot = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.06, 0.2), joint); foot.position.set(s * 0.12, -0.52, -0.45); hips.add(foot);
+  }
+  room.add(R);
+  return { R, hips, head, neck, arms, eyeMat: mint, antTip };
+})();
+
+// Kaelis core model (same GLB as the home page) for the plaza
+new GLTFLoader().setMeshoptDecoder(MeshoptDecoder).load("models/kaelis.glb", (g) => {
+  const m = g.scene, box = new THREE.Box3().setFromObject(m), size = box.getSize(new THREE.Vector3());
+  const k = 3.4 / Math.max(size.x, size.y, size.z); m.scale.setScalar(k);
+  m.position.sub(box.getCenter(new THREE.Vector3()).multiplyScalar(k));
+  m.traverse((o) => { if (o.isMesh && o.material.emissiveIntensity > 1) o.material.emissiveIntensity = Math.min(o.material.emissiveIntensity, 4); });
+  kaelisCity.add(m);
+}, undefined, () => {
+  const s = new THREE.Mesh(new THREE.SphereGeometry(1.6, 48, 32), new THREE.MeshStandardMaterial({ color: 0x15171f, metalness: 1, roughness: 0.3 })); kaelisCity.add(s);
+});
+
+// =================================================================== SCREENS (canvas UI drawn from live state)
+const FONT = "JetBrains Mono, monospace";
+function screenFrame(g, w, h, title, color) {
+  g.fillStyle = "#0a0b0d"; g.fillRect(0, 0, w, h);
+  g.fillStyle = color; g.fillRect(0, 0, w, 40);
+  g.fillStyle = "#0a0b0d"; g.font = `700 18px ${FONT}`; g.textBaseline = "middle"; g.fillText(title.toUpperCase(), 16, 21);
+  g.strokeStyle = "rgba(220,224,232,0.08)"; g.lineWidth = 1;
+  for (let y = 60; y < h; y += 28) { g.beginPath(); g.moveTo(0, y); g.lineTo(w, y); g.stroke(); }
+}
+function textLines(g, lines, x, y, size = 17, gap = 27) {
+  g.font = `500 ${size}px ${FONT}`; g.textBaseline = "top";
+  lines.forEach((l, i) => { const [txt, col] = Array.isArray(l) ? l : [l, "#e9e5ff"]; g.fillStyle = col; g.fillText(txt, x, y + i * gap); });
+}
+function chart(g, x, y, w, h, color, seed, trend = 0) {
+  const r = rand(seed); let v = 0.5; g.strokeStyle = color; g.lineWidth = 2.5; g.beginPath();
+  for (let i = 0; i <= 80; i++) { v = clamp(v + (r() - 0.5) * 0.12 + trend * 0.004, 0.05, 0.95); const px = x + (i / 80) * w, py = y + h - v * h; i ? g.lineTo(px, py) : g.moveTo(px, py); }
+  g.stroke(); g.strokeStyle = "rgba(255,194,74,0.7)"; g.lineWidth = 1.5; g.beginPath(); g.moveTo(x, y + h * 0.45); g.lineTo(x + w, y + h * 0.42); g.stroke();
+}
+function drawScreens(id) {
+  const t = byId[id], [A, B, C] = roomParts.screens;
+  const ga = A.cv.getContext("2d"), gb = B.cv.getContext("2d"), gc = C.cv.getContext("2d");
+  const W = (s) => s.cv.width, H = (s) => s.cv.height;
+  const ls = state.lastScan;
+  if (id === "scanner") {
+    screenFrame(ga, W(A), H(A), "Signal scanner · rules " + (K ? K.RULES_VERSION : ""), t.color);
+    if (state.scanning) textLines(ga, [["Scanning " + state.scanning.slice(0, 6) + "…", t.color], "reading mint, pools, LP lock,", "sell route and top holders"], 18, 58);
+    else if (ls) {
+      const r = ls.result; ga.font = `700 64px ${FONT}`; ga.fillStyle = riskColor(r.score); ga.textBaseline = "top"; ga.fillText(r.score + "/100", 18, 54);
+      ga.font = `700 20px ${FONT}`; ga.fillText(bandText(r.band).toUpperCase() + "  ·  $" + ls.symbol, 20, 128);
+      textLines(ga, r.checks.slice(0, 6).map((c) => [(c.sev == null ? "n/a " : (c.sev > 0.5 ? "!!  " : c.sev > 0 ? "!   " : "ok  ")) + c.name, c.sev == null ? "#8d87ad" : c.sev > 0.5 ? "#ff4d6a" : c.sev > 0 ? "#ffc24a" : "#59e7ca"]), 20, 168, 16, 25);
+    } else textLines(ga, [["Ready.", t.color], "Paste a Solana token address in", "the panel and press the red button.", "", ["Live: real chain data, no keys needed.", "#9aa1ad"]], 18, 58);
+    screenFrame(gb, W(B), H(B), "Price · last 24h", "#7d6dff");
+    if (ls && ls.data && ls.data.pairs && ls.data.pairs[0]) {
+      const p = ls.data.pairs[0], ch = (p.priceChange && p.priceChange.h24) || 0;
+      chart(gb, 14, 70, W(B) - 28, H(B) - 120, ch >= 0 ? "#59e7ca" : "#ff4d6a", ls.mint.charCodeAt(0) * 7, ch);
+      textLines(gb, [["$" + (p.priceUsd || "?") + "  " + (ch >= 0 ? "+" : "") + ch + "%", ch >= 0 ? "#59e7ca" : "#ff4d6a"]], 14, H(B) - 44, 18);
+    } else { chart(gb, 14, 70, W(B) - 28, H(B) - 120, "rgba(125,109,255,0.6)", 3); textLines(gb, [["waiting for a scan", "#8d87ad"]], 14, H(B) - 44, 16); }
+    screenFrame(gc, W(C), H(C), "Evidence", "#ff8a4d");
+    if (ls) textLines(gc, ls.result.checks.filter((c) => c.sev > 0).slice(0, 7).map((c) => [c.detail.slice(0, 44), "#ffd6c2"]).concat(ls.result.checks.some((c) => c.sev > 0) ? [] : [["No red flags found.", "#59e7ca"]]), 14, 56, 13, 22);
+    else textLines(gc, [["Every check shows its proof:", "#9aa1ad"], "sell quote, pool size,", "holder share, lock %, authority", "", ["source: " + (state.server ? "Kaelis server" : "your browser"), "#8d87ad"]], 14, 56, 14, 24);
+  } else if (id === "holders") {
+    const pv = state.holdersPreview, live = !!CFG.kaelMint && state.holders;
+    screenFrame(ga, W(A), H(A), pv && !live ? "Holder tower · preview" : "Holder tower", t.color);
+    if (pv && !live) { ga.font = `700 64px ${FONT}`; ga.fillStyle = t.color; ga.textBaseline = "top"; ga.fillText(pv.count != null ? fmt(pv.count) : pv.shown + "+", 18, 60); textLines(ga, [pv.count != null ? "wallets hold this token" : "largest accounts (no Helius key)", ["top 10 hold " + (pv.top10 * 100).toFixed(1) + "%", "#9aa1ad"], ["mint " + pv.mint.slice(0, 6) + "…", "#9aa1ad"]], 20, 140); }
+    else if (live) { ga.font = `700 72px ${FONT}`; ga.fillStyle = t.color; ga.textBaseline = "top"; ga.fillText(fmt(state.holders.count), 18, 60); textLines(ga, ["wallets hold $KAEL", ["one lit window each", "#9aa1ad"]], 20, 150); }
+    else textLines(ga, [["Goes live at launch", t.color], "$KAEL has no mint address yet.", "When it does, every holder gets", "one window, read from the chain.", "", ["Below: EXAMPLE windows", "#9aa1ad"]], 18, 58);
+    screenFrame(gb, W(B), H(B), live ? "Windows" : "Windows · example", "#7d6dff");
+    const r = rand(4); for (let y = 0; y < 9; y++) for (let x = 0; x < 16; x++) { gb.fillStyle = r() < 0.55 ? "#ffc24a" : "#1d1838"; gb.fillRect(16 + x * 37, 58 + y * 34, 26, 24); }
+    screenFrame(gc, W(C), H(C), "How it works", "#ff8a4d");
+    textLines(gc, ["Buy $KAEL → window lights", "Sell all → window goes dark", "Refresh every 2 minutes", "", ["Find yours on tower.html", "#9aa1ad"]], 14, 56, 14, 26);
+  } else if (id === "builders") {
+    const bl = state.builders, rows = (bl && bl.builders) || [];
+    screenFrame(ga, W(A), H(A), "Proof-of-Build · " + (bl ? bl.week : "…"), t.color);
+    if (!state.server) textLines(ga, [["Needs the Kaelis server.", t.color], "Run npm start (or the Railway", "deploy) to switch it on."], 18, 58);
+    else if (!rows.length) textLines(ga, [["No builders yet.", t.color], "Be the first: link GitHub and", "a wallet in the panel.", "", ["Merged PRs to other people's", "#9aa1ad"], ["projects earn points.", "#9aa1ad"]], 18, 58);
+    else textLines(ga, rows.slice(0, 7).map((b, i) => [`${String(i + 1).padStart(2, "0")}  ${b.github.slice(0, 14).padEnd(14)} ${String(b.weekPoints).padStart(4)} pts`, i === 0 ? t.color : "#e9e5ff"]), 18, 58, 17, 30);
+    screenFrame(gb, W(B), H(B), "Merged this week", "#7d6dff");
+    const prs = rows.flatMap((b) => b.prs.map((p) => [b.github, p])).sort((a, b) => b[1].points - a[1].points).slice(0, 8);
+    textLines(gb, prs.length ? prs.map(([g, p]) => [`+${p.points}  ${p.repo.slice(0, 26)}`, "#ffd6c2"]) : [["Nothing merged yet this week.", "#8d87ad"]], 14, 56, 14, 24);
+    screenFrame(gc, W(C), H(C), "Rules", "#ff8a4d");
+    textLines(gc, ["Counts: PRs merged into repos", "you don't own, merged by", "someone else, repo >= 5 stars,", ">= 10 lines. GitHub >= 30 days.", ["Points → $KAEL at launch.", "#9aa1ad"]], 14, 56, 13, 24);
+  } else if (id === "markets") {
+    const mk = state.markets, last = mk && mk.series[mk.series.length - 1];
+    screenFrame(ga, W(A), H(A), "Kaelis markets board", t.color);
+    if (!mk) textLines(ga, [["Needs the Kaelis server.", t.color], "Markets data is collected", "by Patrol every 30 minutes."], 18, 58);
+    else {
+      const gc0 = (gr) => (!gr ? "#9aa1ad" : /^(AAA|AA|A)$/.test(gr) ? "#59e7ca" : /^(BBB|BB|B)$/.test(gr) ? "#ffc24a" : "#ff4d6a");
+      textLines(ga, [
+        [`K-20 (memes)   ${last && last.k20 != null ? last.k20.toFixed(2).padStart(8) : "     –"}`, "#59e7ca"],
+        [`S&P 500 SPYx   ${last && last.spy != null ? last.spy.toFixed(2).padStart(8) : "     –"}`, "#8fb0ff"],
+        [`KIQ  G${last ? last.gen || 0 : 0}         ${last && last.iq != null ? String(last.iq).padStart(8) : "    soon"}`, "#e9e5ff"],
+      ].concat(mk.stocks.map((x) => [`${x.sym.padEnd(7)} ${x.name.slice(0, 11).padEnd(11)} ${(x.call ? x.call.grade : "…").padStart(4)}`, gc0(x.call && x.call.grade)])), 18, 56, 16, 26);
+    }
+    screenFrame(gb, W(B), H(B), "K-20 vs S&P · indexed 100", "#7d6dff");
+    const ser = mk ? mk.series.filter((p) => p.k20 != null && p.spy != null) : [];
+    if (ser.length >= 2) {
+      const vals = ser.flatMap((p) => [p.k20, p.spy]), lo = Math.min(...vals, 100), hi = Math.max(...vals, 100), x0 = 14, y0 = 62, w = W(B) - 28, hh = H(B) - 110;
+      const Y = (v) => y0 + hh - ((v - lo) / Math.max(0.01, hi - lo)) * hh;
+      gb.strokeStyle = "rgba(220,224,232,.25)"; gb.setLineDash([3, 4]); gb.beginPath(); gb.moveTo(x0, Y(100)); gb.lineTo(x0 + w, Y(100)); gb.stroke();
+      [["k20", "#59e7ca", []], ["spy", "#8fb0ff", [7, 5]]].forEach(([k, c, dash]) => { gb.setLineDash(dash); gb.strokeStyle = c; gb.lineWidth = 3; gb.beginPath(); ser.forEach((p, i) => { const X = x0 + (i / (ser.length - 1)) * w; i ? gb.lineTo(X, Y(p[k])) : gb.moveTo(X, Y(p[k])); }); gb.stroke(); });
+      gb.setLineDash([]);
+      textLines(gb, [[`K-20 ${ser[ser.length - 1].k20.toFixed(1)}   S&P ${ser[ser.length - 1].spy.toFixed(1)}`, "#e9e5ff"]], 14, H(B) - 44, 17);
+    } else textLines(gb, [["Collecting points…", "#9aa1ad"], ["one every 30 minutes", "#9aa1ad"]], 14, 70, 16);
+    screenFrame(gc, W(C), H(C), "Fake tickers", "#ff4d6a");
+    const fakes = (mk && mk.lookalikes) || [];
+    textLines(gc, fakes.length ? fakes.slice(0, 7).map((f) => [`CC  ${f.copies} copy · ${String(f.name || "").slice(0, 18)}`, "#ff8aa0"]) : [["No look-alikes found.", "#59e7ca"]], 14, 56, 13, 22);
+  } else if (id === "watch") {
+    const w = state.watch;
+    screenFrame(ga, W(A), H(A), "Watch mode", t.color);
+    if (!ls) textLines(ga, [["Nothing to watch yet.", t.color], "Scan a token in the Scanner", "tower first. Kaelis then", "re-checks it every 60 seconds."], 18, 58);
+    else textLines(ga, [["Watching $" + ls.symbol, t.color], "Checks run: " + w.checks, "Risk now: " + ls.result.score + "/100", ["Alerts: liquidity -50%, mint or", "#9aa1ad"], ["freeze back on, score moves 10", "#9aa1ad"]], 18, 58);
+    screenFrame(gb, W(B), H(B), "Liquidity", "#7d6dff");
+    chart(gb, 14, 70, W(B) - 28, H(B) - 110, t.color, 33, 0);
+    screenFrame(gc, W(C), H(C), "Alerts", "#ff4d6a");
+    const fl = state.filings && state.filings.filings;
+    if (w.log.length) textLines(gc, w.log.slice(-7).map((l) => [l.text.slice(0, 44), l.bad ? "#ff8aa0" : "#cfc9f0"]), 14, 56, 13, 22);
+    else if (fl && fl.length) { screenFrame(gc, W(C), H(C), "Filings", "#ff4d6a"); textLines(gc, fl.slice(0, 7).map((f) => [`${f.form} ${("$" + (f.symbol || "?")).slice(0, 10)} ${f.title}`.slice(0, 44), f.form === "K-3" ? "#ffd27a" : "#ff8aa0"]), 14, 56, 13, 22); }
+    else textLines(gc, [["No alerts.", "#59e7ca"], [state.filings ? `${state.filings.tracked} tokens' insiders watched` : "", "#9aa1ad"]], 14, 56, 13, 22);
+  }
+  roomParts.screens.forEach((s) => (s.tex.needsUpdate = true));
+}
+function drawClock() {
+  const { cv, tex } = roomParts.clock, g = cv.getContext("2d"), c = 128, now = new Date();
+  g.clearRect(0, 0, 256, 256);
+  g.beginPath(); g.arc(c, c, 118, 0, Math.PI * 2); g.fillStyle = "rgba(10,8,30,0.9)"; g.fill(); g.lineWidth = 8; g.strokeStyle = "#cfc6ff"; g.stroke();
+  for (let i = 0; i < 12; i++) { const a = (i / 12) * Math.PI * 2; g.fillStyle = "#cfc6ff"; g.fillRect(c + Math.sin(a) * 96 - 3, c - Math.cos(a) * 96 - 3, 6, 6); }
+  const hand = (a, len, wd) => { g.beginPath(); g.moveTo(c, c); g.lineTo(c + Math.sin(a) * len, c - Math.cos(a) * len); g.lineWidth = wd; g.strokeStyle = "#fff"; g.lineCap = "round"; g.stroke(); };
+  const m = now.getMinutes(), h = now.getHours() % 12;
+  hand(((h + m / 60) / 12) * Math.PI * 2, 58, 9); hand((m / 60) * Math.PI * 2, 86, 6);
+  tex.needsUpdate = true;
+}
+
+// =================================================================== LABELS + DOCK
+const labelEls = {}, dockEls = {};
+TOWERS.forEach((t) => {
+  const el = document.createElement("div"); el.className = "lbl"; el.style.setProperty("--c", t.color);
+  el.innerHTML = `<span class="n">${t.name}</span><span class="v">…</span><span class="s"></span>`;
+  el.addEventListener("click", () => enterTower(t.id)); $("labels").appendChild(el); labelEls[t.id] = el;
+  const b = document.createElement("button"); b.style.setProperty("--c", t.color);
+  b.innerHTML = `<i></i><small>0${TOWERS.indexOf(t) + 1} · tower</small><b>${t.name}</b><em>…</em>`;
+  b.addEventListener("click", () => enterTower(t.id)); $("dock").appendChild(b); dockEls[t.id] = b;
+});
+function labelText(id) {
+  const ls = state.lastScan;
+  if (id === "scanner") return ls ? [`${ls.result.score}/100`, `$${ls.symbol} · ${bandText(ls.result.band)}`] : [state.scanning ? "Scanning…" : "Live", "paste a token inside"];
+  if (id === "holders") return CFG.kaelMint && state.holders ? [fmt(state.holders.count), "wallets · live"] : ["At launch", "no $KAEL mint yet"];
+  if (id === "builders") { const bl = state.builders; if (!state.server) return ["Offline", "needs the Kaelis server"]; if (!bl) return ["…", "loading"]; const pts = bl.builders.reduce((t, b) => t + b.weekPoints, 0); return bl.count ? [`${fmt(pts)} pts`, `${bl.count} builders · ${bl.week}`] : ["Open", "be the first builder"]; }
+  if (id === "markets") { const mk = state.markets; if (!state.server) return ["Offline", "needs the Kaelis server"]; if (!mk) return ["…", "loading"];
+    const last = mk.series[mk.series.length - 1], rated = mk.stocks.filter((x) => x.call).length;
+    return last && last.k20 != null ? [`K-20 ${last.k20.toFixed(1)}`, `S&P ${last.spy != null ? last.spy.toFixed(1) : "–"} · ${rated} stocks rated`] : ["Collecting", `${rated} stocks rated`]; }
+  if (id === "watch") { const fl = state.filings; return ls ? [`$${ls.symbol}`, `${state.watch.checks} checks · ${state.watch.log.filter((l) => l.bad).length} alerts`] : fl ? [`${fl.filed} filings`, `${fl.tracked} tokens watched`] : ["Idle", "scan a token first"]; }
+}
+function refreshLabels() { TOWERS.forEach((t) => { const [v, s] = labelText(t.id); const el = labelEls[t.id]; el.querySelector(".v").textContent = v; el.querySelector(".s").textContent = s; if (dockEls[t.id]) dockEls[t.id].querySelector("em").textContent = v; }); }
+const proj = new THREE.Vector3();
+function placeLabels() {
+  const w = innerWidth, h = innerHeight, show = scene === city;
+  TOWERS.forEach((t) => {
+    const el = labelEls[t.id];
+    proj.copy(t.top).applyMatrix4(t.group.matrixWorld).project(camera);
+    const vis = show && proj.z < 1 && Math.abs(proj.x) < 1.1 && Math.abs(proj.y) < 1.1;
+    el.style.opacity = vis ? 1 : 0; el.style.pointerEvents = vis ? "auto" : "none";
+    if (vis) el.style.left = ((proj.x + 1) / 2) * w + "px", el.style.top = ((1 - proj.y) / 2) * h + "px";
+  });
+}
+
+// =================================================================== PANEL (inside a tower)
+let current = null;
+function panelHTML(id) {
+  const INK = { "#9aa1ad": "#6b6b6b", "#59e7ca": "#1f7a63", "#ffc24a": "#9a6a00", "#ff8a4d": "#b5521f", "#9d8bff": "#5a48c4", "#ff4d6a": "#c4452c" };
+  const t = byId[id], ls = state.lastScan, tag = (txt, c) => `<span class="tagx" style="color:${INK[String(c).toLowerCase()] || c}">${txt}</span>`;
+  let h = `<h2>${t.name} tower</h2><p>${t.intro}</p>`;
+  if (id === "scanner") {
+    h += `<div>${tag("Live data", t.color)} ${tag(state.server ? "Kaelis server" : "In your browser", "#9aa1ad")}</div>
+      <label class="sr" for="mint">Token address</label>
+      <div class="row"><input id="mint" placeholder="Token mint address" spellcheck="false" autocomplete="off" value="${ls ? esc(ls.mint) : ""}"><button class="act" id="go">Scan</button></div>
+      <div id="res">${ls ? scanSummary(ls) : `<p class="fine">Try USDC: EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v</p>`}</div>
+      <p class="fine">Kaelis reports risk. It never predicts price or promises profit.</p>`;
+  } else if (id === "holders") {
+    h += CFG.kaelMint
+      ? `<div>${tag("Live data", t.color)}</div><div class="kv"><span>Holders</span><span>${state.holders ? fmt(state.holders.count) : "loading"}</span></div><button class="act" id="go">Refresh</button>`
+      : `<div>${tag("At launch", t.color)} ${tag("Preview with any token", "#9aa1ad")}</div>
+        <label class="sr" for="hMint">Token address</label>
+        <div class="row"><input id="hMint" placeholder="Any token mint" spellcheck="false" autocomplete="off" value="${state.holdersPreview ? esc(state.holdersPreview.mint) : ""}"><button class="act" id="go">Count</button></div>
+        <div id="hRes">${state.holdersPreview ? holdersSummary(state.holdersPreview) : `<p class="fine">Live chain data. Full holder counts need a Helius key on the server; without one you see the largest accounts.</p>`}</div>`;
+    h += `<a class="pill" href="tower.html" style="justify-self:start">Find your window →</a>`;
+  } else if (id === "builders") {
+    const bl = state.builders, rows = (bl && bl.builders) || [];
+    h += `<div>${tag(state.server ? "Live" : "Needs the Kaelis server", t.color)} ${bl ? tag(bl.week, "#9aa1ad") : ""}</div>
+      <div class="kv">${rows.length ? rows.slice(0, 8).map((b) => `<span>${esc(b.github)}</span><span>${b.weekPoints} pts · ${b.prs.length} PR</span>`).join("") : "<span>No builders yet</span><span>be the first</span>"}</div>
+      <button class="act" id="go">Refresh</button>
+      <h2 style="font-size:17px;margin-top:6px">Join Proof-of-Build</h2>
+      <label class="sr" for="ghUser">GitHub username</label>
+      <div class="row"><input id="ghUser" placeholder="GitHub username" autocomplete="username" spellcheck="false"><button class="act" id="wConnect">Connect wallet</button></div>
+      <div id="joinStep" class="out"></div>
+      <p class="fine">${esc(bl ? bl.payout : "Points convert to $KAEL at launch. Nothing is paid before that.")}</p>`;
+  } else if (id === "markets") {
+    const mk = state.markets, last = mk && mk.series[mk.series.length - 1];
+    const gi = (gr) => `<b style="color:${!gr ? "#6b6b6b" : /^(AAA|AA|A)$/.test(gr) ? "#2f8f5b" : /^(BBB|BB|B)$/.test(gr) ? "#9a6a00" : "#c4452c"}">${esc(gr || "…")}</b>`;
+    h += mk ? `<div>${tag("Live", t.color)} ${tag("Benchmark, not advice", "#9aa1ad")}</div>
+      <div class="kv"><span>K-20 (memes)</span><span>${last && last.k20 != null ? last.k20.toFixed(2) : "collecting"}</span><span>S&amp;P 500 (SPYx)</span><span>${last && last.spy != null ? last.spy.toFixed(2) : "collecting"}</span><span>KIQ</span><span>${last && last.iq != null ? last.iq : "soon"} · G${last ? last.gen || 0 : 0}</span></div>
+      <div class="kv">${mk.stocks.map((x) => `<span>${esc(x.sym)} · ${esc(x.name)}</span><span>${x.call ? gi(x.call.grade) + " " + x.call.score : "next patrol"}</span>`).join("")}</div>
+      <p>${mk.lookalikes.length ? `${mk.lookalikes.length} fake ticker${mk.lookalikes.length > 1 ? "s" : ""} flagged (CC).` : "No fake tickers found today."}</p>
+      <div class="row"><button class="act" id="go">Refresh</button><a class="act" href="markets.html" style="text-decoration:none;text-align:center">Open Markets</a></div>`
+      : `<div>${tag(state.server ? "Loading" : "Needs the Kaelis server", t.color)}</div><p>Markets data is collected by Patrol on the Kaelis server.</p><a class="act" href="markets.html" style="text-decoration:none;justify-self:start">Open Markets</a>`;
+  } else if (id === "watch") {
+    h += ls ? `<div>${tag("Live data", t.color)}</div><div class="kv"><span>Token</span><span>$${esc(ls.symbol)}</span><span>Checks</span><span id="wChecks">${state.watch.checks}</span><span>Risk now</span><span>${ls.result.score}/100</span></div><button class="act" id="go">Check now</button><div class="out" id="wLog">${state.watch.log.slice(-6).map((l) => esc(l.text)).join("\n") || "No alerts yet."}</div>`
+      : `<div>${tag("Idle", t.color)} ${state.filings ? tag(state.filings.filed + " filings", "#9aa1ad") : ""}</div><p>Scan a token in the Scanner tower to watch it yourself. Meanwhile Kaelis watches the insiders of every token it calls:</p>
+        <div class="kv">${state.filings && state.filings.filings.length ? state.filings.filings.slice(0, 5).map((f) => `<span>${esc(f.form)} · ${esc(f.symbol ? "$" + f.symbol : f.mint.slice(0, 6))}</span><span>${esc(f.title)}</span>`).join("") : `<span>No filings yet</span><span>${state.filings ? state.filings.tracked : 0} watched</span>`}</div>
+        <div class="row"><button class="act" id="toScan">Go to Scanner</button><a class="act" href="filings.html" style="text-decoration:none;text-align:center">All filings</a></div>`;
+  }
+  return h;
+}
+function holdersSummary(pv) {
+  return `<div class="score" style="color:#9a6a00">${pv.count != null ? fmt(pv.count) : pv.shown + "+"}<span style="font-size:16px;color:#6b6b6b"> ${pv.count != null ? "holders" : "largest accounts"}</span></div>
+    <p class="fine">Top 10 hold ${(pv.top10 * 100).toFixed(1)}% · <a href="tower.html?mint=${encodeURIComponent(pv.mint)}">open the tower view</a></p>`;
+}
+function scanSummary(ls) {
+  const r = ls.result, bad = r.checks.filter((c) => c.sev > 0).slice(0, 3);
+  return `<div class="score" style="color:${inkRisk(r.score)}">${r.score}<span style="font-size:16px;color:#6b6b6b">/100 · ${bandText(r.band)}</span></div>
+    <div class="out">${bad.length ? bad.map((c) => "• " + esc(c.detail)).join("\n") : "No red flags in the 8 checks."}</div>
+    <p class="fine">$${esc(ls.symbol)} · scanned in ${esc(ls.source)} · <a href="scan.html?mint=${encodeURIComponent(ls.mint)}">full report</a></p>`;
+}
+function openPanel(id) {
+  const t = byId[id]; current = id;
+  $("panel").style.setProperty("--c", t.color); $("pTitle").textContent = t.name + " tower"; $("pBody").innerHTML = panelHTML(id); $("panel").hidden = false;
+  const go = $("go"), mint = $("mint"), toScan = $("toScan");
+  if (go) go.addEventListener("click", () => action(id));
+  if (mint) { mint.addEventListener("keydown", (e) => { if (e.key === "Enter") action(id); }); if (!small) mint.focus(); }
+  if (toScan) toScan.addEventListener("click", () => switchTower("scanner"));
+  const hMint = $("hMint"); if (hMint) hMint.addEventListener("keydown", (e) => { if (e.key === "Enter") action(id); });
+  const wc = $("wConnect"); if (wc) wc.addEventListener("click", joinFlow);
+}
+
+// the action behind the red button
+async function action(id) {
+  pressButton();
+  if (id === "scanner") {
+    const mint = ($("mint") && $("mint").value.trim()) || "";
+    const res = $("res"), go = $("go");
+    if (!mint) { res.innerHTML = `<p>Paste a token address first.</p>`; return; }
+    state.scanning = mint; go.disabled = true; res.innerHTML = `<p>Kaelis is reading the chain…</p>`; drawScreens(id); refreshLabels();
+    try {
+      const out = await scanMint(mint);
+      state.lastScan = { ...out, symbol: tokenSymbol(out.data, mint), at: Date.now() };
+      state.watch = { log: [{ text: "Started watching $" + state.lastScan.symbol, bad: false }], timer: state.watch.timer, prev: safePulse(out.data), checks: 1 };
+      startWatch();
+      res.innerHTML = scanSummary(state.lastScan);
+      celebrate(state.lastScan);
+    } catch (e) { res.innerHTML = `<p style="color:var(--danger)">${esc(e.message || "Could not reach Solana right now. Try again in a moment.")}</p>`; }
+    state.scanning = false; go.disabled = false; drawScreens(id); refreshLabels();
+  } else if (id === "holders") {
+    const hm = $("hMint");
+    if (hm) {
+      const out = $("hRes"), go = $("go"); go.disabled = true; out.innerHTML = "<p>Kaelis is counting wallets…</p>";
+      try { await previewHolders(hm.value); out.innerHTML = holdersSummary(state.holdersPreview); robotCheer(); }
+      catch (e) { out.innerHTML = `<p style="color:var(--danger)">${esc(e.message)}</p>`; }
+      go.disabled = false; drawScreens(id); refreshLabels();
+    } else { await loadHolders(); openPanel(id); drawScreens(id); refreshLabels(); }
+  } else if (id === "builders") {
+    await loadBuilders(); openPanel(id); drawScreens(id); refreshLabels(); robotCheer();
+  } else if (id === "markets") {
+    await loadMarkets(); openPanel(id); drawScreens(id); refreshLabels(); robotCheer();
+  } else if (id === "watch") {
+    await watchTick(); openPanel(id); drawScreens(id);
+  }
+}
+async function joinFlow() {
+  const out = $("joinStep"), github = ($("ghUser").value || "").trim().replace(/^@/, "");
+  const say = (html) => { out.innerHTML = html; };
+  if (!state.server) return say("Proof-of-Build needs the Kaelis server (npm start or the Railway deploy).");
+  if (!/^[A-Za-z0-9-]{1,39}$/.test(github)) return say("Type your GitHub username first.");
+  const p = walletProvider();
+  if (!p) return say("No Solana wallet found in this browser. Install Phantom or Solflare, or open this page inside your wallet app's browser.");
+  try {
+    if (!state.join.wallet) { const r = await p.connect(); state.join.wallet = String((r && r.publicKey) || p.publicKey); }
+    const wallet = state.join.wallet, code = "kaelis-" + wallet.slice(0, 10);
+    say(`Wallet ${esc(wallet.slice(0, 4))}…${esc(wallet.slice(-4))} connected.\n\n1. Add this to your GitHub bio (or a public gist description):\n   ${code}\n2. Then sign below. Signing costs nothing and moves no funds.\n\n<button class="act" id="wSign">Sign & join</button>`);
+    $("wSign").addEventListener("click", async () => {
+      pressButton();
+      try {
+        const message = `Kaelis Proof-of-Build\nGitHub: ${github}\nWallet: ${wallet}\nTime: ${new Date().toISOString()}`;
+        const signed = await p.signMessage(new TextEncoder().encode(message), "utf8");
+        const sig = signed && signed.signature ? signed.signature : signed;
+        const signature = btoa(String.fromCharCode(...new Uint8Array(sig)));
+        say("Checking your GitHub and this week's merged pull requests…");
+        const r = await fetch("api/builders/register", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ github, wallet, message, signature }) });
+        const j = await r.json();
+        if (!r.ok) return say(esc(j.error || "Could not join.") + (j.code ? `\n\nCode: ${esc(j.code)}` : ""));
+        robotCheer(); await loadBuilders(); drawScreens("builders"); refreshLabels();
+        say(`You're in, ${esc(j.builder.github)}. This week: ${j.builder.weekPoints} points from ${j.builder.prs.length} merged PR(s).` + (j.builder.skipped.length ? `\n${j.builder.skipped.length} PR(s) didn't count (${esc(j.builder.skipped.map((s) => s.why).slice(0, 3).join(", "))}).` : ""));
+      } catch (e) { say(esc(e.message || "Signing was cancelled.")); }
+    });
+  } catch (e) { say(esc(e.message || "The wallet didn't connect.")); }
+}
+async function watchTick() {
+  const ls = state.lastScan; if (!ls) return;
+  try {
+    const out = await scanMint(ls.mint), now = safePulse(out.data), w = state.watch;
+    w.checks++;
+    const alerts = w.prev && now && K.compare ? K.compare(w.prev, now) : [];
+    if (Math.abs(out.result.score - ls.result.score) >= 10) alerts.push(`Risk moved ${ls.result.score} → ${out.result.score}`);
+    alerts.forEach((a) => w.log.push({ text: new Date().toTimeString().slice(0, 5) + " " + (typeof a === "string" ? a : a.text || JSON.stringify(a)), bad: true }));
+    if (!alerts.length) w.log.push({ text: new Date().toTimeString().slice(0, 5) + " check " + w.checks + ": no change", bad: false });
+    w.prev = now; state.lastScan = { ...ls, ...out, symbol: ls.symbol, at: Date.now() };
+  } catch (e) { state.watch.log.push({ text: "check failed, will retry", bad: false }); }
+  refreshLabels(); if (current === "watch") drawScreens("watch");
+}
+function startWatch() { clearInterval(state.watch.timer); state.watch.timer = setInterval(watchTick, 60000); }
+
+// =================================================================== MOVING BETWEEN CITY AND ROOM
+const CITY_VIEW = small ? { pos: new THREE.Vector3(46, 30, 56), target: new THREE.Vector3(0, 5, 0) } : { pos: new THREE.Vector3(34, 22, 40), target: new THREE.Vector3(0, 6, 0) };
+const ROOM_VIEW = small
+  ? { pos: new THREE.Vector3(1.55, 2.75, 2.75), target: new THREE.Vector3(0.0, 0.55, -0.7) } // phone: robot + screens sit above the bottom sheet
+  : { pos: new THREE.Vector3(2.75, 2.05, 1.55), target: new THREE.Vector3(0.45, 1.15, -0.9) }; // desktop: scene sits left of the panel
+function setCityControls() {
+  controls.minDistance = 22; controls.maxDistance = small ? 92 : 70; controls.minPolarAngle = 0.35; controls.maxPolarAngle = 1.38;
+  controls.autoRotate = !reduce; controls.autoRotateSpeed = 0.35;
+}
+function setRoomControls() {
+  controls.minDistance = 1.6; controls.maxDistance = 5.2; controls.minPolarAngle = 0.5; controls.maxPolarAngle = 1.5;
+  controls.minAzimuthAngle = -1.1; controls.maxAzimuthAngle = 1.1; controls.autoRotate = false;
+}
+function tween(ms, fn) {
+  if (reduce || ms <= 0) { fn(1); return Promise.resolve(); }
+  return new Promise((done) => { const t0 = performance.now(); const step = (now) => { const k = Math.min(1, (now - t0) / ms); fn(ease(k)); k < 1 ? requestAnimationFrame(step) : done(); }; requestAnimationFrame(step); });
+}
+const fade = (on) => new Promise((r) => { $("fade").classList.toggle("on", on); setTimeout(r, reduce ? 0 : 300); });
+let busy = false, savedCity = null;
+async function enterTower(id) {
+  if (busy) return; busy = true;
+  const t = byId[id];
+  if (scene === city) {
+    savedCity = { pos: camera.position.clone(), target: controls.target.clone() };
+    controls.enabled = false; controls.autoRotate = false;
+    const towerPos = t.group.position.clone(), p0 = camera.position.clone(), q0 = controls.target.clone();
+    const p1 = towerPos.clone().multiplyScalar(1.55).setY(7), q1 = towerPos.clone().setY(5);
+    const fov0 = camera.fov;
+    await tween(1100, (k) => { camera.position.lerpVectors(p0, p1, k); controls.target.lerpVectors(q0, q1, k); camera.lookAt(controls.target); camera.fov = fov0 + Math.pow(k, 3) * 38; camera.updateProjectionMatrix(); });
+  }
+  await fade(true);
+  scene = room; renderPass.scene = room; setBloom("room"); resize();
+  themeRoom(id); openPanel(id); drawScreens(id);
+  controls.minAzimuthAngle = -Infinity; controls.maxAzimuthAngle = Infinity;
+  camera.position.copy(ROOM_VIEW.pos).add(new THREE.Vector3(1.2, 0.5, 2)); controls.target.copy(ROOM_VIEW.target);
+  setRoomControls(); controls.update();
+  $("exitBtn").hidden = false; $("dock").style.display = "none"; document.body.classList.add("inside"); $("hint").textContent = "Drag to look around the room";
+  await fade(false);
+  const p0 = camera.position.clone();
+  await tween(900, (k) => { camera.position.lerpVectors(p0, ROOM_VIEW.pos, k); camera.lookAt(controls.target); });
+  controls.enabled = true; busy = false;
+}
+async function switchTower(id) { await enterTower(id); }
+async function exitTower() {
+  if (busy || scene !== room) return; busy = true;
+  await fade(true);
+  scene = city; renderPass.scene = city; setBloom("city"); current = null; $("panel").hidden = true;
+  controls.minAzimuthAngle = -Infinity; controls.maxAzimuthAngle = Infinity; setCityControls();
+  camera.position.copy(savedCity ? savedCity.pos : CITY_VIEW.pos); controls.target.copy(savedCity ? savedCity.target : CITY_VIEW.target); controls.update();
+  $("exitBtn").hidden = true; $("dock").style.display = ""; document.body.classList.remove("inside"); $("hint").textContent = "Drag to look around · tap a tower to step inside";
+  await fade(false); busy = false;
+}
+$("exitBtn").addEventListener("click", exitTower);
+$("ctaScan").addEventListener("click", () => enterTower("scanner")); $("pClose").addEventListener("click", exitTower);
+addEventListener("keydown", (e) => { if (e.key === "Escape") exitTower(); });
+function themeRoom(id) {
+  const c = new THREE.Color(byId[id].color);
+  roomParts.screenLight.color.copy(c); roomParts.edge.material.color.copy(c).multiplyScalar(2.2); roomParts.lip.material.color.copy(c).multiplyScalar(2);
+}
+
+// =================================================================== ROBOT ANIMATION
+const robo = { press: 0, cheer: 0, look: 0 };
+function pressButton() { robo.press = 1; }
+function robotCheer() { robo.cheer = 1; }
+function animateRobot(t, dt) {
+  const r = robot, typing = reduce ? 0 : 1;
+  robo.press = Math.max(0, robo.press - dt * 1.4);
+  robo.cheer = Math.max(0, robo.cheer - dt * 0.6);
+  // head scans between the three monitors
+  const scan = Math.sin(t * 0.55) > 0.35 ? 0.42 : Math.sin(t * 0.55) < -0.35 ? -0.42 : 0;
+  robo.look += (scan * typing - robo.look) * Math.min(1, dt * 3);
+  r.neck.rotation.y = robo.look + (robo.cheer > 0 ? Math.sin(robo.cheer * 12) * 0.25 : 0);
+  r.neck.rotation.x = -0.12 + Math.sin(t * 1.3) * 0.02 * typing;
+  r.hips.position.y = 0.62 + Math.sin(t * 2) * 0.006 * typing;
+  // arms: typing, the right one slams the button, both go up on a cheer
+  r.arms.forEach(({ s, shoulder, elbow }) => {
+    const tap = Math.sin(t * 14 + (s > 0 ? 0 : 1.7)) * 0.06 * typing;
+    let sx = 0.95 + tap, sz = -s * 0.08, ex = 0.6;
+    if (s > 0 && robo.press > 0) { const p = Math.sin(robo.press * Math.PI); sx = lerp(sx, 1.25, p); sz = lerp(sz, 0.62, p); ex = lerp(ex, 0.25 + (robo.press < 0.35 ? -0.25 : 0), p); }
+    if (robo.cheer > 0) { const c = Math.sin(Math.min(1, robo.cheer * 1.6) * Math.PI); sx = lerp(sx, 2.8, c); sz = lerp(sz, s * 0.5, c); ex = lerp(ex, 0.2, c); }
+    if (fx.alarm > 0) { sx = 2.55; sz = -s * 0.35; ex = 1.75; }
+    shoulder.rotation.set(sx, 0, sz); elbow.rotation.set(ex, 0, 0);
+  });
+  if (fx.alarm > 0) r.neck.rotation.y = Math.sin(t * 22) * 0.35;
+  r.eyeMat.emissiveIntensity = 1.6 + (robo.press + robo.cheer) * 2.5 + Math.sin(t * 3) * 0.25;
+  roomParts.btn.position.y = 0.94 - (robo.press > 0.55 && robo.press < 0.8 ? 0.03 : 0);
+  roomParts.btn.material.emissiveIntensity = 0.6 + robo.press * 2.5;
+}
+
+
+// =================================================================== FX (the fun layer)
+const fx = { pulses: [], stars: [], lastPulse: 0, pulsedScan: 0, intro: reduce ? 1 : 0, spin: 0, alarm: 0, coin: 0, glitchAt: 0 };
+
+// --- shockwave rings from the core across the plaza
+const pulseGeo = new THREE.RingGeometry(0.92, 1, 128);
+for (let i = 0; i < 4; i++) {
+  const m = new THREE.Mesh(pulseGeo, new THREE.MeshBasicMaterial({ color: 0x59e7ca, transparent: true, opacity: 0, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide }));
+  m.rotation.x = -Math.PI / 2; m.position.y = 0.06; m.visible = false; city.add(m); fx.pulses.push({ m, age: 9 });
+}
+function cityPulse(color, strength = 1) {
+  const p = fx.pulses.reduce((a, b) => (a.age > b.age ? a : b));
+  p.age = 0; p.k = strength; p.m.material.color.set(color).multiplyScalar(1.6 * strength); p.m.visible = true;
+}
+
+// --- data packets: light pulses arcing between each tower and Kaelis
+const PK = 48;
+const packets = new THREE.InstancedMesh(new THREE.SphereGeometry(0.06, 6, 6), new THREE.MeshBasicMaterial({ color: new THREE.Color(1.6, 1.6, 1.6) }), PK);
+const pkData = Array.from({ length: PK }, (_, i) => ({ tw: TOWERS[i % TOWERS.length], ph: Math.random(), sp: 0.18 + Math.random() * 0.22, up: i % 2 === 0 }));
+pkData.forEach((d, i) => packets.setColorAt(i, i % 6 ? new THREE.Color(1, 1, 1) : new THREE.Color(d.tw.color))); // mostly white drone lights
+city.add(packets);
+const _a = new THREE.Vector3(), _b = new THREE.Vector3(), _c = new THREE.Vector3(), _m4 = new THREE.Matrix4();
+
+// --- shooting stars
+for (let i = 0; i < 3; i++) {
+  const g = new THREE.BufferGeometry(); g.setAttribute("position", new THREE.BufferAttribute(new Float32Array(6), 3));
+  const l = new THREE.Line(g, new THREE.LineBasicMaterial({ color: new THREE.Color(2.4, 2.2, 3), transparent: true, opacity: 0 }));
+  l.frustumCulled = false; city.add(l); fx.stars.push({ l, age: 9, head: new THREE.Vector3(), dir: new THREE.Vector3() });
+}
+
+// --- Kaelis: orbit rings + a scanner beam sweeping the plaza
+const kRings = [];
+for (const [r, c, tilt] of [[2.7, "#59e7ca", 0.4], [3.2, "#c9d1da", -0.7]]) {
+  const ring = new THREE.Mesh(new THREE.TorusGeometry(r, 0.02, 8, 120), new THREE.MeshBasicMaterial({ color: new THREE.Color(c).multiplyScalar(0.9) }));
+  ring.rotation.x = Math.PI / 2 + tilt; core.add(ring); kRings.push(ring);
+}
+const sweep = new THREE.Group(); core.add(sweep);
+const SWEEP_TILT = 1.0, SWEEP_LEN = 8.2 / Math.cos(SWEEP_TILT);
+const sweepCone = new THREE.Mesh(new THREE.ConeGeometry(1.4, SWEEP_LEN, 32, 1, true), new THREE.MeshBasicMaterial({ color: new THREE.Color("#fff1dc").multiplyScalar(0.12), transparent: true, opacity: 0.5, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide }));
+sweepCone.geometry.translate(0, -SWEEP_LEN / 2, 0); sweepCone.rotation.z = SWEEP_TILT; sweep.add(sweepCone);
+const sweepSpot = new THREE.Mesh(new THREE.CircleGeometry(1.5, 48), new THREE.MeshBasicMaterial({ color: new THREE.Color("#fff1dc").multiplyScalar(0.25), transparent: true, opacity: 0.6, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide }));
+sweepSpot.rotation.x = -Math.PI / 2; sweepCone.visible = false; // the searchlight read as fake in a realistic city
+
+// --- the absurd one: a $KAEL blimp circling the city with a scrolling neon banner
+const blimp = new THREE.Group(); city.add(blimp);
+{
+  const hull = new THREE.Mesh(new THREE.SphereGeometry(1, 40, 24), new THREE.MeshStandardMaterial({ color: 0x9aa0a8, metalness: 0.35, roughness: 0.45 }));
+  hull.scale.set(7, 2.2, 2.2); blimp.add(hull);
+  const finMat = new THREE.MeshStandardMaterial({ color: 0x5a6068, metalness: 0.4, roughness: 0.5 });
+  for (const [rx] of [[0], [Math.PI / 2]]) { const f = new THREE.Mesh(new THREE.BoxGeometry(1.8, 3.2, 0.12), finMat); f.position.x = -6.4; f.rotation.x = rx; blimp.add(f); }
+  const gond = new THREE.Mesh(new THREE.BoxGeometry(2, 0.6, 0.9), finMat); gond.position.y = -2.3; blimp.add(gond);
+  const bannerCv = document.createElement("canvas"); bannerCv.width = 2048; bannerCv.height = 128;
+  const bg = bannerCv.getContext("2d"); bg.fillStyle = "#0b0c0e"; bg.fillRect(0, 0, 2048, 128);
+  bg.font = "700 74px JetBrains Mono, monospace"; bg.textBaseline = "middle"; bg.fillStyle = "#efe9dc";
+  bg.fillText("$KAEL  ·  SCAN BEFORE YOU APE  ·  FORGED BY BUILDERS  ·", 20, 66);
+  const bannerTex = srgb(new THREE.CanvasTexture(bannerCv)); bannerTex.wrapS = THREE.RepeatWrapping; bannerTex.repeat.set(0.55, 1);
+  for (const side of [1, -1]) {
+    const b = new THREE.Mesh(new THREE.PlaneGeometry(8.5, 0.9), new THREE.MeshBasicMaterial({ map: bannerTex, color: new THREE.Color(1.1, 1.1, 1.1) }));
+    b.position.set(0, 0, side * 2.23); if (side < 0) b.rotation.y = Math.PI; blimp.add(b);
+  }
+  blimp.userData.banner = bannerTex;
+  const nose = glowSprite("#ff4d6a", 2.2); nose.position.x = 7.1; blimp.add(nose); blimp.userData.nose = nose;
+  const tail = glowSprite("#ffffff", 1.4); tail.position.x = -7.3; blimp.add(tail); blimp.userData.tail = tail;
+}
+
+// --- intro: camera swoops in, towers rise one by one, beams ignite
+TOWERS.forEach((tw) => { tw.group.scale.y = reduce ? 1 : 0.001; tw.beamMat.uniforms.uK.value = reduce ? 0.6 : 0; });
+async function intro() {
+  if (reduce) return;
+  controls.enabled = false;
+  const p1 = camera.position.clone(), q1 = controls.target.clone(), p0 = new THREE.Vector3(6, 150, 18);
+  camera.position.copy(p0);
+  const rise = tween(3200, (k) => {
+    TOWERS.forEach((tw, i) => {
+      const local = clamp((k - 0.25 - i * 0.12) / 0.4, 0, 1), back = 1 + 2.2 * Math.pow(local - 1, 3) + 1.2 * Math.pow(local - 1, 2);
+      tw.group.scale.y = Math.max(0.001, local < 1 ? back : 1);
+      tw.beamMat.uniforms.uK.value = 0.6 * clamp((k - 0.55 - i * 0.1) / 0.25, 0, 1);
+    });
+  });
+  await tween(3200, (k) => { camera.position.lerpVectors(p0, p1, k); camera.lookAt(q1); });
+  await rise; fx.intro = 1; cityPulse("#f1e2c8", 0.5); controls.enabled = true;
+}
+
+// --- room extras: steam, keyboard data, holo coin, alarm beacon
+const steam = [];
+for (let i = 0; i < 10; i++) {
+  const sp = glowSprite("rgba(220,215,255,0.35)", 0.18); sp.material.opacity = 0; room.add(sp); steam.push({ sp, ph: i / 10 });
+}
+const DP = 40, dataGeo = new THREE.BufferGeometry(); dataGeo.setAttribute("position", new THREE.BufferAttribute(new Float32Array(DP * 3), 3));
+const dataPts = new THREE.Points(dataGeo, new THREE.PointsMaterial({ color: new THREE.Color(2, 2, 2), size: 0.025, transparent: true, opacity: 0.9, blending: THREE.AdditiveBlending, depthWrite: false }));
+const dpSeed = Array.from({ length: DP }, () => [Math.random(), (Math.random() - 0.5) * 0.7, Math.random() * 0.15]);
+room.add(dataPts);
+const coinCv = document.createElement("canvas"); coinCv.width = coinCv.height = 256;
+const coinTex = srgb(new THREE.CanvasTexture(coinCv));
+const coin = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.2, 0.035, 48), [
+  new THREE.MeshStandardMaterial({ color: 0x1b1340, metalness: 0.9, roughness: 0.25, emissive: 0x59e7ca, emissiveIntensity: 0.6 }),
+  new THREE.MeshBasicMaterial({ map: coinTex, transparent: true }), new THREE.MeshBasicMaterial({ map: coinTex, transparent: true })]);
+coin.rotation.x = Math.PI / 2; coin.position.set(1.0, 1.3, -0.7); coin.scale.setScalar(0.001); room.add(coin);
+const coinGlow = glowSprite("rgba(89,231,202,0.6)", 0.9); coinGlow.position.copy(coin.position); coinGlow.material.opacity = 0; room.add(coinGlow);
+function drawCoin(ls) {
+  const g = coinCv.getContext("2d"), col = riskColor(ls.result.score);
+  g.clearRect(0, 0, 256, 256); g.beginPath(); g.arc(128, 128, 120, 0, Math.PI * 2); g.fillStyle = "rgba(8,6,22,0.92)"; g.fill();
+  g.lineWidth = 10; g.strokeStyle = col; g.stroke();
+  g.fillStyle = col; g.textAlign = "center"; g.textBaseline = "middle";
+  g.font = "700 46px JetBrains Mono, monospace"; g.fillText("$" + String(ls.symbol).slice(0, 6), 128, 104);
+  g.font = "700 58px JetBrains Mono, monospace"; g.fillText(String(ls.result.score), 128, 166);
+  coinTex.needsUpdate = true; coin.material[0].emissive.set(col); coinGlow.material.color.set(col);
+}
+const alarmLight = new THREE.PointLight(0xff2d55, 0, 9, 2); alarmLight.position.set(0, 3, -0.5); room.add(alarmLight);
+const beacon = new THREE.Group(); beacon.position.set(0, 1.88, -1.38); room.add(beacon);
+beacon.add(new THREE.Mesh(new THREE.CylinderGeometry(0.07, 0.08, 0.1, 20), new THREE.MeshStandardMaterial({ color: 0x300010, emissive: 0xff2d55, emissiveIntensity: 1.5 })));
+// siren: a soft cone of red light sweeping round, like a real beacon
+const beaconBeam = new THREE.Mesh(new THREE.ConeGeometry(0.45, 2.2, 24, 1, true), new THREE.MeshBasicMaterial({ color: new THREE.Color(1.4, 0.12, 0.25), transparent: true, opacity: 0, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide }));
+beaconBeam.geometry.translate(0, -1.1, 0); beaconBeam.geometry.rotateZ(Math.PI / 2); beacon.add(beaconBeam); beacon.visible = false;
+
+// result reactions: safe -> chair spin + cheer + coin; danger -> alarm + panic + red coin
+function celebrate(ls) {
+  drawCoin(ls); fx.coin = 1;
+  if (ls.result.score >= 70) { fx.alarm = 6; } else { fx.spin = 1; robotCheer(); }
+}
+
+function updateCityFX(t, dt) {
+  const m = reduce ? 0 : 1;
+  // auto pulse every 6 s, and a big coloured one after each new scan
+  if (t - fx.lastPulse > 12 && fx.intro) { fx.lastPulse = t; cityPulse("#f1e2c8", 0.25); } // a faint idle heartbeat; colour only means something after a scan
+  if (state.lastScan && state.lastScan.at !== fx.pulsedScan && fx.intro) { fx.pulsedScan = state.lastScan.at; cityPulse(riskColor(state.lastScan.result.score), 1.6); byId.scanner.flare = 1; }
+  fx.pulses.forEach((p) => {
+    if (p.age > 3) { p.m.visible = false; return; }
+    p.age += dt; const k = p.age / 3; p.m.scale.setScalar(1 + k * 30); p.m.material.opacity = (1 - k) * 0.9 * (p.k || 1);
+  });
+  // packets along arcs tower <-> Kaelis
+  const kp = _c.set(0, kaelisCity.position.y, 0);
+  pkData.forEach((d, i) => {
+    d.ph = (d.ph + dt * d.sp * (m || 0.3)) % 1;
+    const s = d.up ? d.ph : 1 - d.ph;
+    _a.copy(d.tw.top).applyMatrix4(d.tw.group.matrixWorld); _a.y -= 2.5;
+    const mid = _b.copy(_a).add(kp).multiplyScalar(0.5); mid.y += 9;
+    const u = 1 - s, x = u * u * _a.x + 2 * u * s * mid.x + s * s * kp.x, y = u * u * _a.y + 2 * u * s * mid.y + s * s * kp.y, z = u * u * _a.z + 2 * u * s * mid.z + s * s * kp.z;
+    const sc = 0.6 + Math.sin(s * Math.PI) * 0.8;
+    _m4.makeScale(sc, sc, sc).setPosition(x, y, z); packets.setMatrixAt(i, _m4);
+  });
+  packets.instanceMatrix.needsUpdate = true;
+  // shooting stars
+  fx.stars.forEach((st) => {
+    if (st.age > 1.1) {
+      if (Math.random() < dt * 0.06 * m) {
+        st.age = 0; const a = Math.random() * Math.PI * 2;
+        st.head.set(Math.cos(a) * 160, 90 + Math.random() * 60, Math.sin(a) * 160);
+        st.dir.set(-Math.cos(a) + (Math.random() - 0.5), -0.35, -Math.sin(a) + (Math.random() - 0.5)).normalize().multiplyScalar(260);
+      } else { st.l.material.opacity = 0; return; }
+    }
+    st.age += dt; st.head.addScaledVector(st.dir, dt);
+    const pos = st.l.geometry.attributes.position, tail = _a.copy(st.head).addScaledVector(st.dir, -0.12);
+    pos.setXYZ(0, st.head.x, st.head.y, st.head.z); pos.setXYZ(1, tail.x, tail.y, tail.z); pos.needsUpdate = true;
+    st.l.material.opacity = Math.sin(Math.min(1, st.age / 1.1) * Math.PI);
+  });
+  // Kaelis rings + sweeping scanner beam
+  kRings[0].position.y = kRings[1].position.y = kaelisCity.position.y;
+  kRings[0].rotation.z += dt * 0.8 * m; kRings[1].rotation.z -= dt * 0.55 * m; kRings[1].rotation.y += dt * 0.3 * m;
+  sweep.position.y = kaelisCity.position.y; sweep.rotation.y = t * 0.55 * m;
+  const sa = sweep.rotation.y;
+  _a.set(Math.sin(SWEEP_TILT) * SWEEP_LEN, 0, 0).applyAxisAngle(new THREE.Vector3(0, 1, 0), sa); sweepSpot.position.set(_a.x, 0.08, _a.z);
+  sweepCone.material.opacity = 0.4 + Math.sin(t * 0.8) * 0.05;
+  // blimp
+  const ba = t * 0.045 * (m || 0.2) + 1, R = 46;
+  blimp.position.set(Math.cos(ba) * R, 27 + Math.sin(t * 0.4) * 1.2 * m, Math.sin(ba) * R);
+  const vx = -Math.sin(ba), vz = Math.cos(ba); blimp.rotation.set(Math.sin(t * 0.6) * 0.04 * m, Math.atan2(-vz, vx), 0);
+  blimp.userData.banner.offset.x = (t * 0.06 * (m || 0.2)) % 1;
+  blimp.userData.nose.material.opacity = Math.sin(t * 4) > 0 ? 1 : 0.15; blimp.userData.tail.material.opacity = Math.sin(t * 4 + 2) > 0 ? 1 : 0.15;
+  // towers: flicker, hover lift, beam flare after a scan
+  TOWERS.forEach((tw, i) => {
+    const on = hovered === tw.id;
+    tw.group.position.y = lerp(tw.group.position.y, on ? 0.6 : 0, 0.12);
+    if (fx.intro) tw.beamMat.uniforms.uK.value = lerp(tw.beamMat.uniforms.uK.value, (on ? 0.45 : 0.2) + (tw.flare || 0) * 1.2, 0.1);
+    if (tw.av) tw.av.material.opacity = Math.sin(t * 2.1 + i * 1.7) > 0.55 ? 1 : 0.06;
+    tw.flare = Math.max(0, (tw.flare || 0) - dt * 0.5);
+    (tw.mats || []).forEach((mt, j) => { mt.emissiveIntensity = 0.95 + (m ? Math.sin(t * 0.7 + i * 3 + j) * 0.03 : 0) + (on ? 0.2 : 0); });
+  });
+}
+
+function updateRoomFX(t, dt) {
+  const m = reduce ? 0 : 1, theme = current ? byId[current].color : "#59e7ca";
+  // steam from the mug
+  const mp = roomParts.mug.position;
+  steam.forEach((s) => { const k = (t * 0.35 + s.ph) % 1; s.sp.position.set(mp.x + Math.sin(k * 9 + s.ph * 6) * 0.03, mp.y + 0.08 + k * 0.45, mp.z); s.sp.scale.setScalar(0.1 + k * 0.22); s.sp.material.opacity = Math.sin(k * Math.PI) * 0.5 * (m || 0); });
+  // keystroke data rising from the keyboard into the main screen
+  const pos = dataGeo.attributes.position, speed = state.scanning ? 1.6 : 0.45;
+  dpSeed.forEach(([ph, x, z], i) => { const k = (ph + t * speed * (m || 0.2)) % 1; pos.setXYZ(i, x * (1 - k) + Math.sin(k * 12 + i) * 0.03, 0.9 + k * 0.5, -0.78 - k * 0.58 - z); });
+  pos.needsUpdate = true; dataPts.material.color.set(theme).multiplyScalar(2);
+  // monitor glitch while a scan runs
+  if (state.scanning && current === "scanner" && t - fx.glitchAt > 0.09) {
+    fx.glitchAt = t; drawScreens("scanner");
+    const s0 = roomParts.screens[0], g = s0.cv.getContext("2d"), W = s0.cv.width, H = s0.cv.height;
+    for (let i = 0; i < 5; i++) { const y = Math.random() * H, h = 4 + Math.random() * 18, dx = (Math.random() - 0.5) * 40; g.drawImage(s0.cv, 0, y, W, h, dx, y, W, h); }
+    g.fillStyle = "rgba(89,231,202,0.15)"; g.fillRect(0, (t * 300) % H, W, 10);
+    s0.tex.needsUpdate = true;
+  }
+  // holo coin
+  fx.coin = Math.max(0, fx.coin - dt * 0.03);
+  const show = state.lastScan && current === "scanner" ? 1 : 0;
+  const cs = lerp(coin.scale.x, show ? 1 : 0.001, 0.08);
+  coin.scale.setScalar(Math.max(0.001, cs)); coin.rotation.z = t * 1.6 * (m || 0.2); coin.position.y = 1.3 + Math.sin(t * 1.8) * 0.03 * m;
+  coinGlow.material.opacity = cs * 0.8;
+  // chair spin on a good result (robot spins with it)
+  if (fx.spin > 0) { fx.spin = Math.max(0, fx.spin - dt * 0.55); const k = ease(1 - fx.spin); roomParts.chair.rotation.y = robot.R.rotation.y = k * Math.PI * 2; }
+  else roomParts.chair.rotation.y = robot.R.rotation.y = Math.sin(t * 0.5) * 0.06 * m;
+  // alarm on a dangerous result
+  fx.alarm = Math.max(0, fx.alarm - dt);
+  beacon.visible = fx.alarm > 0; alarmLight.intensity = fx.alarm > 0 ? (8 + Math.sin(t * 14) * 6) : 0;
+  if (fx.alarm > 0) { beacon.rotation.y = t * 7; beaconBeam.material.opacity = 0.22; }
+  // antenna blink
+  robot.antTip.material.emissiveIntensity = Math.sin(t * 2.5) > 0.7 ? 5 : 1.5;
+}
+
+// =================================================================== INPUT (hover + click towers)
+const ray = new THREE.Raycaster(), pointer = new THREE.Vector2(); let hovered = null, downAt = null;
+canvas.addEventListener("pointermove", (e) => {
+  pointer.set((e.clientX / innerWidth) * 2 - 1, -(e.clientY / innerHeight) * 2 + 1);
+  if (scene !== city) return;
+  ray.setFromCamera(pointer, camera); const hit = ray.intersectObjects(towerHits)[0];
+  hovered = hit ? hit.object.userData.tower : null; canvas.style.cursor = hovered ? "pointer" : "grab";
+});
+canvas.addEventListener("pointerdown", (e) => { downAt = [e.clientX, e.clientY]; });
+canvas.addEventListener("pointerup", (e) => {
+  if (!downAt || Math.hypot(e.clientX - downAt[0], e.clientY - downAt[1]) > 6 || scene !== city) return;
+  pointer.set((e.clientX / innerWidth) * 2 - 1, -(e.clientY / innerHeight) * 2 + 1);
+  ray.setFromCamera(pointer, camera); const hit = ray.intersectObjects(towerHits)[0];
+  if (hit) enterTower(hit.object.userData.tower);
+});
+
+// =================================================================== LOOP
+function resize() {
+  const w = innerWidth, h = innerHeight;
+  renderer.setSize(w, h, false); composer.setSize(w, h);
+  bloom.resolution.set(w * (small ? 0.5 : 0.75), h * (small ? 0.5 : 0.75));
+  camera.aspect = w / h; camera.fov = w / h < 0.8 ? 58 : 40; camera.updateProjectionMatrix();
+}
+addEventListener("resize", resize); resize();
+camera.position.copy(CITY_VIEW.pos); controls.target.copy(CITY_VIEW.target); setCityControls(); controls.update();
+
+const clock = new THREE.Clock(); let lastClock = 0;
+function frame() {
   requestAnimationFrame(frame);
+  if (document.hidden) return;
+  const dt = Math.min(0.05, clock.getDelta()), t = clock.elapsedTime, m = reduce ? 0 : 1;
+  beams.forEach((b) => (b.uniforms.uTime.value = t));
+  if (scene === city) {
+    kaelisCity.position.y = 8.2 + Math.sin(t * 1.1) * 0.35 * m;
+    kaelisCity.rotation.y += ((pointer.x * 0.8 + Math.sin(t * 0.3) * 0.3 * m) - kaelisCity.rotation.y) * 0.05;
+    kaelisCity.rotation.x += ((-pointer.y * 0.3) - kaelisCity.rotation.x) * 0.05;
+    const mtx = new THREE.Matrix4();
+    for (let i = 0; i < CARS; i++) { const back = i >= CARS / 2, c = carPhase[i], a = c.a + (back ? -1 : 1) * t * c.sp * (m || 0.2), rr = back ? 27.6 : 25.4; mtx.makeTranslation(Math.cos(a) * rr, 0.32, Math.sin(a) * rr); runners.setMatrixAt(i, mtx); }
+    runners.instanceMatrix.needsUpdate = true;
+    skyMat.uniforms.uTime.value = t * m;
+    avLights.material.opacity = Math.sin(t * 2.4) > 0.55 ? 1 : 0.05;
+    TOWERS.forEach((tw) => { const on = hovered === tw.id; tw.crown.material.color.copy(tw.crownCol).multiplyScalar(on ? 2.4 : 1.1); });
+    updateCityFX(t, dt);
+  } else {
+    animateRobot(t, dt);
+    updateRoomFX(t, dt);
+    if (t - lastClock > 10) { drawClock(); lastClock = t; }
+  }
+  controls.update();
+  finish.uniforms.uTime.value = t;
+  composer.render();
+  placeLabels();
+}
 
-  // Demo buttons
-  const toast = document.getElementById("toast");
-  document.getElementById("buyBtn").addEventListener("click", () => {
-    toast.textContent = "Demo only: the Buy link goes here once $KAEL launches.";
-  });
-  document.getElementById("joinBtn").addEventListener("click", () => {
-    document.getElementById("toast2").textContent = "Demo only: your X link goes here.";
-  });
+// =================================================================== START
+(async () => {
+  await document.fonts.ready.catch(() => {});
+  drawClock(); refreshLabels();
+  try { bakeCityEnv(); } catch (e) { /* keep the studio environment */ }
+  requestAnimationFrame(frame);
+  await checkHealth(); await Promise.all([loadHolders(), loadBuilders(), loadMarkets(), loadFilings()]); refreshLabels();
+  setInterval(async () => { await Promise.all([loadMarkets(), loadFilings()]); refreshLabels(); if (current === "watch") drawScreens("watch"); if (current === "markets") drawScreens("markets"); }, 5 * 60000);
+  const q = new URLSearchParams(location.search).get("tower");
+  if (q && byId[q]) { TOWERS.forEach((tw) => { tw.group.scale.y = 1; tw.beamMat.uniforms.uK.value = 0.6; }); fx.intro = 1; enterTower(q); }
+  else intro();
 })();
 </script>
-
-
 <script>
-// "Try it": three tiny simulations (scan, build, hold) with example data. Same weights as the guide.
+// home: live numbers from the Kaelis server, and the buy link once $KAEL has a mint (hidden / disabled without a server)
 (function () {
-  const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-  const wait = (ms) => new Promise((r) => setTimeout(r, reduce ? 0 : ms));
   const $ = (id) => document.getElementById(id);
-  // tabs
-  const tabs = Array.from(document.querySelectorAll('#try [role="tab"]'));
-  function show(t) { tabs.forEach((b) => { const on = b === t; b.setAttribute("aria-selected", on); b.tabIndex = on ? 0 : -1; $(b.getAttribute("aria-controls")).hidden = !on; }); }
-  tabs.forEach((b, i) => {
-    b.addEventListener("click", () => show(b));
-    b.addEventListener("keydown", (e) => { const d = e.key === "ArrowRight" ? 1 : e.key === "ArrowLeft" ? -1 : 0; if (d) { const n = tabs[(i + d + tabs.length) % tabs.length]; show(n); n.focus(); } });
-  });
-
-  // 01 scan
-  const CHECKS = ["Sell works (not a honeypot)", "Liquidity locked", "Creator holds little supply", "Creator has no rug history", "Mint authority off", "Holders not from one wallet", "Freeze authority off"];
-  const TOKENS = {
-    safu:  { pts: [0, 0, 0, 0, 0, 0, 5], say: "No known red flags. The pool is locked and supply is spread out. That is not a promise of safety." },
-    moon:  { pts: [0, 20, 8, 0, 10, 6, 0], say: "Liquidity can be pulled and new tokens can still be minted. Read the evidence before buying." },
-    rugme: { pts: [25, 20, 15, 15, 10, 8, 5], say: "Selling fails, so this is a honeypot. The creator rugged tokens before. Treat it as a trap." }
-  };
-  const list = $("simChecks");
-  list.innerHTML = CHECKS.map((c) => `<li><i></i><span>${c}</span><em></em></li>`).join("");
-  const items = Array.from(list.children), stages = Array.from(document.querySelectorAll("#sp-scan .stages span"));
-  let tok = "safu", running = false;
-  document.querySelectorAll("#sp-scan .tok").forEach((b) => b.addEventListener("click", () => {
-    if (running) return; tok = b.dataset.tok;
-    document.querySelectorAll("#sp-scan .tok").forEach((x) => x.setAttribute("aria-pressed", x === b));
-  }));
-  function stage(i) { stages.forEach((s, k) => { s.classList.toggle("on", k === i); s.classList.toggle("done", k < i); }); }
-  function setScore(v) {
-    $("simNum").firstChild.nodeValue = v; $("simPin").style.left = v + "%";
-    const band = v >= 70 ? ["Dangerous", "#c4452c"] : v >= 40 ? ["Suspicious", "#c88a12"] : ["Low risk", "#2f8f5b"];
-    $("simBand").textContent = band[0]; $("simBand").style.color = band[1];
-  }
-  async function type(el, text) { el.textContent = ""; if (reduce) { el.textContent = text; return; } for (let i = 0; i <= text.length; i += 2) { el.textContent = text.slice(0, i); await wait(18); } el.textContent = text; }
-  $("scanGo").addEventListener("click", async () => {
-    if (running) return; running = true; $("scanGo").disabled = true;
-    const T = TOKENS[tok];
-    items.forEach((li) => { li.className = ""; li.querySelector("i").textContent = ""; li.querySelector("em").textContent = ""; });
-    $("simNum").firstChild.nodeValue = "–"; $("simPin").style.left = "0%"; $("simBand").textContent = "Scanning…"; $("simBand").style.color = "";
-    stage(0); $("simSay").textContent = "Reading the creator, holders and pool from the chain…"; await wait(700);
-    stage(1); $("simSay").textContent = "Running seven fixed checks…";
-    for (let i = 0; i < items.length; i++) {
-      const hit = T.pts[i] > 0, li = items[i];
-      li.className = hit ? "hit" : "ok"; li.querySelector("i").textContent = hit ? "✕" : "✓"; li.querySelector("em").textContent = hit ? "+" + T.pts[i] : "";
-      await wait(230);
-    }
-    stage(2);
-    let total = T.pts.reduce((a, b) => a + b, 0); if (T.pts[0] > 0) total = Math.max(85, total); total = Math.min(100, total);
-    const steps = reduce ? 1 : 24;
-    for (let k = 1; k <= steps; k++) { setScore(Math.round(total * k / steps)); await wait(28); }
-    stage(3); await type($("simSay"), T.say);
-    stage(4); running = false; $("scanGo").disabled = false;
-  });
-
-  // 02 build
-  const city = $("simCity"), H = [38, 62, 30, 80, 46, 0, 54, 34, 70, 42];
-  city.innerHTML = H.map((h, i) => `<span${i === 5 ? ' class="me"' : ""} style="height:${i === 5 ? 3 * 12 : h}%"></span>`).join("");
-  const me = city.children[5]; let floors = 3, pts = 0, building = false;
-  $("buildGo").addEventListener("click", async () => {
-    if (building) return; building = true; $("buildGo").disabled = true;
-    await type($("buildSay"), "Pull request merged in a public repo. Checking it is real work…"); await wait(500);
-    floors++; pts += 120; me.style.height = Math.min(100, floors * 12) + "%";
-    $("simFloors").textContent = floors; $("simPts").textContent = pts;
-    await type($("buildSay"), `Verified. +120 build points, your tower is now ${floors} floors. Rewards are paid weekly.`);
-    building = false; $("buildGo").disabled = false;
-  });
-
-  // 03 hold
-  const win = $("simWin"), N = 60; let holders = 41, mine = -1;
-  const lit = new Set(); let seed = 9; const rnd = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
-  while (lit.size < holders) lit.add(Math.floor(rnd() * N));
-  win.innerHTML = Array.from({ length: N }, (_, i) => `<i class="${lit.has(i) ? "lit" : ""}"></i>`).join("");
-  const cells = Array.from(win.children);
-  $("holdGo").addEventListener("click", async () => {
-    if (mine < 0) {
-      mine = cells.findIndex((c, i) => !lit.has(i) && i > 20);
-      cells[mine].className = "me"; holders++;
-      $("holdGo").textContent = "Sell all ↗";
-      $("simHolders").textContent = holders; $("simLit").textContent = holders;
-      await type($("holdSay"), "Your wallet holds $KAEL, so your window lights up. It stays in the same spot every visit.");
-    } else {
-      cells[mine].className = ""; mine = -1; holders--;
-      $("holdGo").textContent = "Hold $KAEL ↗";
-      $("simHolders").textContent = holders; $("simLit").textContent = holders;
-      await type($("holdSay"), "You sold everything, so your window turns off at the next snapshot.");
-    }
-    $("simHolders").textContent = holders; $("simLit").textContent = holders;
-  });
+  Promise.all([fetch("api/genome").then((r) => r.ok ? r.json() : null), fetch("api/ledger").then((r) => r.ok ? r.json() : null), fetch("api/health").then((r) => r.ok ? r.json() : null)])
+    .then(([g, l, h]) => {
+      if (g && l) {
+        $("lvCalls").textContent = l.stats.calls;
+        $("lvIq").textContent = l.stats.iq == null ? "soon" : l.stats.iq; $("live").hidden = false;
+        const esc = (x) => String(x == null ? "" : x).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+        const cls = (gr) => gr === "D" ? "g-d" : /^(AAA|AA|A)$/.test(gr) ? "g-ok" : /^(BBB|BB|B)$/.test(gr) ? "g-warn" : "g-bad";
+        const items = l.calls.slice(0, 30).map((c) => { const gr = c.finalGrade || c.grade, sym = c.symbol ? "$" + c.symbol.slice(0, 12) : c.mint.slice(0, 6) + "…";
+          return `<a href="scan.html?mint=${esc(c.mint)}">${esc(sym)}<b class="${cls(gr)}">${esc(gr)}</b><span>${Math.round(c.p * 100)}% rug risk${c.resolvedAt ? (c.rugged ? " · rugged" : " · held") : ""}</span></a>`; }).join("");
+        if (items && $("tape")) { $("tapeRun").innerHTML = items + items; $("tape").hidden = false; }
+      }
+      if (h && h.kaelMint) { const b = $("ctaBuy"); b.href = "https://pump.fun/coin/" + h.kaelMint; b.target = "_blank"; b.rel = "noopener"; b.textContent = "Buy $KAEL"; b.hidden = false; b.removeAttribute("aria-disabled"); b.removeAttribute("title"); }
+    }).catch(() => {});
+  $("ctaBuy").addEventListener("click", (e) => { if ($("ctaBuy").getAttribute("aria-disabled") === "true") e.preventDefault(); });
 })();
 </script>
 <script>
-// "Change reality": flips the page between built (ink on paper) and blueprint (cobalt line art). Remembered per viewer.
+// $KAEL contract address: filled from the server (KAEL_MINT) or the site config, copy with one click
 (function () {
-  const root = document.documentElement, btn = document.getElementById("reality");
-  function apply(mode) {
-    root.dataset.reality = mode;
-    btn.setAttribute("aria-pressed", mode === "blueprint");
-    window.dispatchEvent(new CustomEvent("kaelis-reality", { detail: mode }));
-    try { localStorage.setItem("kaelis-reality", mode); } catch (e) {}
+  const boxes = Array.from(document.querySelectorAll("[data-ca]")); if (!boxes.length) return;
+  function show(mint) {
+    if (!mint || !/^[1-9A-HJ-NP-Za-km-z]{32,44}$/.test(mint)) return; // only a real Solana address
+    boxes.forEach((el) => {
+      el.classList.remove("pending"); el.title = mint;
+      el.innerHTML = `<a href="https://pump.fun/coin/${mint}" target="_blank" rel="noopener" title="Open $KAEL on pump.fun" style="color:inherit;text-underline-offset:3px">${mint.slice(0, 10)}…${mint.slice(-10)}</a>`;
+      const btn = el.parentNode.querySelector("[data-ca-copy]"); btn.removeAttribute("aria-disabled");
+      btn.onclick = () => { (navigator.clipboard ? navigator.clipboard.writeText(mint) : Promise.reject()).then(() => { btn.textContent = "Copied"; setTimeout(() => (btn.textContent = "Copy"), 1600); }).catch(() => { btn.textContent = "Select it"; }); };
+    });
   }
-  let saved = null; try { saved = localStorage.getItem("kaelis-reality"); } catch (e) {}
-  if (saved === "blueprint") apply("blueprint");
-  btn.addEventListener("click", () => apply(root.dataset.reality === "blueprint" ? "real" : "blueprint"));
-  const clock = document.getElementById("clock");
-  const tick = () => { const d = new Date(); clock.textContent = "UTC " + String(d.getUTCHours()).padStart(2, "0") + ":" + String(d.getUTCMinutes()).padStart(2, "0") + ":" + String(d.getUTCSeconds()).padStart(2, "0"); };
-  tick(); setInterval(tick, 1000);
+  const local = window.KAELIS_CONFIG && window.KAELIS_CONFIG.kaelMint;
+  fetch("api/health").then((r) => r.ok ? r.json() : null).then((h) => show((h && h.kaelMint) || local)).catch(() => show(local));
 })();
 </script>
-
-
+</body>
+</html>

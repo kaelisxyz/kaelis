@@ -1,0 +1,236 @@
+<!doctype html>
+<html lang="en">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Kaelis Markets</title>
+<meta name="description" content="Memecoins measured with Wall Street's yardstick: Kaelis rates tokenized stocks on Solana with the same rules, tracks its best-rated memecoins (K-20) next to the S&P 500, and flags tokens that copy a stock's ticker.">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' fill='%23f2f0ea'/%3E%3Ctext x='16' y='23' font-family='Arial' font-weight='700' font-size='20' text-anchor='middle' fill='%230b0b0c'%3EK%3C/text%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter+Tight:wght@400;500;600&family=JetBrains+Mono:wght@400;500;700&display=swap">
+<style>
+  /* Markets: K-20 vs S&P 500, tokenized stocks rated by Kaelis, KIQ, ticker look-alikes. Paper look like the Ledger. */
+  :root {
+    --paper: #ffffff; --sheet: #fbfaf7; --ink: #0b0b0c; --ink2: #3a3a3a; --mute: #6b6b6b; --rule: #d6d6d6; --grid: rgba(0,0,0,.06); --tint: #f4f4f1;
+    --ok: #2f8f5b; --warn: #9a6a00; --bad: #c4452c;
+    --k20: #0f8a6c; --spy: #3b5bdb; /* validated pair (dataviz validator, light, on #f2f0ea) */
+    --f-sans: "Inter Tight", "Helvetica Neue", Arial, system-ui, sans-serif;
+    --f-mono: "JetBrains Mono", ui-monospace, Menlo, monospace;
+    --gut: max(16px, env(safe-area-inset-left, 0px));
+    color-scheme: light;
+  }
+  * { box-sizing: border-box; }
+  html, body { background: var(--paper); color: var(--ink); }
+  body { margin: 0; font-family: var(--f-sans); font-size: 17px; line-height: 1.5;
+    background-image: linear-gradient(var(--grid) 1px, transparent 1px), linear-gradient(90deg, var(--grid) 1px, transparent 1px); background-size: 100% 240px, 25% 100%; }
+  a { color: inherit; }
+  .tag { font-family: var(--f-mono); font-size: 11px; letter-spacing: .1em; text-transform: uppercase; }
+  .wrap { max-width: 1180px; margin: 0 auto; padding: 0 var(--gut); }
+  header { position: sticky; top: 0; z-index: 5; background: rgba(255,255,255,.92); backdrop-filter: blur(6px); border-bottom: 1px solid var(--rule); }
+  header .wrap { display: flex; align-items: center; justify-content: space-between; gap: 12px; height: 60px; }
+  .logo { display: flex; align-items: baseline; gap: 10px; text-decoration: none; font-weight: 600; letter-spacing: .14em; font-size: 15px; }
+  .mark { display: flex; } .mark i { font-style: normal; } .mark i:nth-child(even) { color: var(--paper); -webkit-text-stroke: 1px var(--ink); paint-order: stroke fill; }
+  nav { display: flex; gap: 8px; }
+  .pill { display: inline-flex; align-items: center; border: 1px solid var(--ink); border-radius: 999px; padding: 8px 14px; text-decoration: none; background: var(--ink); color: var(--paper); font-size: 15px; }
+  .pill.ghost { background: var(--paper); color: var(--ink); }
+  @media (max-width: 640px) { nav .ghost { display: none; } }
+  section { padding: 56px 0; border-bottom: 1px solid var(--rule); }
+  .label { display: inline-block; background: var(--ink); color: var(--paper); padding: 6px 10px; }
+  h1 { font-size: clamp(44px, 8vw, 112px); line-height: .92; letter-spacing: -.035em; font-weight: 500; margin: 18px 0 20px; }
+  h2 { font-size: clamp(28px, 4vw, 44px); line-height: 1; letter-spacing: -.03em; font-weight: 500; margin: 8px 0 18px; }
+  .lead { font-size: clamp(18px, 2vw, 23px); line-height: 1.35; max-width: 50ch; margin: 0 0 8px; }
+  .note { font-size: 14px; color: var(--mute); max-width: 72ch; }
+
+  /* chart card */
+  .chart { border: 1px solid var(--ink); background: var(--sheet); padding: 18px 18px 12px; position: relative; }
+  .chart .head { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 10px 20px; align-items: baseline; margin-bottom: 10px; }
+  .chart .head b { font-weight: 500; font-size: 17px; }
+  .legend { display: flex; gap: 16px; flex-wrap: wrap; font-family: var(--f-mono); font-size: 11.5px; color: var(--ink2); }
+  .legend span { display: inline-flex; align-items: center; gap: 8px; }
+  .legend svg { flex: none; }
+  .plot { position: relative; height: 320px; touch-action: pan-y; }
+  .plot svg { display: block; width: 100%; height: 100%; overflow: visible; }
+  .plot .axis text { font-family: var(--f-mono); font-size: 10.5px; fill: var(--mute); }
+  .plot .gridline { stroke: rgba(0,0,0,.08); stroke-width: 1; }
+  .plot .base { stroke: rgba(0,0,0,.28); stroke-width: 1; stroke-dasharray: 2 3; }
+  .tip { position: absolute; pointer-events: none; background: var(--ink); color: var(--paper); font-family: var(--f-mono); font-size: 11.5px; padding: 8px 10px; line-height: 1.6; white-space: nowrap; transform: translate(-50%, -100%); top: 0; opacity: 0; transition: opacity .12s; }
+  .tip i { display: inline-block; width: 10px; height: 2px; vertical-align: 3px; margin-right: 6px; }
+  .empty { position: absolute; inset: 0; display: grid; place-items: center; text-align: center; color: var(--mute); font-size: 15px; padding: 20px; }
+  details.table { margin-top: 10px; font-size: 14px; }
+  details.table summary { cursor: pointer; font-family: var(--f-mono); font-size: 11px; letter-spacing: .1em; text-transform: uppercase; color: var(--ink2); }
+  .scroll { max-height: 260px; overflow: auto; margin-top: 8px; }
+  .tbl { width: 100%; border-collapse: collapse; font-size: 14.5px; background: var(--paper); }
+  .tbl th, .tbl td { text-align: left; padding: 9px 8px; border-bottom: 1px solid var(--rule); vertical-align: middle; }
+  .tbl th { font-family: var(--f-mono); font-size: 10px; letter-spacing: .1em; text-transform: uppercase; color: var(--mute); font-weight: 400; border-bottom-color: var(--ink); position: sticky; top: 0; background: var(--paper); }
+  .tbl td.m { font-family: var(--f-mono); font-size: 12.5px; font-variant-numeric: tabular-nums; }
+  .g { font-family: var(--f-mono); font-weight: 700; }
+  .g.ok { color: var(--ok); } .g.warn { color: var(--warn); } .g.bad { color: var(--bad); }
+  .chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 12px; }
+  .chips a { font-family: var(--f-mono); font-size: 11.5px; text-decoration: none; border: 1px solid var(--rule); background: var(--paper); padding: 5px 8px; }
+  .chips a b { margin-left: 6px; }
+  .two { display: grid; grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr); gap: 24px; align-items: start; }
+  @media (max-width: 900px) { .two { grid-template-columns: 1fr; } .plot { height: 260px; } }
+  .flag { display: inline-block; font-family: var(--f-mono); font-size: 10px; letter-spacing: .1em; text-transform: uppercase; color: var(--bad); border: 1px solid currentColor; padding: 2px 6px; }
+  footer { padding: 32px 0 56px; }
+  footer .wrap { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 12px; }
+</style>
+
+<header>
+  <div class="wrap">
+    <a class="logo" href="index.html"><b class="mark" aria-label="KAELIS"><i>K</i><i>A</i><i>E</i><i>L</i><i>I</i><i>S</i></b><span class="tag" style="color:var(--mute)">Markets</span></a>
+    <nav><a class="pill ghost" href="filings.html">Filings</a><a class="pill ghost" href="ledger.html">Ledger</a><a class="pill ghost" href="evolution.html">Evolution</a><a class="pill" href="index.html">Forge City</a></nav>
+  </div>
+</header>
+
+<main>
+  <section>
+    <div class="wrap">
+      <span class="tag label">[ Kaelis Markets · live ]</span>
+      <h1>Memes, rated like the S&amp;P.</h1>
+      <p class="lead">Kaelis rates tokenized stocks on Solana with the same rules it uses on memecoins, tracks its best-rated memecoins as one index next to the S&amp;P 500, and calls out tokens that copy a stock's ticker.</p>
+      <p class="note">A benchmark, never an investable product. Nothing here is financial advice.</p>
+    </div>
+  </section>
+
+  <section>
+    <div class="wrap">
+      <span class="tag">K-20 vs S&amp;P 500</span>
+      <h2>Kaelis's best-rated memes against Wall Street.</h2>
+      <div class="chart">
+        <div class="head"><b>Indexed to 100 at the first point</b>
+          <div class="legend" aria-hidden="true">
+            <span><svg width="22" height="8"><line x1="0" y1="4" x2="22" y2="4" stroke="var(--k20)" stroke-width="2"/></svg>K-20 (memecoins)</span>
+            <span><svg width="22" height="8"><line x1="0" y1="4" x2="22" y2="4" stroke="var(--spy)" stroke-width="2" stroke-dasharray="5 3"/></svg>S&amp;P 500 (SPYx)</span>
+          </div>
+        </div>
+        <div class="plot" id="plotIdx"><div class="tip" id="tipIdx"></div></div>
+        <details class="table"><summary>Show as table</summary><div class="scroll"><table class="tbl" id="tblIdx"><thead><tr><th>Time (UTC)</th><th>K-20</th><th>S&amp;P 500</th><th>SPYx price</th></tr></thead><tbody></tbody></table></div></details>
+      </div>
+      <p class="note" id="basketNote">K-20: the 20 best-rated memecoins Kaelis has called (AAA to BBB, a pool of at least $20k, not rugged), equal weight, rebalanced every week. A token whose pool disappears counts as -100%.</p>
+      <div class="chips" id="basket"></div>
+    </div>
+  </section>
+
+  <section>
+    <div class="wrap two">
+      <div>
+        <span class="tag">Tokenized stocks</span>
+        <h2>Same rules, real stocks.</h2>
+        <table class="tbl"><thead><tr><th>Ticker</th><th>Stock</th><th>Kaelis</th><th>Score</th><th></th></tr></thead><tbody id="stocks"><tr><td colspan="5" class="note">Loading…</td></tr></tbody></table>
+        <p class="note">Official xStocks score higher on authority checks because the issuer keeps legal controls: it can mint, freeze and move tokens (a permanent delegate). That is by design for a regulated tokenized stock, and still a risk worth knowing.</p>
+      </div>
+      <div>
+        <span class="tag">Look-alikes</span>
+        <h2>Fake tickers, flagged.</h2>
+        <table class="tbl"><thead><tr><th>Copies</th><th>Token</th><th>Pool</th><th></th></tr></thead><tbody id="fakes"><tr><td colspan="4" class="note">Loading…</td></tr></tbody></table>
+        <p class="note">Tokens that use a stock's ticker but are not the official mint. Kaelis gives every one of them a hard flag (CC). Checked once a day.</p>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <div class="wrap">
+      <span class="tag">KIQ · Kaelis's own ticker</span>
+      <h2>An intelligence you can chart.</h2>
+      <div class="chart">
+        <div class="head"><b>Kaelis IQ (calibration, 0 to 100) over time</b><span class="tag" id="kiqNow" style="color:var(--ink2)"></span></div>
+        <div class="plot" id="plotKiq" style="height:220px"><div class="tip" id="tipKiq"></div></div>
+      </div>
+      <p class="note">KIQ moves when Kaelis's calls are checked against what really happened, and jumps when a smarter generation of its rules is adopted. <a href="evolution.html">See the generations →</a></p>
+    </div>
+  </section>
+</main>
+
+<footer>
+  <div class="wrap tag">
+    <span>Kaelis Markets · Prices from DexScreener · Not financial advice</span>
+    <span style="display:flex;gap:16px"><a href="ledger.html">Ledger →</a><a href="docs.html">Docs →</a></span>
+  </div>
+</footer>
+
+<script>
+(function () {
+  const $ = (id) => document.getElementById(id);
+  const esc = (s) => String(s == null ? "" : s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+  const cls = (g) => /^(AAA|AA|A)$/.test(g) ? "ok" : /^(BBB|BB|B)$/.test(g) ? "warn" : "bad";
+  const fmtT = (iso) => iso.slice(5, 16).replace("T", " ");
+  const usd = (n) => n >= 1e6 ? "$" + (n / 1e6).toFixed(2) + "M" : n >= 1e3 ? "$" + (n / 1e3).toFixed(1) + "k" : "$" + Math.round(n);
+  const NS = "http://www.w3.org/2000/svg";
+  const el = (n, a) => { const e = document.createElementNS(NS, n); for (const k in a) e.setAttribute(k, a[k]); return e; };
+
+  // one line chart, one y axis, thin 2px lines, recessive grid, direct labels, crosshair + tooltip
+  function lineChart(box, tip, series, { yFmt = (v) => v.toFixed(1), base = null, step = false, empty = "" } = {}) {
+    box.querySelectorAll("svg,.empty").forEach((n) => n.remove());
+    const pts = series.flatMap((s) => s.values.filter((p) => p.v != null));
+    if (new Set(pts.map((p) => +p.t)).size < 2) { const e = document.createElement("div"); e.className = "empty"; e.textContent = empty; box.appendChild(e); return; }
+    const W = box.clientWidth, H = box.clientHeight, L = 44, R = 84, T = 10, B = 26;
+    const ts = pts.map((p) => +p.t), t0 = Math.min(...ts), t1 = Math.max(...ts);
+    let v0 = Math.min(...pts.map((p) => p.v)), v1 = Math.max(...pts.map((p) => p.v));
+    if (base != null) { v0 = Math.min(v0, base); v1 = Math.max(v1, base); }
+    const pad = (v1 - v0) * 0.12 || 2; v0 -= pad; v1 += pad;
+    const x = (t) => L + ((t - t0) / Math.max(1, t1 - t0)) * (W - L - R), y = (v) => T + (1 - (v - v0) / (v1 - v0)) * (H - T - B);
+    const svg = el("svg", { viewBox: `0 0 ${W} ${H}`, role: "img", "aria-label": series.map((s) => s.name).join(" vs ") });
+    const ax = el("g", { class: "axis" });
+    for (let i = 0; i <= 4; i++) { const v = v0 + ((v1 - v0) * i) / 4, yy = y(v); ax.appendChild(el("line", { class: "gridline", x1: L, x2: W - R, y1: yy, y2: yy })); const tx = el("text", { x: L - 8, y: yy + 3.5, "text-anchor": "end" }); tx.textContent = yFmt(v); ax.appendChild(tx); }
+    const ticks = W < 560 ? [0, 3] : [0, 1, 2, 3]; // narrow screens: first and last date only
+    for (const i of ticks) { const t = t0 + ((t1 - t0) * i) / 3, tx = el("text", { x: x(t), y: H - 6, "text-anchor": i === 0 ? "start" : i === 3 ? "end" : "middle" }); tx.textContent = fmtT(new Date(t).toISOString()); ax.appendChild(tx); }
+    svg.appendChild(ax);
+    if (base != null) svg.appendChild(el("line", { class: "base", x1: L, x2: W - R, y1: y(base), y2: y(base) }));
+    series.forEach((s) => {
+      const vs = s.values.filter((p) => p.v != null); if (!vs.length) return;
+      let d = ""; vs.forEach((p, i) => { const X = x(+p.t), Y = y(p.v); d += i === 0 ? `M${X},${Y}` : step ? `H${X}V${Y}` : `L${X},${Y}`; });
+      svg.appendChild(el("path", { d, fill: "none", stroke: s.color, "stroke-width": 2, "stroke-linejoin": "round", "stroke-linecap": "round", "stroke-dasharray": s.dash || "none" }));
+      const last = vs[vs.length - 1], lx = x(+last.t), ly = y(last.v);
+      svg.appendChild(el("circle", { cx: lx, cy: ly, r: 4, fill: s.color, stroke: "#fbfaf7", "stroke-width": 2 }));
+      const lab = el("text", { x: lx + 8, y: ly + 4, "font-family": "JetBrains Mono, monospace", "font-size": 11, fill: "#0b0b0c" }); lab.textContent = `${s.short} ${yFmt(last.v)}`; svg.appendChild(lab);
+    });
+    const cross = el("line", { x1: 0, x2: 0, y1: T, y2: H - B, stroke: "rgba(0,0,0,.35)", "stroke-width": 1, visibility: "hidden" }); svg.appendChild(cross);
+    const dots = series.map((s) => { const c = el("circle", { r: 4, fill: s.color, stroke: "#fbfaf7", "stroke-width": 2, visibility: "hidden" }); svg.appendChild(c); return c; });
+    const hit = el("rect", { x: L, y: 0, width: W - L - R, height: H, fill: "transparent" }); svg.appendChild(hit);
+    const all = [...new Set(series.flatMap((s) => s.values.map((p) => +p.t)))].sort((a, b) => a - b);
+    function show(ev) {
+      const r = svg.getBoundingClientRect(), mx = ((ev.clientX - r.left) / r.width) * W;
+      let best = all[0]; for (const t of all) if (Math.abs(x(t) - mx) < Math.abs(x(best) - mx)) best = t;
+      const X = x(best); cross.setAttribute("x1", X); cross.setAttribute("x2", X); cross.setAttribute("visibility", "visible");
+      const rows = [];
+      series.forEach((s, i) => { const p = s.values.find((q) => +q.t === best && q.v != null); if (!p) { dots[i].setAttribute("visibility", "hidden"); return; }
+        dots[i].setAttribute("cx", X); dots[i].setAttribute("cy", y(p.v)); dots[i].setAttribute("visibility", "visible");
+        rows.push(`<div><i style="background:${s.color}"></i>${esc(s.name)} <b>${yFmt(p.v)}</b></div>`); });
+      tip.innerHTML = `<div style="opacity:.7">${fmtT(new Date(best).toISOString())} UTC</div>` + rows.join("");
+      tip.style.left = (X / W) * 100 + "%"; tip.style.top = "8px"; tip.style.opacity = rows.length ? 1 : 0;
+    }
+    const hide = () => { cross.setAttribute("visibility", "hidden"); dots.forEach((d) => d.setAttribute("visibility", "hidden")); tip.style.opacity = 0; };
+    hit.addEventListener("pointermove", show); hit.addEventListener("pointerdown", show); hit.addEventListener("pointerleave", hide);
+    box.insertBefore(svg, tip);
+  }
+
+  let data = null;
+  function render() {
+    if (!data) return;
+    const S = data.series.map((p) => ({ ...p, t: new Date(p.t) }));
+    lineChart($("plotIdx"), $("tipIdx"), [
+      { name: "K-20 (memecoins)", short: "K-20", color: "#0f8a6c", values: S.map((p) => ({ t: p.t, v: p.k20 })) },
+      { name: "S&P 500 (SPYx)", short: "S&P", color: "#3b5bdb", dash: "5 3", values: S.map((p) => ({ t: p.t, v: p.spy })) },
+    ], { base: 100, empty: "Collecting the first points. Kaelis adds one every 30 minutes; the K-20 starts once it has called 5 good memecoins." });
+    lineChart($("plotKiq"), $("tipKiq"), [{ name: "KIQ", short: "KIQ", color: "#0f8a6c", values: S.map((p) => ({ t: p.t, v: p.iq })) }],
+      { step: true, yFmt: (v) => v.toFixed(0), empty: "KIQ lists after Kaelis has 10 calls checked against what happened (7 days after its first calls)." });
+  }
+  fetch("api/markets").then((r) => r.ok ? r.json() : Promise.reject(r.status)).then((j) => {
+    data = j; render();
+    const last = j.series[j.series.length - 1];
+    $("kiqNow").textContent = last ? `Generation G${last.gen || 0}${last.iq != null ? " · KIQ " + last.iq : " · KIQ soon"}` : "";
+    $("tblIdx").querySelector("tbody").innerHTML = j.series.slice().reverse().map((p) => `<tr><td class="m">${fmtT(p.t)}</td><td class="m">${p.k20 ?? "–"}</td><td class="m">${p.spy ?? "–"}</td><td class="m">${p.spyUsd ? "$" + p.spyUsd : "–"}</td></tr>`).join("") || `<tr><td colspan="4" class="note">No points yet.</td></tr>`;
+    if (j.basket) { $("basket").innerHTML = j.basket.members.map((m) => `<a href="scan.html?mint=${esc(m.mint)}">$${esc((m.symbol || m.mint.slice(0, 4)).slice(0, 12))}<b class="g ${cls(m.grade)}">${esc(m.grade)}</b></a>`).join(""); $("basketNote").insertAdjacentHTML("beforeend", ` This week (${esc(j.basket.week)}):`); }
+    $("stocks").innerHTML = j.stocks.map((s) => { const c = s.call; return `<tr><td class="m"><b>${esc(s.sym)}</b></td><td>${esc(s.name)}</td>
+      <td>${c ? `<span class="g ${cls(c.grade)}">${esc(c.grade)}</span>` : '<span class="note">next patrol</span>'}</td><td class="m">${c ? c.score : "–"}</td>
+      <td><a class="tag" href="scan.html?mint=${esc(s.mint)}">Scan →</a></td></tr>`; }).join("");
+    $("fakes").innerHTML = j.lookalikes.length ? j.lookalikes.slice(0, 30).map((f) => `<tr><td class="m">${esc(f.copies)}</td><td><span class="flag">CC</span> ${esc(f.name || "unnamed")} <span class="note m">${esc(f.mint.slice(0, 4))}…${esc(f.mint.slice(-4))}</span></td><td class="m">${usd(f.liq)}</td><td><a class="tag" href="scan.html?mint=${esc(f.mint)}">Scan →</a></td></tr>`).join("")
+      : `<tr><td colspan="4" class="note">${j.lookalikesAt ? "None found today." : "First check runs with the next patrol."}</td></tr>`;
+  }).catch(() => {
+    ["plotIdx", "plotKiq"].forEach((id) => { const e = document.createElement("div"); e.className = "empty"; e.textContent = "Markets run on the Kaelis server. Not available in this preview."; $(id).appendChild(e); });
+    $("stocks").innerHTML = $("fakes").innerHTML = `<tr><td colspan="5" class="note">Needs the Kaelis server.</td></tr>`;
+  });
+  let rt; addEventListener("resize", () => { clearTimeout(rt); rt = setTimeout(render, 150); });
+})();
+</script>
+</html>

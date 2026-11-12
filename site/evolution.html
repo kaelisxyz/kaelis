@@ -1,0 +1,217 @@
+<!doctype html>
+<html lang="en">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Kaelis Evolution</title>
+<meta name="description" content="Kaelis evolves in public. Its rules are a genome that mutates every night, and a new generation is adopted only when it proves better on calls it never trained on.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter+Tight:wght@400;500;600&family=JetBrains+Mono:wght@400;500;700&display=swap">
+<style>
+  /* Evolution: the Genome, the family tree of generations and the Patrol. Paper look like the Ledger. */
+  :root {
+    --paper: #ffffff; --ink: #0b0b0c; --mute: #7a7a7a; --rule: #d6d6d6; --grid: rgba(0,0,0,.06); --tint: #f4f4f1;
+    --ok: #2f8f5b; --warn: #c88a12; --bad: #c4452c; --mint: #59e7ca;
+    --f-sans: "Inter Tight", "Helvetica Neue", Arial, system-ui, sans-serif;
+    --f-mono: "JetBrains Mono", ui-monospace, Menlo, monospace;
+    --gut: max(16px, env(safe-area-inset-left, 0px));
+    color-scheme: light;
+  }
+  * { box-sizing: border-box; }
+  html, body { background: var(--paper); color: var(--ink); }
+  body { margin: 0; font-family: var(--f-sans); font-size: 17px; line-height: 1.5;
+    background-image: linear-gradient(var(--grid) 1px, transparent 1px), linear-gradient(90deg, var(--grid) 1px, transparent 1px);
+    background-size: 100% 240px, 25% 100%; }
+  a { color: inherit; }
+  .tag { font-family: var(--f-mono); font-size: 11px; letter-spacing: .1em; text-transform: uppercase; }
+  .wrap { max-width: 1180px; margin: 0 auto; padding: 0 var(--gut); }
+  header { position: sticky; top: 0; z-index: 5; background: rgba(255,255,255,.92); backdrop-filter: blur(6px); border-bottom: 1px solid var(--rule); }
+  header .wrap { display: flex; align-items: center; justify-content: space-between; gap: 12px; height: 60px; }
+  .logo { display: flex; align-items: baseline; gap: 10px; text-decoration: none; font-weight: 600; letter-spacing: .14em; font-size: 15px; }
+  .mark { display: flex; } .mark i { font-style: normal; }
+  .mark i:nth-child(even) { color: var(--paper); -webkit-text-stroke: 1px var(--ink); paint-order: stroke fill; }
+  nav { display: flex; gap: 8px; }
+  .pill { display: inline-flex; align-items: center; border: 1px solid var(--ink); border-radius: 999px; padding: 8px 14px; text-decoration: none; background: var(--ink); color: var(--paper); }
+  .pill.ghost { background: var(--paper); color: var(--ink); }
+  section { padding: 56px 0; border-bottom: 1px solid var(--rule); }
+  .label { display: inline-block; background: var(--ink); color: var(--paper); padding: 6px 10px; }
+  h1 { font-size: clamp(44px, 8vw, 112px); line-height: .92; letter-spacing: -.035em; font-weight: 500; margin: 18px 0 20px; }
+  h2 { font-size: clamp(28px, 4vw, 44px); line-height: 1; letter-spacing: -.03em; font-weight: 500; margin: 8px 0 18px; }
+  .lead { font-size: clamp(18px, 2vw, 23px); line-height: 1.35; max-width: 46ch; margin: 0 0 22px; }
+  .note { font-size: 14px; color: var(--mute); max-width: 72ch; }
+
+  .now { display: grid; grid-template-columns: 1.1fr 1fr 1fr 1fr; border-top: 1px solid var(--ink); border-left: 1px solid var(--ink); }
+  .now > div { padding: 16px 18px; border-right: 1px solid var(--ink); border-bottom: 1px solid var(--ink); background: var(--paper); }
+  .now span { display: block; font-family: var(--f-mono); font-size: 10.5px; letter-spacing: .1em; text-transform: uppercase; color: var(--mute); }
+  .now b { display: block; font-size: 40px; font-weight: 500; letter-spacing: -.03em; font-variant-numeric: tabular-nums; line-height: 1.1; margin-top: 6px; }
+  .now .gen { background: var(--ink); color: var(--paper); }
+  .now .gen span, .now .gen small { color: #a9a9a9; }
+  .now .gen b { font-size: 64px; font-family: var(--f-mono); letter-spacing: -.02em; }
+  .now small { display: block; font-family: var(--f-mono); font-size: 11px; color: var(--mute); }
+  @media (max-width: 860px) { .now { grid-template-columns: 1fr 1fr; } .now .gen { grid-column: 1 / -1; } }
+  .progress { height: 8px; border: 1px solid var(--ink); margin-top: 10px; background: var(--paper); }
+  .progress i { display: block; height: 100%; background: var(--mint); width: 0; }
+
+  .dna { display: grid; gap: 0; border-top: 1px solid var(--ink); }
+  .dna .row { display: grid; grid-template-columns: 11rem 1fr 4.5rem; gap: 14px; align-items: center; padding: 10px 0; border-bottom: 1px solid var(--rule); }
+  .dna .row span { font-family: var(--f-mono); font-size: 11px; letter-spacing: .08em; text-transform: uppercase; }
+  .dna .bar { height: 14px; background: var(--tint); position: relative; }
+  .dna .bar i { position: absolute; inset: 0 auto 0 0; background: var(--ink); }
+  .dna .bar s { position: absolute; top: -4px; bottom: -4px; width: 2px; background: var(--mint); }
+  .dna .row em { font-style: normal; font-family: var(--f-mono); font-size: 13px; text-align: right; font-variant-numeric: tabular-nums; }
+  .dna .row.lock span::after { content: " · locked ≥15"; color: var(--mute); }
+  .legend { display: flex; gap: 18px; flex-wrap: wrap; font-family: var(--f-mono); font-size: 11px; color: var(--mute); margin-top: 10px; }
+  .legend i { display: inline-block; width: 10px; height: 10px; vertical-align: -1px; margin-right: 6px; }
+
+  .loop { display: grid; grid-template-columns: repeat(4, 1fr); border-top: 1px solid var(--ink); border-left: 1px solid var(--ink); }
+  .loop div { padding: 18px; border-right: 1px solid var(--ink); border-bottom: 1px solid var(--ink); background: var(--paper); }
+  .loop b { display: block; font-size: 22px; font-weight: 500; margin: 8px 0 4px; }
+  .loop p { margin: 0; font-size: 15px; }
+  @media (max-width: 860px) { .loop { grid-template-columns: 1fr 1fr; } }
+  @media (max-width: 480px) { .loop { grid-template-columns: 1fr; } }
+
+  .tree { list-style: none; margin: 0; padding: 0 0 0 22px; border-left: 2px solid var(--ink); }
+  .tree li { position: relative; padding: 4px 0 22px 18px; }
+  .tree li::before { content: ""; position: absolute; left: -31px; top: 6px; width: 16px; height: 16px; border-radius: 50%; background: var(--paper); border: 2px solid var(--ink); }
+  .tree li.cur::before { background: var(--mint); box-shadow: 0 0 10px var(--mint); }
+  .tree .h { display: flex; flex-wrap: wrap; gap: 6px 16px; align-items: baseline; }
+  .tree .h b { font-family: var(--f-mono); font-size: 20px; font-weight: 500; }
+  .tree .h span { font-family: var(--f-mono); font-size: 12px; color: var(--mute); }
+  .tree .iq { font-family: var(--f-mono); font-size: 12px; border: 1px solid var(--ink); padding: 2px 7px; }
+  .tree ul { margin: 6px 0 0; padding-left: 18px; font-size: 14.5px; }
+  .tree code { font-family: var(--f-mono); font-size: 11.5px; color: var(--mute); word-break: break-all; }
+
+  .runs { width: 100%; border-collapse: collapse; font-size: 14px; background: var(--paper); }
+  .runs th, .runs td { text-align: left; padding: 9px 8px; border-bottom: 1px solid var(--rule); }
+  .runs th { font-family: var(--f-mono); font-size: 10px; letter-spacing: .1em; text-transform: uppercase; color: var(--mute); font-weight: 400; border-bottom-color: var(--ink); }
+  .runs td.m { font-family: var(--f-mono); font-size: 12.5px; white-space: nowrap; }
+  .kv { display: grid; grid-template-columns: 11rem 1fr; gap: 12px; padding: 10px 0; border-bottom: 1px dashed var(--rule); font-size: 15px; }
+  .kv span:first-child { font-family: var(--f-mono); font-size: 10.5px; letter-spacing: .08em; text-transform: uppercase; color: var(--mute); padding-top: 3px; }
+  @media (max-width: 640px) { .kv, .dna .row { grid-template-columns: 1fr; gap: 4px; } .dna .row em { text-align: left; } nav .ghost { display: none; } }
+  .live { display: inline-flex; align-items: center; gap: 8px; border: 1px dashed var(--ink); padding: 8px 12px; background: var(--paper); font-family: var(--f-mono); font-size: 12px; }
+  .live i { width: 8px; height: 8px; border-radius: 50%; background: var(--mute); }
+  .live.on i { background: var(--mint); box-shadow: 0 0 8px var(--mint); animation: blink 1.6s infinite; }
+  @keyframes blink { 50% { opacity: .35; } }
+  @media (prefers-reduced-motion: reduce) { .live.on i { animation: none; } }
+  footer { padding: 32px 0 56px; }
+  footer .wrap { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 12px; }
+</style>
+
+<header>
+  <div class="wrap">
+    <a class="logo" href="index.html"><b class="mark" aria-label="KAELIS"><i>K</i><i>A</i><i>E</i><i>L</i><i>I</i><i>S</i></b><span class="tag" style="color:var(--mute)">Evolution</span></a>
+    <nav><a class="pill ghost" href="filings.html">Filings</a><a class="pill ghost" href="markets.html">Markets</a><a class="pill ghost" href="ledger.html">Ledger</a><a class="pill" href="scan.html">Scan a token</a></nav>
+  </div>
+</header>
+
+<main>
+  <section>
+    <div class="wrap">
+      <span class="tag label">[ Kaelis Genome · evolving ]</span>
+      <h1>It evolves in public.</h1>
+      <p class="lead">Kaelis's rules are a genome. Every night it breeds mutants, tests them on calls they never saw, and adopts a new generation only if it is measurably smarter.</p>
+      <div class="live" id="live"><i></i><span id="liveText">Checking the Patrol…</span></div>
+    </div>
+  </section>
+
+  <section>
+    <div class="wrap">
+      <div class="now" aria-live="polite">
+        <div class="gen"><span>Current generation</span><b id="gen">–</b><small id="genNote">–</small></div>
+        <div><span>Calls on the Ledger</span><b id="calls">–</b><small id="callsNote">–</small></div>
+        <div><span>Ready to learn from</span><b id="usable">–</b><small id="usableNote">–</small><div class="progress"><i id="prog"></i></div></div>
+        <div><span>Next evolution run</span><b id="next" style="font-size:26px">–</b><small id="lastRun">–</small></div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <div class="wrap">
+      <span class="tag">The loop</span>
+      <h2>Patrol, call, check, evolve.</h2>
+      <div class="loop">
+        <div><span class="tag">01 · Patrol</span><b>Scan on its own</b><p>Every 30 minutes Kaelis scans new Solana tokens by itself. Nobody has to ask.</p></div>
+        <div><span class="tag">02 · Call</span><b>Seal a prediction</b><p>Each scan becomes a hash-chained call on the <a href="ledger.html">Ledger</a>, with every check value sealed in.</p></div>
+        <div><span class="tag">03 · Check</span><b>See what happened</b><p>Seven days later it reads the pools again: rugged or held.</p></div>
+        <div><span class="tag">04 · Evolve</span><b>Breed a better rule set</b><p>Mutants are scored on calls they never trained on. Only a winner becomes the next generation.</p></div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <div class="wrap">
+      <span class="tag">The genome</span>
+      <h2>Current DNA.</h2>
+      <p class="note" style="margin:0 0 14px">How much each check counts in the score right now. The green tick marks generation 0, the hand-written rules.</p>
+      <div class="dna" id="dna"></div>
+      <div class="legend"><span><i style="background:var(--ink)"></i>Current generation</span><span><i style="background:var(--mint)"></i>Generation 0</span><span id="floor"></span></div>
+    </div>
+  </section>
+
+  <section>
+    <div class="wrap">
+      <span class="tag">Family tree</span>
+      <h2>Every generation, on record.</h2>
+      <ul class="tree" id="tree"></ul>
+      <h3 class="tag" style="margin:28px 0 8px">Latest evolution runs</h3>
+      <table class="runs"><thead><tr><th>When</th><th>Calls</th><th>Result</th><th>IQ on holdout</th></tr></thead><tbody id="runs"></tbody></table>
+    </div>
+  </section>
+
+  <section>
+    <div class="wrap">
+      <span class="tag">Guardrails</span>
+      <h2>Smarter, never sneakier.</h2>
+      <div class="kv"><span>Holdout</span><span>About 30% of tokens are set aside forever by a fixed hash. A new generation is judged only on those, so it can't just memorise the past.</span></div>
+      <div class="kv"><span>Bounds</span><span>Each weight stays between 2 and 40, the weights always add up to 100, and the sell test can never drop below 15.</span></div>
+      <div class="kv"><span>Proof</span><span>Each generation records its parent, its changes and its before and after IQ, and is hash-chained to the one before.</span></div>
+      <div class="kv"><span>Minimum data</span><span>No evolution until there are enough resolved calls. Until then, generation 0 runs.</span></div>
+      <div class="kv"><span>Not advice</span><span>A smarter rule set is still a risk estimate, never a buy or sell signal.</span></div>
+    </div>
+  </section>
+</main>
+
+<footer>
+  <div class="wrap tag">
+    <span>Kaelis Evolution · Not financial advice</span>
+    <span style="display:flex;gap:16px"><a href="ledger.html">Ledger →</a><a href="docs.html">Docs →</a></span>
+  </div>
+</footer>
+
+<script>
+(function () {
+  const $ = (id) => document.getElementById(id);
+  const esc = (s) => String(s == null ? "" : s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+  const when = (iso) => { if (!iso) return "–"; const d = new Date(iso); return d.toISOString().slice(0, 16).replace("T", " ") + " UTC"; };
+  const rel = (iso) => { if (!iso) return "–"; const m = Math.round((Date.parse(iso) - Date.now()) / 60000); if (m <= 0) return "due now"; if (m < 90) return "in " + m + " min"; return "in " + Math.round(m / 60) + " h"; };
+  const NAMES = { sell: "Sell test", liquidity: "Liquidity", holders: "Top 10 holders", lp: "LP locked", mint: "Mint authority", extensions: "Extensions", age: "Pool age", freeze: "Freeze authority" };
+  const GEN0 = { sell: 25, liquidity: 15, holders: 15, lp: 15, mint: 10, extensions: 10, age: 5, freeze: 5 };
+  function load() {
+    fetch("api/genome").then((r) => r.ok ? r.json() : Promise.reject(r.status)).then((j) => {
+      const p = j.patrol || {};
+      $("live").classList.toggle("on", !!p.on);
+      $("liveText").textContent = p.on ? `Patrol on · ${p.scannedToday || 0} tokens scanned today · ${p.running ? "scanning right now" : "next round " + rel(p.nextRound)}` : "Patrol is off on this server";
+      $("gen").textContent = "G" + j.gen;
+      $("genNote").textContent = j.gen === 0 ? "The hand-written rules" : `Adopted ${when(j.history[0].at)}`;
+      $("calls").textContent = j.ledger.calls; $("callsNote").textContent = `${j.ledger.byPatrol} by Patrol · ${j.ledger.open} open`;
+      $("usable").textContent = j.data.usable; $("usableNote").textContent = `of ${j.data.needed} resolved calls needed`;
+      $("prog").style.width = Math.min(100, (j.data.usable / j.data.needed) * 100) + "%";
+      $("next").textContent = p.running && rel(p.nextEvolve) === "due now" ? "after this round" : rel(p.nextEvolve); $("lastRun").textContent = j.runs[0] ? "Last run " + when(j.runs[0].at) : "No run yet";
+      const w = j.genome.weights;
+      $("dna").innerHTML = Object.keys(NAMES).map((id) => `<div class="row${id === "sell" ? " lock" : ""}"><span>${NAMES[id]}</span>
+        <div class="bar"><i style="width:${(w[id] / 40) * 100}%"></i><s style="left:${(GEN0[id] / 40) * 100}%"></s></div><em>${w[id]}</em></div>`).join("");
+      $("floor").textContent = `Hard-flag floor ${j.genome.hardFloor} · rug curve a ${j.genome.curve.a}, b ${j.genome.curve.b}, k ${j.genome.curve.k}`;
+      $("tree").innerHTML = j.history.map((h, i) => `<li class="${i === 0 ? "cur" : ""}"><div class="h"><b>G${h.gen}</b>
+        ${h.iqAfter != null ? `<span class="iq">IQ ${h.iqBefore} → ${h.iqAfter}</span>` : ""}<span>${h.at ? when(h.at) : "the starting point"}</span>${h.n ? `<span>learned from ${h.n} calls</span>` : ""}</div>
+        ${h.changes && h.changes.length ? `<ul>${h.changes.map((c) => `<li>${esc(c)}</li>`).join("")}</ul>` : `<p class="note" style="margin:4px 0 0">${esc(h.note || "")}</p>`}
+        <code>${esc(h.hash)}</code></li>`).join("");
+      $("runs").innerHTML = j.runs.length ? j.runs.map((r) => `<tr><td class="m">${when(r.at)}</td><td class="m">${r.n}</td><td>${r.adopted ? "<b>New generation</b>" : esc(r.reason)}</td><td class="m">${r.iqBefore != null ? r.iqBefore + " → " + r.iqAfter : "–"}</td></tr>`).join("")
+        : `<tr><td colspan="4" class="note">No evolution run yet. The first one happens after the Patrol's first round.</td></tr>`;
+    }).catch(() => {
+      $("liveText").textContent = "Evolution runs on the Kaelis server. Not available in this preview.";
+    });
+  }
+  load(); setInterval(load, 60000);
+})();
+</script>
+</html>

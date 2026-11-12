@@ -3,7 +3,7 @@
 - Nama project/coin: **Kaelis** ($KAEL) — nama sementara, bisa diganti.
 - Meta: AI agents (target global, website bahasa Inggris).
 - Builder: solo dev, bagian "Builder" menggantikan "Team".
-- GitHub: terhubung (reppurn/repurrn, reppurn/reppurn). Jangan push dulu sampai diminta.
+- GitHub & Railway: akun khusus Kaelis (mis. kaelisxyz), token di `.env.personal`. Push hanya lewat `scripts/push.sh`. Tidak ada hubungan dengan akun reppurn.
 
 ## Lore gabungan: Genesis Forge + Signal from the Mempool
 Dunia digital awalnya gelap dan kacau. Para developer ("Forgers") menempa blok demi blok

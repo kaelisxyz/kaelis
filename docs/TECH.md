@@ -1,6 +1,6 @@
 # Kaelis technology (v0.4 spec)
 
-Status: the scanner (rules v1.1.0) and the holder tower are built and run on real Solana data. Proof-of-Build and Forge City still run on example data. Nothing here is financial advice. Kaelis reports risk. It never predicts or promises profit.
+Status: the scanner (rules v1.1.1) and the holder tower are built and run on real Solana data. Proof-of-Build and Forge City still run on example data. Nothing here is financial advice. Kaelis reports risk. It never predicts or promises profit.
 
 ## 1. Principles
 
@@ -25,7 +25,7 @@ GitHub API / webhooks â”˜                                                     â”
 | 03 Score | Weighted sum of signals, plus hard flags | Rule set is versioned; every score records the version |
 | 04 Explain | LLM writes the summary from the evidence | Read-only; output is checked to contain no numbers that differ from the score |
 
-## 3. Scam scanner (live, rules v1.1.0)
+## 3. Scam scanner (live, rules v1.1.1)
 
 Code: `site/js/kaelis-core.js`. The same file runs in the browser (`scan.html`) and in the API (`api/scan.js`), so both always give the same score.
 

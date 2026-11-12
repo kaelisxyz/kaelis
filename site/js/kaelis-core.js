@@ -13,7 +13,16 @@
 })(typeof self !== "undefined" ? self : this, function () {
   "use strict";
 
-  const RULES_VERSION = "1.1.0";
+  const RULES_VERSION = "1.3.0";
+  // Official mints of tokenized stocks Kaelis knows (xStocks by Backed). A token that uses one of these
+  // tickers but is not the official mint is an impersonation: a hard flag, whatever else it looks like.
+  const KNOWN_ASSETS = {
+    SPYX: { mint: "XsoCS1TfEyfFhfvj8EtZ528L3CaKBDBRqRapnBbDF2W", name: "S&P 500 xStock" },
+    QQQX: { mint: "Xs8S1uUs1zvS2p7iwtsG3b6fkhpvmwz4GYU3gWAmWHZ", name: "Nasdaq 100 xStock" },
+    NVDAX: { mint: "Xsc9qvGR1efVDFGLrVsmkzv3qi45LTBjeUKSPmx9qEh", name: "NVIDIA xStock" },
+    TSLAX: { mint: "XsDoVfqeBukxuZHWhdvWHBhgEHjGNst4MLodqsJHzoB", name: "Tesla xStock" },
+    AAPLX: { mint: "XsbEhLAtcf6HdfpFZ5xEMdqW8nfAvcsP5bdudRLJzJp", name: "Apple xStock" },
+  };
   const SOL_MINT = "So11111111111111111111111111111111111111112";
   const SYSTEM = "11111111111111111111111111111111";
   const TOKEN_2022 = "TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb";
@@ -78,13 +87,22 @@
     try { buy = await c.json(`${base}&inputMint=${SOL_MINT}&outputMint=${mint}&amount=${lamports}`); }
     catch (e) { return { buyRoute: false, error: e.body && (e.body.errorCode || e.body.error) }; }
     if (!buy || !buy.outAmount || buy.outAmount === "0") return { buyRoute: false };
-    try {
-      const sell = await c.json(`${base}&inputMint=${mint}&outputMint=${SOL_MINT}&amount=${buy.outAmount}`);
-      const back = +sell.outAmount;
-      return { buyRoute: true, sellRoute: back > 0, loss: 1 - back / lamports, buyImpact: +buy.priceImpactPct || 0, sellImpact: +sell.priceImpactPct || 0 };
-    } catch (e) {
-      return { buyRoute: true, sellRoute: false, error: e.body && (e.body.errorCode || e.body.error) };
+    // Only a definite answer from Jupiter counts as "can't sell". Timeouts, rate limits (429) and
+    // server errors (5xx) are retried once, then reported as unknown so a busy API never brands a token a honeypot.
+    const transient = (e) => !e.status || e.status === 429 || e.status >= 500;
+    let last;
+    for (let attempt = 0; attempt < 2; attempt++) {
+      try {
+        const sell = await c.json(`${base}&inputMint=${mint}&outputMint=${SOL_MINT}&amount=${buy.outAmount}`);
+        const back = +sell.outAmount;
+        return { buyRoute: true, sellRoute: back > 0, loss: 1 - back / lamports, buyImpact: +buy.priceImpactPct || 0, sellImpact: +sell.priceImpactPct || 0 };
+      } catch (e) {
+        last = e;
+        if (!transient(e)) return { buyRoute: true, sellRoute: false, error: e.body && (e.body.errorCode || e.body.error) };
+        if (attempt === 0) await new Promise((r) => setTimeout(r, 800));
+      }
     }
+    return { buyRoute: true, sellRoute: null, unsure: true, error: last && (last.status ? "HTTP " + last.status : "network") };
   }
 
   async function gather(mint, opts) {
@@ -151,8 +169,10 @@
     return { sev, found };
   }
 
-  function evaluate(d) {
-    const W = WEIGHTS, checks = [];
+  // genome (optional): the evolved rule set from the server, { gen, weights, hardFloor }. Gen 0 = WEIGHTS + 85.
+  function evaluate(d, genome) {
+    const W = (genome && genome.weights) || WEIGHTS, checks = [];
+    const FLOOR = (genome && genome.hardFloor) || 85;
     const add = (id, name, weight, sev, detail, extra) => checks.push(Object.assign({ id, name, weight, sev, detail }, extra || {}));
     const pairs = d.pairs;
 
@@ -171,7 +191,10 @@
       const sev = clamp((loss - 0.1) / 0.4, 0, 1);
       add("sell", "Sell test", W.sell, Math.max(sev, noSellsHistory ? 1 : 0), `Buying with 0.1 SOL and selling straight back returns ${pct(1 - loss)} of it (${pct(loss)} lost to fees, tax and price impact).` + (noSellsHistory ? ` Also ${buys} buys and 0 sells in 24h.` : ""), { hard: loss >= 0.5 || noSellsHistory });
     } else if (buys != null) {
-      add("sell", "Sell test", W.sell, noSellsHistory ? 1 : 0, `No swap route to test, so we used trade history: ${buys} buys and ${sells} sells in 24h.`, { hard: noSellsHistory });
+      const why = j && j.unsure ? "Jupiter didn't answer the sell quote in time" : "No swap route to test";
+      add("sell", "Sell test", W.sell, noSellsHistory ? 1 : 0, `${why}, so we used trade history: ${buys} buys and ${sells} sells in 24h.`, { hard: noSellsHistory });
+    } else if (j && j.unsure) {
+      add("sell", "Sell test", W.sell, null, "Jupiter didn't answer the sell quote in time and there is no trade history, so selling can't be tested right now.");
     } else add("sell", "Sell test", W.sell, null, "No swap route and no trading pool found, so selling can't be tested.");
 
     // 2 liquidity
@@ -214,21 +237,43 @@
       } else add("age", "Pool age", W.age, null, "Pool creation time unknown.");
     } else add("age", "Pool age", W.age, null, "No trading pool found.");
 
+    // impersonation: a known stock ticker on a mint that is not the official one (weight 0, hard flag)
+    const own = (pairs || []).filter((p) => p && p.baseToken && p.baseToken.address === d.mint).sort((a, b) => ((b.liquidity && b.liquidity.usd) || 0) - ((a.liquidity && a.liquidity.usd) || 0))[0];
+    const tick = own ? String(own.baseToken.symbol || "").toUpperCase() : "";
+    const known = KNOWN_ASSETS[tick];
+    if (known && known.mint !== d.mint) add("impersonation", "Impersonation", 0, 1, `Uses the ${own.baseToken.symbol} ticker but is not the official ${known.name} (official mint ${known.mint.slice(0, 4)}…${known.mint.slice(-4)}). Treat it as a copy.`, { hard: true });
+    else if (known) add("impersonation", "Official asset", 0, 0, `The official ${known.name}. Issuer controls (mint, freeze, permanent delegate) are part of a regulated tokenized stock, and still a risk to know.`);
+
     // 8 freeze authority
     const fa = d.mintInfo.freezeAuthority;
     add("freeze", "Freeze authority", W.freeze, fa ? 1 : 0, fa ? "Set. The authority can freeze holders' tokens." : "Revoked. No one can freeze your tokens.");
 
     let score = checks.reduce((t, c) => t + (c.sev == null ? 0 : c.weight * c.sev), 0);
     const hard = checks.some((c) => c.hard);
-    if (hard) score = Math.max(85, score);
+    if (hard) score = Math.max(FLOOR, score);
     score = Math.round(Math.min(100, score));
     const band = score >= 70 ? "dangerous" : score >= 40 ? "suspicious" : "low";
     const extra = Array.isArray(r.risks) ? r.risks.map((k) => ({ name: k.name, level: k.level, description: k.description })) : [];
-    return { score, band, hard, checks, unavailable: checks.filter((c) => c.sev == null).length, rugcheckRisks: extra, rulesVersion: RULES_VERSION };
+    const unavailable = checks.filter((c) => c.sev == null).length;
+    return { score, band, grade: grade(score, hard, unavailable), hard, gen: (genome && genome.gen) || 0, checks, unavailable: checks.filter((c) => c.sev == null).length, rugcheckRisks: extra, rulesVersion: RULES_VERSION };
+  }
+
+  // Kaelis Rating: the score as a letter grade, like a credit rating. It grades risk, it is not buy or sell advice.
+  // D is never given by a scan: it is only set when the Ledger confirms a rug after the fact.
+  const GRADES = [[10, "AAA"], [20, "AA"], [30, "A"], [40, "BBB"], [55, "BB"], [70, "B"], [85, "CCC"], [101, "CC"]];
+  const GRADE_TEXT = { AAA: "No known red flags", AA: "Very low risk flags", A: "Low risk flags", BBB: "Some flags, still low", BB: "Speculative", B: "Highly speculative", CCC: "High risk", CC: "Very high risk", D: "Rugged (confirmed)" };
+  // a check we could not read caps the grade at A: the top grades need complete data
+  function grade(score, hard, unavailable) {
+    if (hard) return "CC";
+    let g = "CC";
+    for (const [lim, x] of GRADES) if (score < lim) { g = x; break; }
+    if (unavailable && (g === "AAA" || g === "AA")) g = "A";
+    return g;
   }
 
   const SAY = {
     sell: "Selling back is blocked or costs most of the money, which is how honeypots work.",
+    impersonation: "It copies the ticker of a real tokenized stock but is not the official token.",
     liquidity: "There is very little money in the pools, so prices can swing hard and exits can be costly.",
     holders: "A few wallets hold a large share of the supply.",
     lp: "Most pool tokens are not locked, so liquidity can be pulled.",
@@ -304,5 +349,5 @@
     return { wallets: out, clusters, fresh: fresh.length, linkedShare, freshShare, checked, level, lines };
   }
 
-  return { RULES_VERSION, WEIGHTS, isAddress, gather, evaluate, summary, pulse, compare, linkWallets, usd, pct };
+  return { RULES_VERSION, WEIGHTS, KNOWN_ASSETS, GRADE_TEXT, grade, isAddress, gather, evaluate, summary, pulse, compare, linkWallets, usd, pct };
 });

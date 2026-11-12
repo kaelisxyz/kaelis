@@ -11,9 +11,16 @@ async function post(url, method, params) {
   return j.result;
 }
 
+// try each RPC in turn: some public nodes refuse indexed calls like getTokenLargestAccounts
+async function rpc(method, params) {
+  let last;
+  for (const url of rpcUrls()) { try { return await post(url, method, params); } catch (e) { last = e; } }
+  throw last || new Error("RPC unavailable");
+}
+
 async function allHolders(mint) {
   const helius = process.env.HELIUS_RPC_URL;
-  const supplyRes = await post(rpcUrls()[0], "getTokenSupply", [mint]);
+  const supplyRes = await rpc("getTokenSupply", [mint]);
   const decimals = supplyRes.value.decimals, supply = +supplyRes.value.uiAmountString;
   if (helius) {
     const owners = new Map();
@@ -26,7 +33,7 @@ async function allHolders(mint) {
     const holders = [...owners].filter(([, v]) => v > 0).map(([owner, amount]) => ({ owner, amount, share: supply ? amount / supply : 0 })).sort((a, b) => b.amount - a.amount);
     return { mint, supply, count: holders.length, complete: true, holders: holders.slice(0, 1000), source: "helius" };
   }
-  const largest = await post(rpcUrls()[0], "getTokenLargestAccounts", [mint]);
+  const largest = await rpc("getTokenLargestAccounts", [mint]);
   const holders = largest.value.map((a) => ({ account: a.address, amount: +a.uiAmountString, share: supply ? +a.uiAmountString / supply : 0 }));
   return { mint, supply, count: null, complete: false, holders, source: "public-rpc" };
 }
@@ -36,5 +43,9 @@ module.exports = async (req, res) => {
   if (!mint) return send(res, 404, { error: "No mint configured yet. Set KAEL_MINT after launch." });
   if (!K.isAddress(mint)) return send(res, 400, { error: "Invalid mint address." });
   try { send(res, 200, await cached("holders:" + mint, 120000, () => allHolders(mint)), 120); }
-  catch (e) { send(res, 502, { error: e.message || "Holder lookup failed." }); }
+  catch (e) {
+    // public Solana RPCs refuse or rate-limit holder lists; only a private RPC (Helius) answers reliably
+    if (!process.env.HELIUS_RPC_URL) return send(res, 503, { error: "Holder lists need a free Helius key on the server (HELIUS_RPC_URL). Public Solana RPCs refuse this call.", needsKey: "HELIUS_RPC_URL" });
+    send(res, 502, { error: e.message || "Holder lookup failed." });
+  }
 };

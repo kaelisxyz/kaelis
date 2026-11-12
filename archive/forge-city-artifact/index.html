@@ -1,0 +1,1353 @@
+<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#fff;color:#000}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
+<title>Kaelis Forge City</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@500;700&family=IBM+Plex+Sans:wght@400;500&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+  /* Layout: full-screen 3D city, HUD in the corners (stats top, scan bottom-left), detail panel slides in from the right (bottom sheet on phones). Single dark look by choice. */
+  :root {
+    --void: #08070c;
+    --ink: #ece6dc;
+    --dim: #9a93a3;
+    --ember: #ff8a3d;
+    --signal: #8fe3ff;
+    --warn: #ffc24a;
+    --danger: #ff4d5e;
+    --panel: rgba(14, 12, 20, 0.86);
+    --line: rgba(236, 230, 220, 0.14);
+    --f-display: "Chakra Petch", "Arial Narrow", system-ui, sans-serif;
+    --f-body: "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+    --f-mono: "IBM Plex Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
+    color-scheme: dark;
+  }
+  html, body { height: 100%; background: var(--void); color: var(--ink); overflow: hidden; }
+  body { font-family: var(--f-body); font-size: 14px; line-height: 1.5; }
+  #city { position: fixed; inset: 0; width: 100%; height: 100%; display: block; touch-action: none; }
+
+  .hud { position: fixed; z-index: 2; pointer-events: none; }
+  .hud > * { pointer-events: auto; }
+  .top { top: calc(14px + env(safe-area-inset-top, 0px)); left: max(16px, env(safe-area-inset-left, 0px)); right: max(16px, env(safe-area-inset-right, 0px));
+    display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; flex-wrap: wrap; }
+  .brand { display: grid; gap: 2px; }
+  .brand h1 { margin: 0; font-family: var(--f-display); font-size: 26px; line-height: 1; letter-spacing: 0.02em; }
+  .brand h1 span { color: var(--ember); }
+  .tag { font-family: var(--f-mono); font-size: 11px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--dim); }
+  .stats { display: flex; gap: 8px; flex-wrap: wrap; }
+  .stat { background: var(--panel); border: 1px solid var(--line); border-radius: 4px; padding: 8px 12px; display: grid; gap: 0; min-width: 96px; }
+  .stat b { font-family: var(--f-display); font-size: 20px; font-variant-numeric: tabular-nums; }
+  .stat.e b { color: var(--ember); } .stat.s b { color: var(--signal); } .stat.d b { color: var(--danger); }
+
+  .scan { left: max(16px, env(safe-area-inset-left, 0px)); bottom: calc(16px + env(safe-area-inset-bottom, 0px));
+    width: min(380px, calc(100% - 32px)); background: var(--panel); border: 1px solid var(--line); border-radius: 4px; padding: 14px; display: grid; gap: 10px;
+    backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); }
+  .scan form { display: flex; gap: 8px; }
+  .scan input { flex: 1; min-width: 0; background: rgba(255,255,255,0.04); border: 1px solid var(--line); border-radius: 3px; color: var(--ink);
+    font-family: var(--f-mono); font-size: 13px; padding: 10px; }
+  .scan input:focus { outline: 1px solid var(--signal); border-color: var(--signal); }
+  .btn { font-family: var(--f-display); font-weight: 700; font-size: 14px; letter-spacing: 0.06em; text-transform: uppercase; cursor: pointer;
+    padding: 10px 14px; border-radius: 3px; border: 1px solid var(--ember); background: var(--ember); color: var(--void); white-space: nowrap; }
+  .btn.ghost { background: transparent; color: var(--ink); border-color: var(--line); }
+  .btn.sig { background: var(--signal); border-color: var(--signal); }
+  .btn.bad { background: transparent; color: var(--danger); border-color: var(--danger); }
+  .btn:disabled { opacity: 0.5; cursor: progress; }
+  .btn:focus-visible, .x:focus-visible { outline: 2px solid var(--signal); outline-offset: 2px; }
+  .log { font-family: var(--f-mono); font-size: 12px; color: var(--dim); min-height: 1.5em; }
+  .chips { display: flex; gap: 6px; flex-wrap: wrap; }
+  .chip { font-family: var(--f-mono); font-size: 11px; padding: 3px 8px; border-radius: 99px; border: 1px solid var(--line); color: var(--dim); background: transparent; cursor: pointer; }
+  .chip:hover { color: var(--ink); border-color: var(--dim); }
+
+  .legend { right: max(16px, env(safe-area-inset-right, 0px)); bottom: calc(16px + env(safe-area-inset-bottom, 0px));
+    background: var(--panel); border: 1px solid var(--line); border-radius: 4px; padding: 10px 12px; display: grid; gap: 4px; font-size: 12px; color: var(--dim); }
+  .legend i { display: inline-block; width: 9px; height: 9px; margin-right: 8px; transform: rotate(45deg); }
+
+  .panel { position: fixed; z-index: 3; top: calc(90px + env(safe-area-inset-top, 0px)); right: max(16px, env(safe-area-inset-right, 0px));
+    width: min(340px, calc(100% - 32px)); max-height: calc(100% - 210px); overflow: auto;
+    background: var(--panel); border: 1px solid var(--line); border-radius: 4px; padding: 18px; display: grid; gap: 12px;
+    backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); }
+  .panel h2 { margin: 0; font-family: var(--f-display); font-size: 24px; line-height: 1.1; overflow-wrap: anywhere; }
+  .panel p { margin: 0; color: var(--dim); }
+  .x { position: absolute; top: 10px; right: 10px; background: none; border: 0; color: var(--dim); font-size: 20px; cursor: pointer; line-height: 1; padding: 4px; }
+  .kv { display: grid; grid-template-columns: 1fr auto; gap: 6px 12px; font-family: var(--f-mono); font-size: 12px; font-variant-numeric: tabular-nums; }
+  .kv span:nth-child(odd) { color: var(--dim); }
+  .score { display: grid; gap: 6px; }
+  .score .bar { height: 6px; background: var(--line); border-radius: 3px; overflow: hidden; }
+  .score .bar i { display: block; height: 100%; }
+  .flags { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
+  .flags li { display: grid; grid-template-columns: 16px 1fr; gap: 6px; font-size: 13px; }
+  .flags li.on { color: var(--ink); } .flags li.off { color: var(--dim); }
+  .flags li.on::before { content: "✕"; color: var(--danger); }
+  .flags li.off::before { content: "✓"; color: var(--signal); }
+  .quote { border-left: 2px solid var(--signal); padding-left: 10px; color: var(--ink) !important; font-style: italic; }
+
+  .panel[hidden], .tip[hidden], .cine[hidden] { display: none; }
+  .cine { position: fixed; z-index: 5; left: 50%; top: 14%; transform: translateX(-50%); pointer-events: none; font-family: var(--f-mono); }
+  .cine-box { display: flex; flex-direction: column; gap: 6px; align-items: center; padding: 10px 18px; border: 1px solid rgba(143,227,255,0.5); background: rgba(8,7,12,0.55); backdrop-filter: blur(6px); }
+  .cine-k { font-size: 11px; letter-spacing: 0.3em; color: var(--signal, #8fe3ff); }
+  .cine-t { font-size: 15px; color: #fff; letter-spacing: 0.04em; }
+  .cine-bar { display: block; width: 220px; height: 2px; background: rgba(255,255,255,0.12); }
+  .cine-bar b { display: block; height: 100%; width: 0; background: #8fe3ff; transition: width 0.1s linear; }
+  .cine.danger .cine-box { border-color: rgba(255,77,94,0.8); animation: cineFlash 0.25s steps(2) 4; }
+  .cine.danger .cine-k, .cine.danger .cine-bar b { color: #ff4d5e; background: #ff4d5e; }
+  .cine.danger .cine-k { background: none; }
+  .cine.ok .cine-box { border-color: rgba(255,138,61,0.8); }
+  .cine.ok .cine-k { color: #ff8a3d; }
+  .cine.ok .cine-bar b { background: #ff8a3d; }
+  @keyframes cineFlash { 50% { background: rgba(255,77,94,0.35); } }
+  .tip { position: fixed; z-index: 4; pointer-events: none; font-family: var(--f-mono); font-size: 12px; background: var(--panel); border: 1px solid var(--line);
+    padding: 4px 8px; border-radius: 3px; transform: translate(12px, 12px); white-space: nowrap; }
+  .dl { position: fixed; z-index: 1; pointer-events: none; font-family: var(--f-mono); font-size: 11px; letter-spacing: 0.16em; text-transform: uppercase;
+    color: var(--dim); transform: translate(-50%, -50%); white-space: nowrap; text-shadow: 0 0 8px var(--void); }
+  .demo { font-family: var(--f-mono); font-size: 11px; color: var(--warn); }
+  .back { font-family: var(--f-mono); font-size: 12px; color: var(--signal); text-decoration: none; margin-top: 4px; }
+  .back:hover { text-decoration: underline; }
+  .back:focus-visible { outline: 2px solid var(--signal); outline-offset: 2px; }
+
+  @media (max-width: 720px) {
+    .stats .stat { min-width: 0; padding: 6px 10px; }
+    .stat b { font-size: 16px; }
+    .legend { display: none; }
+    .panel { top: auto; bottom: calc(16px + env(safe-area-inset-bottom, 0px)); max-height: 55%; }
+  }
+</style>
+
+<canvas id="city" aria-label="3D city of Kaelis builders, scanned tokens and holders"></canvas>
+<div id="labels"></div>
+
+<div class="hud top">
+  <div class="brand">
+    <h1>KAELIS <span>FORGE CITY</span></h1>
+    <span class="tag">Drag to orbit · scroll to zoom · click a building</span>
+    <span class="demo">Demo with example data</span>
+    <a class="back" id="backLink" href="https://claude.ai/artifact/FqrnBmCrMZ6MwTrmTZFFhn" target="_blank" rel="noopener">← Back to the Kaelis story</a>
+  </div>
+  <div class="stats">
+    <div class="stat e"><span class="tag">Builders</span><b id="sBuilders">0</b></div>
+    <div class="stat s"><span class="tag">Holders lit</span><b id="sHolders">0</b></div>
+    <div class="stat"><span class="tag">Tokens scanned</span><b id="sScanned">0</b></div>
+    <div class="stat d"><span class="tag">Rugs caught</span><b id="sRugs">0</b></div>
+    <button class="btn sig" id="holdBtn" type="button">Hold $KAEL</button>
+  </div>
+</div>
+
+<div class="hud scan">
+  <span class="tag">Ask Kaelis to scan a token</span>
+  <form id="scanForm">
+    <input id="scanInput" type="text" placeholder="Token address or ticker" autocomplete="off" aria-label="Token address or ticker">
+    <button class="btn" id="scanBtn" type="submit">Scan</button>
+  </form>
+  <div class="chips">
+    <button class="chip" type="button" data-q="$NEKO">$NEKO</button>
+    <button class="chip" type="button" data-q="$RUGME">$RUGME</button>
+    <button class="chip" type="button" data-q="7xQk...pump">7xQk...pump</button>
+  </div>
+  <div class="log" id="scanLog" role="status"></div>
+</div>
+
+<div class="hud legend" aria-label="Legend">
+  <span><i style="background:var(--ember)"></i>Builder tower (active)</span>
+  <span><i style="background:var(--signal)"></i>Token: low risk</span>
+  <span><i style="background:var(--warn)"></i>Token: suspicious</span>
+  <span><i style="background:var(--danger)"></i>Token: dangerous</span>
+</div>
+
+<aside class="panel" id="panel" hidden aria-live="polite">
+  <button class="x" id="closePanel" type="button" aria-label="Close">×</button>
+  <div id="panelBody"></div>
+</aside>
+<div class="tip" id="tip" hidden></div>
+<div class="cine" id="cine" hidden aria-live="polite"><div class="cine-box"><span class="cine-k" id="cineK">SCANNING</span><span class="cine-t" id="cineText"></span><i class="cine-bar"><b id="cineBar"></b></i></div></div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/shaders/CopyShader.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/shaders/LuminosityHighPassShader.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/postprocessing/EffectComposer.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/postprocessing/RenderPass.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/postprocessing/ShaderPass.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/postprocessing/UnrealBloomPass.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/math/SimplexNoise.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/shaders/SSAOShader.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/postprocessing/SSAOPass.js"></script>
+<script>
+(function () {
+  const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  const $ = (id) => document.getElementById(id);
+  const fmt = (n) => n.toLocaleString("en-US");
+
+  // ---------- Example data ----------
+  const BUILDERS = [
+    { name: "andi-dev", repo: "solana-whale-alert", commits: 15, floors: 11, kael: 500, active: true },
+    { name: "rara.sol", repo: "anchor-escrow-kit", commits: 9, floors: 8, kael: 320, active: true },
+    { name: "0xbima", repo: "evm-gas-profiler", commits: 22, floors: 14, kael: 740, active: true },
+    { name: "mika-builds", repo: "jupiter-dca-bot", commits: 3, floors: 5, kael: 90, active: true },
+    { name: "fajar.eth", repo: "safe-multisig-ui", commits: 0, floors: 7, kael: 0, active: false },
+    { name: "luna_codes", repo: "nft-royalty-indexer", commits: 12, floors: 9, kael: 410, active: true },
+    { name: "dimas-rs", repo: "rust-rpc-cache", commits: 18, floors: 12, kael: 610, active: true },
+    { name: "tara.dev", repo: "wallet-risk-sdk", commits: 1, floors: 3, kael: 30, active: false },
+    { name: "kenji-onchain", repo: "mempool-visualizer", commits: 7, floors: 6, kael: 240, active: true },
+    { name: "sari-sol", repo: "token-2022-tools", commits: 0, floors: 4, kael: 0, active: false },
+    { name: "rizky.build", repo: "pump-sniper-guard", commits: 11, floors: 10, kael: 380, active: true },
+    { name: "naya-dev", repo: "zk-proof-playground", commits: 5, floors: 6, kael: 160, active: true }
+  ];
+  const FLAGS = [
+    { key: "dev", text: "Developer holds more than 20% of supply", w: 25 },
+    { key: "lp", text: "Liquidity is not locked or burned", w: 25 },
+    { key: "mint", text: "Mint authority is still active", w: 15 },
+    { key: "honey", text: "Sell simulation failed (honeypot)", w: 30 },
+    { key: "hist", text: "Developer wallet launched rugged tokens before", w: 20 },
+    { key: "fake", text: "Many new holders funded from one wallet", w: 15 }
+  ];
+  const START_TOKENS = [
+    { name: "$MOONJELLY", on: [] },
+    { name: "$BONKISH", on: ["mint"] },
+    { name: "$ABC", on: ["dev", "lp", "hist"] },
+    { name: "$SOLCAT", on: ["fake"] },
+    { name: "$GIGAWIF", on: ["dev", "lp"] },
+    { name: "$HONEYPOT", on: ["lp", "honey", "mint"] }
+  ];
+
+  // ---------- Scene ----------
+  const canvas = $("city");
+  const renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+  renderer.setClearColor(0x070e1c, 1);
+  renderer.outputEncoding = THREE.sRGBEncoding;
+  renderer.toneMapping = THREE.ACESFilmicToneMapping;
+  renderer.toneMappingExposure = 1.05;
+  renderer.shadowMap.enabled = true;
+  renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+  const scene = new THREE.Scene();
+  const clock = new THREE.Clock();
+  scene.fog = new THREE.FogExp2(0x0b1222, 0.012);
+  const camera = new THREE.PerspectiveCamera(50, 1, 0.1, 500);
+  camera.position.set(30, 16, 34);
+
+  const controls = new THREE.OrbitControls(camera, canvas);
+  controls.target.set(0, 6, 0);
+  controls.enableDamping = true;
+  controls.maxPolarAngle = Math.PI * 0.485;
+  controls.minDistance = 14;
+  controls.maxDistance = 110;
+  controls.autoRotate = !reduce;
+  controls.autoRotateSpeed = 0.35;
+
+  scene.add(new THREE.HemisphereLight(0x2f5a8a, 0x1a1210, 0.28));
+  const moon = new THREE.DirectionalLight(0xa8c4ff, 0.85);
+  moon.position.set(-34, 30, 26); // low and lateral so every tower has a lit side and a shaded side
+  moon.castShadow = true;
+  moon.shadow.mapSize.set(2048, 2048);
+  moon.shadow.camera.left = -40; moon.shadow.camera.right = 40;
+  moon.shadow.camera.top = 40; moon.shadow.camera.bottom = -40;
+  moon.shadow.camera.near = 1; moon.shadow.camera.far = 140;
+  moon.shadow.bias = -0.0015; moon.shadow.normalBias = 0.2;
+  moon.shadow.radius = 4;
+  scene.add(moon);
+  const cityGlow = new THREE.DirectionalLight(0xff9a5c, 0.18);
+  cityGlow.position.set(20, 6, -30);
+  scene.add(cityGlow);
+
+  // deterministic random for textures, so the city looks the same on every load
+  function mulberry32(a) { return function () { a |= 0; a = (a + 0x6D2B79F5) | 0; let t = Math.imul(a ^ (a >>> 15), 1 | a); t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t; return ((t ^ (t >>> 14)) >>> 0) / 4294967296; }; }
+
+  // sky dome + stars, also used as the reflection environment for glass facades
+  function skyCanvas() {
+    const c = document.createElement("canvas"); c.width = 16; c.height = 512;
+    const g = c.getContext("2d");
+    const grd = g.createLinearGradient(0, 0, 0, 512);
+    grd.addColorStop(0, "#03081a"); grd.addColorStop(0.5, "#0a1d3c"); grd.addColorStop(0.8, "#12364a"); grd.addColorStop(0.93, "#352a3e"); grd.addColorStop(1, "#5a3a2c");
+    g.fillStyle = grd; g.fillRect(0, 0, 16, 512);
+    return c;
+  }
+  const skyTex = new THREE.CanvasTexture(skyCanvas());
+  skyTex.encoding = THREE.sRGBEncoding;
+  const sky = new THREE.Mesh(new THREE.SphereGeometry(170, 32, 16, 0, Math.PI * 2, 0, Math.PI * 0.52), new THREE.MeshBasicMaterial({ map: skyTex, side: THREE.BackSide, fog: false }));
+  scene.add(sky);
+  const STARS = 700, sPos = new Float32Array(STARS * 3), sr = mulberry32(7);
+  for (let i = 0; i < STARS; i++) { const a = sr() * Math.PI * 2, e = 0.12 + sr() * 1.3, r = 160; sPos[i * 3] = Math.cos(a) * Math.cos(e) * r; sPos[i * 3 + 1] = Math.sin(e) * r; sPos[i * 3 + 2] = Math.sin(a) * Math.cos(e) * r; }
+  const starGeo = new THREE.BufferGeometry(); starGeo.setAttribute("position", new THREE.BufferAttribute(sPos, 3));
+  scene.add(new THREE.Points(starGeo, new THREE.PointsMaterial({ color: 0xcfd6ff, size: 0.9, sizeAttenuation: true, transparent: true, opacity: 0.8, fog: false })));
+  const envScene = new THREE.Scene();
+  envScene.add(new THREE.Mesh(new THREE.SphereGeometry(50, 16, 8), new THREE.MeshBasicMaterial({ map: skyTex, color: 0x4a4a4a, side: THREE.BackSide }))); // dimmed: the sky is for looking at, not for lighting the whole city
+  envScene.add(new THREE.Mesh(new THREE.PlaneGeometry(200, 200), new THREE.MeshBasicMaterial({ color: 0x2a2018 })).rotateX(-Math.PI / 2).translateZ(-2));
+  const pmrem = new THREE.PMREMGenerator(renderer);
+  scene.environment = pmrem.fromScene(envScene, 0.04).texture;
+  // real-world reflections: CC0 HDRI (Potsdamer Platz, HDRI Haven) graded to blue hour, stored as RGBE in a PNG.
+  // The procedural env above stays as the fallback if the file cannot load.
+  const texLoader = new THREE.TextureLoader();
+  texLoader.load("textures/city_env_rgbe.png", (t) => {
+    t.encoding = THREE.RGBEEncoding; t.minFilter = t.magFilter = THREE.NearestFilter; t.generateMipmaps = false;
+    t.mapping = THREE.EquirectangularReflectionMapping;
+    hdrEnv = pmrem.fromEquirectangular(t).texture; t.dispose();
+    glassMats.forEach((m) => { m.envMap = hdrEnv; m.needsUpdate = true; });
+  });
+  // only glass gets the photo sky: lighting the whole scene with it washes the dark city out
+  let hdrEnv = null; const glassMats = new Set();
+  const useHdr = (m) => { glassMats.add(m); if (hdrEnv) { m.envMap = hdrEnv; m.needsUpdate = true; } return m; };
+  // CC0 normal maps (@pmndrs/assets): real concrete, plaster and asphalt micro-relief
+  const loadNormal = (f) => { const t = texLoader.load("textures/" + f); t.wrapS = t.wrapT = THREE.RepeatWrapping; t.anisotropy = Math.min(8, renderer.capabilities.getMaxAnisotropy()); return t; };
+  const NRM = { concrete: loadNormal("normal_0015.webp"), brick: loadNormal("normal_0006.webp"), glass: loadNormal("normal_0021.webp"), asphalt: loadNormal("normal_0010.webp") };
+
+  const C = { ember: 0xff8a3d, signal: 0x8fe3ff, warn: 0xffc24a, danger: 0xff4d5e };
+
+  // ground + grid
+  // 1 canvas px = 0.1 world units over an 80 x 80 city block; outside that, plain asphalt
+  function groundCanvas() {
+    const S = 1024, u = S / 80, cx = S / 2, cz = S / 2;
+    const c = document.createElement("canvas"); c.width = c.height = S;
+    const g = c.getContext("2d"), rnd = mulberry32(11);
+    g.fillStyle = "#15131a"; g.fillRect(0, 0, S, S);
+    for (let i = 0; i < 9000; i++) { g.fillStyle = `rgba(255,255,255,${rnd() * 0.035})`; g.fillRect(rnd() * S, rnd() * S, 2, 2); }
+    const road = (x0, z0, x1, z1) => { g.fillStyle = "#1e1c24"; g.fillRect(cx + x0 * u, cz + z0 * u, (x1 - x0) * u, (z1 - z0) * u); };
+    const dash = (vert, pos, from, to) => { g.fillStyle = "#6b5a2e"; for (let p = from; p < to; p += 2.2) { if (vert) g.fillRect(cx + (pos - 0.08) * u, cz + p * u, 0.16 * u, 1.1 * u); else g.fillRect(cx + p * u, cz + (pos - 0.08) * u, 1.1 * u, 0.16 * u); } };
+    const curb = (x0, z0, x1, z1) => { g.fillStyle = "#3a353c"; g.fillRect(cx + x0 * u, cz + z0 * u, (x1 - x0) * u, (z1 - z0) * u); g.strokeStyle = "#4c464f"; g.lineWidth = 2; g.strokeRect(cx + x0 * u, cz + z0 * u, (x1 - x0) * u, (z1 - z0) * u); };
+    // ring road around the centre, avenues to the districts
+    road(-7.2, -40, -4.2, 40); road(4.2, -40, 7.2, 40); road(-40, -11.5, 40, -8.5); road(-40, 9.5, 40, 12.5); road(-40, 23, 40, 26);
+    dash(true, -5.7, -40, 40); dash(true, 5.7, -40, 40); dash(false, -10, -40, 40); dash(false, 11, -40, 40); dash(false, 24.5, -40, 40);
+    // crosswalk stripes at the four central corners
+    g.fillStyle = "#8a8378";
+    for (let k = 0; k < 6; k++) { g.fillRect(cx + (-7.2 + k * 0.5) * u, cz + -8.4 * u, 0.25 * u, 1.2 * u); g.fillRect(cx + (4.2 + k * 0.5) * u, cz + -8.4 * u, 0.25 * u, 1.2 * u); g.fillRect(cx + (-7.2 + k * 0.5) * u, cz + 8.3 * u, 0.25 * u, 1.2 * u); g.fillRect(cx + (4.2 + k * 0.5) * u, cz + 8.3 * u, 0.25 * u, 1.2 * u); }
+    // sidewalks under the blocks
+    curb(-24.8, -8.4, -7.4, 9.3); curb(7.4, -8.4, 24.8, 9.3); curb(-4, -8.4, 4, 9.3); curb(-17, 12.7, 17, 22.8);
+    // plaza paving around the Kaelis tower
+    g.strokeStyle = "rgba(143,227,255,0.18)"; g.lineWidth = 1.5;
+    for (let r = 3.2; r < 8; r += 1.2) { g.beginPath(); g.arc(cx, cz + 0.5 * u, r * u, 0, Math.PI * 2); g.stroke(); }
+    return c;
+  }
+  const groundTex = new THREE.CanvasTexture(groundCanvas());
+  groundTex.encoding = THREE.sRGBEncoding;
+  groundTex.anisotropy = Math.min(8, renderer.capabilities.getMaxAnisotropy());
+  const ground = new THREE.Mesh(new THREE.PlaneGeometry(80, 80), (() => { const m = new THREE.MeshStandardMaterial({ map: groundTex, normalMap: NRM.asphalt, normalScale: new THREE.Vector2(0.6, 0.6), roughness: 0.62, metalness: 0.05, envMapIntensity: 0.6 });
+    // r128 samples every map with the colour map's UVs; tile the asphalt normal separately so it reads at street scale
+    m.onBeforeCompile = (sh) => { sh.fragmentShader = sh.fragmentShader.replace("#include <normal_fragment_maps>", THREE.ShaderChunk.normal_fragment_maps.replace("texture2D( normalMap, vUv )", "texture2D( normalMap, vUv * 48.0 )")); };
+    return m; })());
+  ground.rotation.x = -Math.PI / 2;
+  ground.receiveShadow = true;
+  scene.add(ground);
+  const outer = new THREE.Mesh(new THREE.PlaneGeometry(400, 400), new THREE.MeshStandardMaterial({ color: 0x15131a, roughness: 1 }));
+  outer.rotation.x = -Math.PI / 2; outer.position.y = -0.6; // well below the city slab so it never z-fights in the bloom pass
+  scene.add(outer);
+
+  const roofGeo = new THREE.BoxGeometry(1, 1, 1); roofGeo.translate(0, 0.5, 0);
+  const tankGeo = new THREE.CylinderGeometry(0.35, 0.35, 0.7, 10);
+  const roofMat = new THREE.MeshStandardMaterial({ color: 0x24222a, roughness: 0.95 });
+  const hvacMat = new THREE.MeshStandardMaterial({ color: 0x4a4852, roughness: 0.6, metalness: 0.5 });
+  const antennaMat = new THREE.MeshStandardMaterial({ color: 0x55525c, roughness: 0.5, metalness: 0.7 });
+  const topMat = new THREE.MeshStandardMaterial({ color: 0x1c1a21, roughness: 0.95 });
+  const ironMat = new THREE.MeshStandardMaterial({ color: 0x1c1b21, roughness: 0.5, metalness: 0.7 });
+
+  // street lamps: a pole, a warm glow sprite, and a pool of light on the asphalt
+  const lampGlowTex = (() => { const c = document.createElement("canvas"); c.width = c.height = 64; const g = c.getContext("2d"); const gr = g.createRadialGradient(32, 32, 0, 32, 32, 32); gr.addColorStop(0, "rgba(255,210,140,1)"); gr.addColorStop(0.3, "rgba(255,160,70,0.55)"); gr.addColorStop(1, "rgba(0,0,0,0)"); g.fillStyle = gr; g.fillRect(0, 0, 64, 64); return new THREE.CanvasTexture(c); })();
+  const poleGeo = new THREE.CylinderGeometry(0.05, 0.07, 3.2, 6), poleMat = new THREE.MeshStandardMaterial({ color: 0x33303a, roughness: 0.7, metalness: 0.6 });
+  function lamp(x, z) {
+    const p = new THREE.Mesh(poleGeo, poleMat); p.position.set(x, 1.6, z); p.castShadow = true; scene.add(p);
+    const toRoad = Math.abs(x) < 9 ? -Math.sign(x) : 0, toRoadZ = toRoad === 0 ? (z < 0 ? 1 : -1) : 0; // arm leans over the road
+    const arm = new THREE.Mesh(roofGeo, poleMat); arm.scale.set(toRoad ? 0.9 : 0.06, 0.06, toRoadZ ? 0.9 : 0.06); arm.position.set(x + toRoad * 0.45, 3.15, z + toRoadZ * 0.45); scene.add(arm);
+    const head = new THREE.Mesh(new THREE.CylinderGeometry(0.16, 0.1, 0.18, 8), new THREE.MeshStandardMaterial({ color: 0x2a2730, emissive: 0xffb866, emissiveIntensity: 2.2 })); head.position.set(x + toRoad * 0.85, 3.1, z + toRoadZ * 0.85); scene.add(head);
+    const glow = new THREE.Sprite(new THREE.SpriteMaterial({ map: lampGlowTex, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false, opacity: 0.6 }));
+    glow.scale.set(2.2, 2.2, 1); glow.position.set(x + toRoad * 0.85, 3.05, z + toRoadZ * 0.85); scene.add(glow);
+    const pool = new THREE.Mesh(new THREE.CircleGeometry(2.2, 20), new THREE.MeshBasicMaterial({ map: lampGlowTex, transparent: true, opacity: 0.22, blending: THREE.AdditiveBlending, depthWrite: false }));
+    pool.rotation.x = -Math.PI / 2; pool.position.set(x + toRoad * 0.85, 0.02, z + toRoadZ * 0.85); pool.scale.setScalar(1.5); scene.add(pool);
+  }
+  for (let z = -30; z <= 30; z += 10) { lamp(-7.8, z + 1); lamp(7.8, z - 1); }
+  for (let x = -30; x <= 30; x += 10) { if (Math.abs(x) > 8) { lamp(x, -12.1); lamp(x, 13.1); } }
+
+  function glowTexture(rgba) {
+    const c = document.createElement("canvas");
+    c.width = c.height = 128;
+    const g = c.getContext("2d");
+    const grd = g.createRadialGradient(64, 64, 0, 64, 64, 64);
+    grd.addColorStop(0, rgba);
+    grd.addColorStop(0.3, rgba.replace("1)", "0.35)"));
+    grd.addColorStop(1, "rgba(0,0,0,0)");
+    g.fillStyle = grd;
+    g.fillRect(0, 0, 128, 128);
+    return new THREE.CanvasTexture(c);
+  }
+
+  const boxGeo = new THREE.BoxGeometry(1, 1, 1);
+  boxGeo.translate(0, 0.5, 0); // pivot at the base so scale.y grows upward
+  // shop palette: window glow, sign colour, awning colour (the green grocer / red laundromat look)
+  const SHOPS = [
+    { c: 0x7cff8a, s: 0xffe066, a: 0x2f6b3a }, { c: 0xff5a3c, s: 0xfff0a0, a: 0x8a2a1e }, { c: 0x58d8ff, s: 0xff8ad0, a: 0x1f4a6e },
+    { c: 0xffb347, s: 0xffffff, a: 0x6b3a1a }, { c: 0xff7ad9, s: 0x9cf0ff, a: 0x5a1f4a }, { c: 0xfff1b8, s: 0xff6a3c, a: 0x3a3a3a },
+  ];
+  const edgeGeo = new THREE.EdgesGeometry(boxGeo);
+  const pickables = [];
+
+  // Facade: a 4-window x 4-floor tile drawn on canvas, repeated across the walls. One tile per building, so every tower differs.
+  const FLOOR_H = 0.9, WIN_W = 0.75, TILE = 4;
+  let facadeSeed = 101;
+  function facadeTextures() {
+    const rnd = mulberry32(facadeSeed++);
+    const S = 256, cw = S / TILE, chh = S / TILE;
+    const wall = document.createElement("canvas"), lit = document.createElement("canvas");
+    wall.width = wall.height = lit.width = lit.height = S;
+    const g = wall.getContext("2d"), l = lit.getContext("2d");
+    const styleRoll = rnd();
+    const style = styleRoll < 0.35 ? "concrete" : styleRoll < 0.7 ? "glass" : "brick";
+    const base = style === "concrete" ? "#2b2830" : style === "glass" ? "#161a24" : "#3a2a26";
+    g.fillStyle = base; g.fillRect(0, 0, S, S);
+    for (let i = 0; i < 700; i++) { g.fillStyle = `rgba(255,255,255,${rnd() * 0.04})`; g.fillRect(rnd() * S, rnd() * S, 2, 2); }
+    if (style === "brick") { g.fillStyle = "rgba(0,0,0,0.25)"; for (let y = 0; y < S; y += 6) g.fillRect(0, y, S, 1); }
+    l.fillStyle = "#000"; l.fillRect(0, 0, S, S);
+    const litRatio = 0.3 + rnd() * 0.4, cells = [];
+    const inset = style === "glass" ? 0.08 : 0.2, wh = style === "glass" ? 0.8 : 0.55;
+    for (let r = 0; r < TILE; r++) {
+      g.fillStyle = "rgba(0,0,0,0.45)"; g.fillRect(0, r * chh, S, style === "glass" ? 3 : 2);
+      for (let c = 0; c < TILE; c++) {
+        const x = c * cw + cw * inset, y = r * chh + chh * 0.18, w = cw * (1 - inset * 2), h = chh * wh;
+        g.fillStyle = "#0b0e14"; g.fillRect(x, y, w, h);
+        g.fillStyle = "rgba(255,255,255,0.07)"; g.fillRect(x, y, w, 1); g.fillRect(x, y, 1, h);
+        if (style === "glass") { g.fillStyle = "rgba(120,160,220,0.08)"; g.fillRect(x, y, w, h * 0.5); }
+        const on = rnd() < litRatio;
+        const warm = rnd() < 0.65;
+        const col = warm ? `rgb(255,${200 + (rnd() * 40) | 0},${130 + (rnd() * 70) | 0})` : `rgb(${175 + (rnd() * 40) | 0},${215 + (rnd() * 30) | 0},255)`;
+        cells.push({ x, y, w, h, col, on });
+        if (on) {
+          l.fillStyle = col; l.fillRect(x, y, w, h);
+          if (rnd() < 0.3) { l.fillStyle = "rgba(0,0,0,0.6)"; l.fillRect(x, y, w, h * (0.3 + rnd() * 0.4)); } // blinds half down
+          g.fillStyle = col; g.globalAlpha = 0.35; g.fillRect(x, y, w, h); g.globalAlpha = 1;
+        }
+      }
+    }
+    // normal map: window reveals read as recessed, floor slabs as a ledge
+    const nrm = document.createElement("canvas"); nrm.width = nrm.height = S;
+    const n = nrm.getContext("2d");
+    n.fillStyle = "rgb(128,128,255)"; n.fillRect(0, 0, S, S);
+    const bev = style === "glass" ? 2 : 4;
+    cells.forEach((c) => {
+      n.fillStyle = "rgb(128,128,255)"; n.fillRect(c.x, c.y, c.w, c.h);
+      n.fillStyle = "rgb(70,128,230)"; n.fillRect(c.x, c.y, bev, c.h);          // left reveal faces +x light
+      n.fillStyle = "rgb(186,128,230)"; n.fillRect(c.x + c.w - bev, c.y, bev, c.h);
+      n.fillStyle = "rgb(128,186,230)"; n.fillRect(c.x, c.y, c.w, bev);
+      n.fillStyle = "rgb(128,70,230)"; n.fillRect(c.x, c.y + c.h - bev, c.w, bev);
+      if (style === "glass") { n.fillStyle = "rgb(128,128,255)"; n.fillRect(c.x + c.w / 2 - 1, c.y, 2, c.h); }
+    });
+    for (let r = 0; r < TILE; r++) { n.fillStyle = "rgb(128,170,235)"; n.fillRect(0, r * chh, S, 2); n.fillStyle = "rgb(128,86,235)"; n.fillRect(0, r * chh + 2, S, 2); }
+    const mk = (cv, srgb) => { const t = new THREE.CanvasTexture(cv); t.wrapS = t.wrapT = THREE.RepeatWrapping; if (srgb) t.encoding = THREE.sRGBEncoding; t.anisotropy = Math.min(8, renderer.capabilities.getMaxAnisotropy()); return t; };
+    return { map: mk(wall, true), lit: mk(lit, true), nrm: mk(nrm, false), litCtx: l, cells, style };
+  }
+
+  // plain wall tile: concrete panels, brick courses or dark curtain-wall mullions. Windows are real geometry now.
+  const wallCache = {};
+  function wallMaterial(style, seed) {
+    const key = style + (seed % 3);
+    if (wallCache[key]) return wallCache[key];
+    const rnd = mulberry32(seed), S = 256, c = document.createElement("canvas"); c.width = c.height = S;
+    const g = c.getContext("2d");
+    const base = style === "concrete" ? "#3b3842" : style === "glass" ? "#1a1f2b" : "#4a342c";
+    g.fillStyle = base; g.fillRect(0, 0, S, S);
+    for (let i = 0; i < 2500; i++) { g.fillStyle = `rgba(${rnd() < 0.5 ? "255,255,255" : "0,0,0"},${rnd() * 0.06})`; g.fillRect(rnd() * S, rnd() * S, 2 + rnd() * 3, 2 + rnd() * 3); }
+    if (style === "brick") { for (let y = 0; y < S; y += 8) { g.fillStyle = "rgba(0,0,0,0.35)"; g.fillRect(0, y, S, 2); for (let x = (y / 8) % 2 ? 0 : 12; x < S; x += 24) g.fillRect(x, y, 2, 8); } }
+    if (style === "concrete") { g.fillStyle = "rgba(0,0,0,0.3)"; for (let y = 0; y < S; y += 64) g.fillRect(0, y, S, 2); for (let x = 0; x < S; x += 64) g.fillRect(x, 0, 2, S); for (let i = 0; i < 6; i++) { g.fillStyle = "rgba(0,0,0,0.18)"; g.fillRect(rnd() * S, rnd() * S, 1, 20 + rnd() * 60); } }
+    if (style === "glass") { g.fillStyle = "rgba(90,110,140,0.35)"; for (let x = 0; x < S; x += 32) g.fillRect(x, 0, 2, S); }
+    const tex = new THREE.CanvasTexture(c); tex.wrapS = tex.wrapT = THREE.RepeatWrapping; tex.encoding = THREE.sRGBEncoding; tex.repeat.set(2, 2);
+    tex.anisotropy = Math.min(8, renderer.capabilities.getMaxAnisotropy());
+    const glass = style === "glass";
+    const m = new THREE.MeshStandardMaterial({ map: tex, normalMap: NRM[style], normalScale: new THREE.Vector2(glass ? 0.15 : 0.9, glass ? 0.15 : 0.9),
+      roughness: glass ? 0.1 : 0.88, metalness: glass ? 0.92 : 0.02, envMapIntensity: glass ? 1.5 : 0.25, emissive: 0x000000 });
+    if (glass) useHdr(m);
+    wallCache[key] = m; return m;
+  }
+  // hollow window frame: an extruded rectangle with a hole, so the glass behind it stays visible
+  const frameGeo = (() => { const sh = new THREE.Shape(); sh.moveTo(-0.26, -0.3); sh.lineTo(0.26, -0.3); sh.lineTo(0.26, 0.3); sh.lineTo(-0.26, 0.3); sh.closePath();
+    const hole = new THREE.Path(); hole.moveTo(-0.21, -0.25); hole.lineTo(0.21, -0.25); hole.lineTo(0.21, 0.25); hole.lineTo(-0.21, 0.25); hole.closePath(); sh.holes.push(hole);
+    const g = new THREE.ExtrudeGeometry(sh, { depth: 0.16, bevelEnabled: false }); g.translate(0, 0, -0.02); return g; })(); // sits almost entirely proud of the wall
+  const paneGeo = new THREE.PlaneGeometry(0.42, 0.5), sillGeo = new THREE.BoxGeometry(0.6, 0.05, 0.22);
+  const frameMat = new THREE.MeshStandardMaterial({ color: 0x2c2a33, roughness: 0.55, metalness: 0.4 });
+  const darkGlassMat = useHdr(new THREE.MeshStandardMaterial({ color: 0x0a1020, roughness: 0.08, metalness: 1.0, envMapIntensity: 1.8 }));
+  const litGlassMat = new THREE.MeshBasicMaterial({ color: 0xffffff }); // tinted per window through instanceColor
+  const ledgeMat = new THREE.MeshStandardMaterial({ color: 0x3c3843, roughness: 0.85 });
+  const zeroM = new THREE.Matrix4().makeScale(0, 0, 0);
+  const dTmp = new THREE.Object3D(), cTmp = new THREE.Color();
+  // dressFacade: windows, sills, pilasters and floor ledges for a w x d x h box whose base is at (ox, oy, oz) inside `parent`.
+  // Returns an object whose update(visibleH) hides everything above a given height so a tower can grow or sink floor by floor.
+  function dressFacade(parent, w, d, h, ox, oy, oz, rnd, litRatio, skipGroundFront) {
+    const floors = Math.floor(h / FLOOR_H + 0.001);
+    const items = []; // one per window: {m: matrix, y, on}
+    const ledges = [];
+    for (let f = 0; f < 4; f++) {
+      const L = f < 2 ? w : d, off = (f < 2 ? d : w) / 2, cols = Math.max(1, Math.round(L / WIN_W)), pitch = L / cols;
+      const ang = f === 0 ? 0 : f === 1 ? Math.PI : f === 2 ? Math.PI / 2 : -Math.PI / 2;
+      const nx = Math.sin(ang), nz = Math.cos(ang); // outward normal
+      for (let r = 0; r < floors; r++) {
+        if (r === 0 && (skipGroundFront === f || Math.random() < 0.0)) continue;
+        if (r === 0) continue; // ground floor is shop / blank wall
+        for (let c = 0; c < cols; c++) {
+          const u = -L / 2 + (c + 0.5) * pitch, y = oy + (r + 0.52) * FLOOR_H;
+          dTmp.position.set(ox + nx * off + nz * u, y, oz + nz * off - nx * u); dTmp.rotation.set(0, ang, 0); dTmp.scale.set(1, 1, 1); dTmp.updateMatrix();
+          const on = rnd() < litRatio, warm = rnd() < 0.7;
+          items.push({ m: dTmp.matrix.clone(), y, on, col: warm ? cTmp.setRGB(1, 0.78 + rnd() * 0.15, 0.5 + rnd() * 0.3).getHex() : cTmp.setRGB(0.7 + rnd() * 0.15, 0.85 + rnd() * 0.1, 1).getHex(), blind: rnd() < 0.25 });
+        }
+      }
+      // pilasters between window columns, a touch lighter than the wall so they catch the key light
+      for (let c = 0; c <= cols; c++) {
+        const u = -L / 2 + c * pitch;
+        const pil = new THREE.Mesh(roofGeo, ledgeMat); pil.scale.set(f < 2 ? 0.14 : 0.1, h, f < 2 ? 0.1 : 0.14);
+        pil.position.set(ox + nx * (off + 0.03) + nz * u, oy, oz + nz * (off + 0.03) - nx * u); pil.castShadow = true; pil.userData.pil = true; parent.add(pil);
+        ledges.push({ mesh: pil, y: oy, full: h, pil: true });
+      }
+    }
+    // floor ledges running round the whole box
+    for (let r = 1; r <= floors; r++) {
+      const y = oy + r * FLOOR_H - 0.04;
+      const ring = new THREE.Group();
+      const a = new THREE.Mesh(roofGeo, ledgeMat); a.scale.set(w + 0.24, 0.07, 0.12); a.position.set(ox, y, oz + d / 2 + 0.06); ring.add(a);
+      const b = new THREE.Mesh(roofGeo, ledgeMat); b.scale.set(w + 0.24, 0.07, 0.12); b.position.set(ox, y, oz - d / 2 - 0.06); ring.add(b);
+      const c2 = new THREE.Mesh(roofGeo, ledgeMat); c2.scale.set(0.12, 0.07, d + 0.24); c2.position.set(ox + w / 2 + 0.06, y, oz); ring.add(c2);
+      const d2 = new THREE.Mesh(roofGeo, ledgeMat); d2.scale.set(0.12, 0.07, d + 0.24); d2.position.set(ox - w / 2 - 0.06, y, oz); ring.add(d2);
+      ring.children.forEach((m) => { m.castShadow = true; });
+      parent.add(ring); ledges.push({ mesh: ring, y });
+    }
+    const N = items.length;
+    const frames = new THREE.InstancedMesh(frameGeo, frameMat, N), dark = new THREE.InstancedMesh(paneGeo, darkGlassMat, N), lit = new THREE.InstancedMesh(paneGeo, litGlassMat, N), sills = new THREE.InstancedMesh(sillGeo, ledgeMat, N);
+    frames.castShadow = true; frames.receiveShadow = true;
+    const pos = new THREE.Vector3(), q = new THREE.Quaternion(), sc = new THREE.Vector3(), fwd = new THREE.Vector3();
+    const paneM = new THREE.Matrix4(), sillM = new THREE.Matrix4(), tr = new THREE.Matrix4();
+    for (let i = 0; i < N; i++) {
+      const it = items[i]; it.m.decompose(pos, q, sc); fwd.set(0, 0, 1).applyQuaternion(q);
+      it.frame = it.m.clone();
+      it.pane = tr.makeTranslation(fwd.x * 0.02, 0, fwd.z * 0.02).clone().multiply(it.m); // glass just outside the wall surface, inside the frame
+      it.paneLit = tr.makeTranslation(fwd.x * 0.035, 0, fwd.z * 0.035).clone().multiply(it.m); // lit pane a hair in front so it never z-fights
+      it.sill = tr.makeTranslation(fwd.x * 0.06, -0.33, fwd.z * 0.06).clone().multiply(it.m);
+      lit.setColorAt(i, cTmp.setHex(it.col).multiplyScalar(it.blind ? 0.35 : 0.75));
+    }
+    parent.add(frames, dark, lit, sills);
+    const state = { items, frames, dark, lit, sills, ledges, lastH: -1,
+      update(visibleH, force) {
+        if (!force && Math.abs(visibleH - this.lastH) < 0.02) return; this.lastH = visibleH;
+        for (let i = 0; i < N; i++) {
+          const it = items[i], vis = it.y + 0.3 < oy + visibleH;
+          frames.setMatrixAt(i, vis ? it.frame : zeroM); dark.setMatrixAt(i, vis ? it.pane : zeroM); sills.setMatrixAt(i, vis ? it.sill : zeroM);
+          lit.setMatrixAt(i, vis && it.on ? it.paneLit : zeroM);
+        }
+        frames.instanceMatrix.needsUpdate = dark.instanceMatrix.needsUpdate = lit.instanceMatrix.needsUpdate = sills.instanceMatrix.needsUpdate = true;
+        for (const l of ledges) { if (l.pil) l.mesh.scale.y = Math.max(0.001, Math.min(l.full, visibleH)); else l.mesh.visible = l.y < oy + visibleH; }
+      },
+      toggle(i) { const it = items[i]; it.on = !it.on; lit.setMatrixAt(i, it.on && it.y + 0.3 < oy + this.lastH ? it.paneLit : zeroM); lit.instanceMatrix.needsUpdate = true; },
+      setAllLit(ratio) { for (const it of items) it.on = Math.random() < ratio; this.update(this.lastH, true); },
+    };
+    state.update(h, true);
+    return state;
+  }
+
+  function makeBuilding(color, w, h, x, z, opts) {
+    opts = opts || {};
+    const rnd = mulberry32(facadeSeed * 7 + 3);
+    const d = opts.plain ? w : w * (0.8 + rnd() * 0.45);
+    let fm, fac = null, style = null;
+    if (opts.plain) {
+      fm = useHdr(new THREE.MeshStandardMaterial({ color: 0x0f141c, roughness: 0.18, metalness: 0.85, envMapIntensity: 1.2 }));
+    } else {
+      const roll = rnd(); style = roll < 0.4 ? "concrete" : roll < 0.65 ? "glass" : "brick";
+      fm = wallMaterial(style, facadeSeed++).clone(); // clone so each tower can flicker or glow on its own
+      if (style === "glass") useHdr(fm);
+    }
+    const mesh = new THREE.Mesh(boxGeo, [fm, fm, topMat, topMat, fm, fm]);
+    mesh.castShadow = true; mesh.receiveShadow = true;
+    mesh.position.set(x, 0, z);
+    mesh.scale.set(w, 0.001, d);
+    // roof clutter and the coloured crown sit in their own group so they do not stretch with the tower
+    const roof = new THREE.Group();
+    const crown = new THREE.Mesh(roofGeo, new THREE.MeshStandardMaterial({ color: 0x111111, emissive: color, emissiveIntensity: 1.6, transparent: true, opacity: 0.95 }));
+    crown.scale.set(w + 0.16, 0.06, d + 0.16); crown.position.y = 0.2; roof.add(crown);
+    const parapet = new THREE.Mesh(roofGeo, roofMat); parapet.scale.set(w + 0.12, 0.22, d + 0.12); parapet.position.y = -0.02; roof.add(parapet);
+    let topY = 0; // where the roof clutter sits, above any setback tiers
+    if (!opts.plain && h > 6.5 && rnd() < 0.7) {
+      const tiers = rnd() < 0.4 ? 2 : 1;
+      let tw = w, td = d;
+      for (let i = 0; i < tiers; i++) {
+        tw *= 0.62 + rnd() * 0.18; td *= 0.62 + rnd() * 0.18;
+        const th = FLOOR_H * (2 + Math.floor(rnd() * 4));
+        const tm = wallMaterial(style, facadeSeed++);
+        const tier = new THREE.Mesh(roofGeo, [tm, tm, topMat, topMat, tm, tm]);
+        tier.scale.set(tw, th, td); tier.position.set((rnd() - 0.5) * (w - tw) * 0.6, topY + 0.2, (rnd() - 0.5) * (d - td) * 0.6);
+        tier.castShadow = true; tier.receiveShadow = true; roof.add(tier);
+        dressFacade(roof, tw, td, th + FLOOR_H, tier.position.x, tier.position.y - FLOOR_H, tier.position.z, rnd, 0.45, -1); // ground row skipped, so start one floor lower
+        const ledge = new THREE.Mesh(roofGeo, roofMat); ledge.scale.set(tw + 0.12, 0.2, td + 0.12); ledge.position.set(tier.position.x, topY + 0.2 + th, tier.position.z); roof.add(ledge);
+        topY += 0.2 + th;
+      }
+    }
+    if (!opts.plain) {
+      const hv = new THREE.Mesh(roofGeo, hvacMat); hv.scale.set(w * 0.3, 0.25 + rnd() * 0.3, d * 0.3); hv.position.set((rnd() - 0.5) * w * 0.3, topY + 0.2, (rnd() - 0.5) * d * 0.3); hv.castShadow = true; roof.add(hv);
+      if (rnd() < 0.5) { const tank = new THREE.Mesh(tankGeo, hvacMat); tank.scale.setScalar(w / 2.6); tank.position.set((rnd() - 0.5) * w * 0.4, topY + 0.2 + 0.35 * (w / 2.6), (rnd() - 0.5) * d * 0.4); tank.castShadow = true; roof.add(tank); }
+      if (h > 7 || rnd() < 0.3) {
+        const ant = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.04, 1.6, 5), antennaMat); ant.position.set(w * 0.3, topY + 1.0, -d * 0.3); roof.add(ant);
+        const beacon = new THREE.Mesh(new THREE.SphereGeometry(0.07, 8, 8), new THREE.MeshBasicMaterial({ color: 0xff2a2a })); beacon.position.set(w * 0.3, topY + 1.85, -d * 0.3); roof.add(beacon);
+        roof.userData.beacon = beacon;
+      }
+    }
+    roof.position.set(x, 0, z);
+    scene.add(roof);
+    scene.add(mesh);
+    // ground floor shop + fire escape live in a base group that never stretches with the tower
+    const base = new THREE.Group(); base.position.set(x, 0, z);
+    let dress = null;
+    if (!opts.plain) {
+      const front = z < 0 ? -1 : 1; // every block row faces a road on its outer side
+      dress = dressFacade(base, w, d, h, 0, 0, 0, rnd, opts.dim ? 0.12 : 0.35 + rnd() * 0.3, front < 0 ? 1 : 0);
+      base.userData.dress = dress;
+      const shop = SHOPS[(facadeSeed + Math.floor(rnd() * 97)) % SHOPS.length];
+      const shopMat = new THREE.MeshStandardMaterial({ color: 0x222222, emissive: shop.c, emissiveIntensity: 2.4, roughness: 0.2 });
+      const win = new THREE.Mesh(roofGeo, shopMat); win.scale.set(w * 0.82, 1.05, 0.08); win.position.set(0, 0.12, front * (d / 2 + 0.02)); base.add(win);
+      // window mullions + a door frame so the glow reads as glass, not a flat panel
+      const bars = new THREE.Mesh(roofGeo, ironMat); bars.scale.set(0.05, 1.05, 0.1); bars.position.set(-w * 0.12, 0.12, front * (d / 2 + 0.04)); base.add(bars);
+      const door = new THREE.Mesh(roofGeo, ironMat); door.scale.set(0.05, 1.05, 0.1); door.position.set(w * 0.22, 0.12, front * (d / 2 + 0.04)); base.add(door);
+      const lintel = new THREE.Mesh(roofGeo, roofMat); lintel.scale.set(w + 0.1, 0.14, 0.26); lintel.position.set(0, 1.2, front * (d / 2 + 0.02)); base.add(lintel);
+      const sign = new THREE.Mesh(roofGeo, new THREE.MeshStandardMaterial({ color: 0x111111, emissive: shop.s, emissiveIntensity: 1.4 })); sign.scale.set(w * 0.5, 0.22, 0.06); sign.position.set(-w * 0.1, 1.36, front * (d / 2 + 0.1)); base.add(sign);
+      if (rnd() < 0.6) { const awn = new THREE.Mesh(roofGeo, new THREE.MeshStandardMaterial({ color: shop.a, roughness: 0.9 })); awn.scale.set(w * 0.86, 0.05, 0.7); awn.position.set(0, 1.15, front * (d / 2 + 0.38)); awn.rotation.x = -front * 0.35; base.add(awn); }
+      // light spilling out onto the sidewalk
+      const spill = new THREE.Mesh(new THREE.PlaneGeometry(w * 1.3, 2.2), new THREE.MeshBasicMaterial({ map: lampGlowTex, color: shop.c, transparent: true, opacity: 0.62, blending: THREE.AdditiveBlending, depthWrite: false }));
+      spill.rotation.x = -Math.PI / 2; spill.position.set(0, 0.03, front * (d / 2 + 1.0)); base.add(spill);
+      // fire escape zig-zagging down one wall
+      if (rnd() < 0.75) {
+        const side = rnd() < 0.5 ? -1 : 1, fx = side * (w / 2 + 0.3);
+        const floors = Math.floor(h / FLOOR_H);
+        for (let f = 2; f < floors; f++) {
+          const land = new THREE.Mesh(roofGeo, ironMat); land.scale.set(0.42, 0.04, Math.min(d * 0.7, 2.2)); land.position.set(fx, f * FLOOR_H + 0.1, 0); base.add(land);
+          const rail = new THREE.Mesh(roofGeo, ironMat); rail.scale.set(0.03, 0.5, Math.min(d * 0.7, 2.2)); rail.position.set(fx + side * 0.26, f * FLOOR_H + 0.15, 0); base.add(rail);
+          const lad = new THREE.Mesh(roofGeo, ironMat); lad.scale.set(0.05, FLOOR_H * 1.15, 0.08); lad.position.set(fx, (f - 1) * FLOOR_H + 0.1, (f % 2 ? 0.4 : -0.4) * Math.min(d * 0.35, 1)); lad.rotation.x = (f % 2 ? 1 : -1) * 0.6; base.add(lad);
+        }
+        const ladDown = new THREE.Mesh(roofGeo, ironMat); ladDown.scale.set(0.05, FLOOR_H * 0.8, 0.08); ladDown.position.set(fx, 1.2, 0); base.add(ladDown);
+      }
+      // cornice band on top of the ground floor and stone trim up the corners
+      const trimA = new THREE.Mesh(roofGeo, roofMat); trimA.scale.set(0.12, h, 0.12); trimA.position.set(-w / 2, 0, front * d / 2); base.add(trimA);
+      const trimB = new THREE.Mesh(roofGeo, roofMat); trimB.scale.set(0.12, h, 0.12); trimB.position.set(w / 2, 0, front * d / 2); base.add(trimB);
+      base.userData.trims = [trimA, trimB];
+    }
+    scene.add(base);
+    mesh.userData = { targetH: h, w, d, color, collapse: 0, fm, fac, dress, roof, base, crown, edges: crown, phase: rnd() * 6.28 };
+    pickables.push(mesh);
+    return mesh;
+  }
+  // every so often one window somewhere switches on or off
+  let lastTwinkle = 0;
+  function twinkle() {
+    const cands = pickables.filter((m) => m.userData.dress && m.visible && !m.userData.collapse);
+    if (!cands.length) return;
+    const m = cands[Math.floor(Math.random() * cands.length)], dr = m.userData.dress;
+    if (dr.items.length) dr.toggle(Math.floor(Math.random() * dr.items.length));
+  }
+
+  // ---------- Kaelis main tower (holders) ----------
+  const TOWER_H = 22, TOWER_W = 4;
+  const tower = makeBuilding(C.signal, TOWER_W, TOWER_H, 0, 0, { plain: true });
+  tower.userData.kind = "tower";
+  const spire = new THREE.Mesh(new THREE.ConeGeometry(1.2, 5, 4), new THREE.MeshStandardMaterial({ color: 0x0d1a22, emissive: C.signal, emissiveIntensity: 0.6 }));
+  spire.position.y = TOWER_H + 2.5;
+  spire.rotation.y = Math.PI / 4;
+  scene.add(spire);
+
+  const COLS = 7, ROWS = 34, FACES = 4, WIN = COLS * ROWS * FACES;
+  const winMesh = new THREE.InstancedMesh(new THREE.PlaneGeometry(0.32, 0.36), new THREE.MeshBasicMaterial({ color: 0xffffff, side: THREE.DoubleSide }), WIN);
+  const dummy = new THREE.Object3D();
+  let k = 0;
+  for (let f = 0; f < FACES; f++) {
+    for (let r = 0; r < ROWS; r++) {
+      for (let c = 0; c < COLS; c++) {
+        const u = -TOWER_W / 2 + (c + 0.5) * (TOWER_W / COLS);
+        const y = 0.8 + r * ((TOWER_H - 1.4) / ROWS);
+        const off = TOWER_W / 2 + 0.02;
+        const ang = (f * Math.PI) / 2;
+        dummy.position.set(Math.sin(ang) * off + Math.cos(ang) * u, y, Math.cos(ang) * off - Math.sin(ang) * u);
+        dummy.rotation.set(0, ang, 0);
+        dummy.updateMatrix();
+        winMesh.setMatrixAt(k++, dummy.matrix);
+      }
+    }
+  }
+  const order = Array.from({ length: WIN }, (_, i) => i).sort(() => Math.random() - 0.5);
+  const OFF = new THREE.Color(0x1b1622), ON = new THREE.Color(0xffd08a);
+  for (let i = 0; i < WIN; i++) winMesh.setColorAt(i, OFF);
+  scene.add(winMesh);
+  let holders = 0;
+  function lightWindows(n) {
+    const target = Math.min(WIN, holders + n);
+    for (let i = holders; i < target; i++) winMesh.setColorAt(order[i], ON);
+    holders = target;
+    winMesh.instanceColor.needsUpdate = true;
+    $("sHolders").textContent = fmt(holders);
+  }
+  lightWindows(412);
+
+  // ---------- Builders district (west) ----------
+  const builderMeshes = BUILDERS.map((b, i) => {
+    const x = -10 - (i % 4) * 4.2, z = -6.3 + Math.floor(i / 4) * 6.3;
+    const m = makeBuilding(C.ember, 2.4, b.floors * 0.9, x, z, { dim: !b.active });
+    m.userData.kind = "builder";
+    m.userData.data = b;
+    if (!b.active) { m.userData.crown.material.emissiveIntensity = 0.25; }
+    return m;
+  });
+  $("sBuilders").textContent = BUILDERS.length;
+
+  // ---------- Scan district (east) ----------
+  const SLOTS = [];
+  for (let i = 0; i < 12; i++) SLOTS.push({ x: 10 + (i % 4) * 4.2, z: -6.3 + Math.floor(i / 4) * 6.3, mesh: null });
+  let scanned = 0, rugs = 0, nextSlot = 0;
+
+  function scoreOf(on) { return Math.min(99, on.reduce((s, k) => s + FLAGS.find((f) => f.key === k).w, 0) + 3); }
+  function riskColor(score) { return score >= 70 ? C.danger : score >= 40 ? C.warn : C.signal; }
+  function verdict(t) {
+    if (t.score >= 70) return "Danger. " + (t.on.includes("honey") ? "You may not be able to sell this token at all." : "The developer can pull the money out at any time.");
+    if (t.score >= 40) return "Suspicious. Only buy what you can afford to lose, and watch the developer wallet.";
+    return "Looks clean for now. No major red flags, but keep an eye on it.";
+  }
+
+  function placeToken(t) {
+    const slot = SLOTS[nextSlot % SLOTS.length];
+    nextSlot++;
+    if (slot.mesh) { scene.remove(slot.mesh); scene.remove(slot.mesh.userData.roof); scene.remove(slot.mesh.userData.base); pickables.splice(pickables.indexOf(slot.mesh), 1); }
+    t.score = scoreOf(t.on);
+    const h = 3 + (100 - t.score) * 0.11 + Math.random() * 2;
+    const m = makeBuilding(riskColor(t.score), 2.6, h, slot.x, slot.z);
+    m.userData.kind = "token";
+    m.userData.data = t;
+    if (t.score >= 70) m.userData.fm.emissive.setHex(C.danger);
+    slot.mesh = m;
+    if (clock.elapsedTime > 1) startBuild(m);
+    scanned++;
+    $("sScanned").textContent = scanned;
+    return m;
+  }
+  START_TOKENS.forEach(placeToken);
+
+  // ---------- Scam graveyard (south edge) ----------
+  const grave = [];
+  function addRubble(x, z) {
+    const g = new THREE.Group();
+    for (let i = 0; i < 5; i++) {
+      const s = 0.6 + Math.random() * 1.2;
+      const piece = new THREE.Mesh(boxGeo, new THREE.MeshStandardMaterial({ color: 0x2a2429, emissive: C.danger, emissiveIntensity: 0.07, roughness: 0.95 }));
+      piece.scale.set(s, s * 0.6, s * 1.4);
+      piece.position.set((Math.random() - 0.5) * 2.4, 0, (Math.random() - 0.5) * 2.4);
+      piece.rotation.set(Math.random() * 0.6, Math.random() * 3, Math.random() * 0.6);
+      g.add(piece);
+    }
+    g.position.set(x, 0, z);
+    scene.add(g);
+    grave.push(g);
+  }
+  function graveSpot() { const i = grave.length; return { x: -14 + (i % 8) * 4, z: 15 + Math.floor(i / 8) * 3.5 }; }
+  ["$SAFU2", "$PEPEX", "$ELONMARS"].forEach(() => { const p = graveSpot(); addRubble(p.x, p.z); rugs++; });
+  $("sRugs").textContent = rugs;
+
+  // ---------- Street life: trees, furniture, cars, people ----------
+  const leafMats = [0x1e4a2c, 0x2a5a2e, 0x3a6a2a, 0x4a4a22].map((c) => new THREE.MeshStandardMaterial({ color: c, roughness: 1, flatShading: true }));
+  const trunkMat = new THREE.MeshStandardMaterial({ color: 0x3a2a20, roughness: 0.95 });
+  const leafGeo = new THREE.DodecahedronGeometry(1, 0), trunkGeo = new THREE.CylinderGeometry(0.07, 0.11, 1.4, 6);
+  const trees = [];
+  function tree(x, z, seed) {
+    const rnd = mulberry32(seed), g = new THREE.Group();
+    const tr = new THREE.Mesh(trunkGeo, trunkMat); tr.position.y = 0.7; tr.castShadow = true; g.add(tr);
+    const n = 3 + Math.floor(rnd() * 3), mat = leafMats[Math.floor(rnd() * leafMats.length)];
+    for (let i = 0; i < n; i++) {
+      const l = new THREE.Mesh(leafGeo, mat); const sc = 0.55 + rnd() * 0.5;
+      l.scale.set(sc, sc * 0.85, sc); l.position.set((rnd() - 0.5) * 0.9, 1.6 + rnd() * 0.9, (rnd() - 0.5) * 0.9); l.rotation.set(rnd() * 3, rnd() * 3, 0); l.castShadow = true; g.add(l);
+    }
+    g.position.set(x, 0, z); g.userData.phase = rnd() * 6.28; scene.add(g); trees.push(g);
+  }
+  let tseed = 500;
+  for (const x of [-12.1, -16.3, -20.5, 12.1, 16.3, 20.5]) { tree(x, -8.05, tseed++); tree(x, 8.95, tseed++); }
+  for (const z of [-5, -1.5, 2, 5.5]) { tree(-3.5, z, tseed++); tree(3.5, z, tseed++); }
+  for (const x of [-12, -4, 4, 12]) tree(x, 22.3, tseed++);
+
+  // small things that make a sidewalk a sidewalk
+  const binMat = new THREE.MeshStandardMaterial({ color: 0x2b2f33, roughness: 0.8, metalness: 0.4 }), benchMat = new THREE.MeshStandardMaterial({ color: 0x4a3a2a, roughness: 0.9 });
+  const hydMat = new THREE.MeshStandardMaterial({ color: 0xc8402e, roughness: 0.6 }), signMat = new THREE.MeshStandardMaterial({ color: 0x1f6b3a, roughness: 0.6 });
+  function bin(x, z) { const m = new THREE.Mesh(new THREE.CylinderGeometry(0.22, 0.2, 0.6, 10), binMat); m.position.set(x, 0.3, z); m.castShadow = true; scene.add(m); }
+  function bench(x, z, rot) { const g = new THREE.Group(); const seat = new THREE.Mesh(roofGeo, benchMat); seat.scale.set(1.3, 0.08, 0.4); seat.position.y = 0.4; const back = new THREE.Mesh(roofGeo, benchMat); back.scale.set(1.3, 0.4, 0.06); back.position.set(0, 0.45, -0.18); g.add(seat, back); for (const dx of [-0.55, 0.55]) { const leg = new THREE.Mesh(roofGeo, ironMat); leg.scale.set(0.06, 0.4, 0.4); leg.position.set(dx, 0, 0); g.add(leg); } g.position.set(x, 0, z); g.rotation.y = rot; scene.add(g); }
+  function hydrant(x, z) { const m = new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.12, 0.5, 8), hydMat); m.position.set(x, 0.25, z); scene.add(m); const cap = new THREE.Mesh(new THREE.SphereGeometry(0.11, 8, 6), hydMat); cap.position.set(x, 0.52, z); scene.add(cap); }
+  function streetSign(x, z) { const p = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.03, 2.6, 6), poleMat); p.position.set(x, 1.3, z); scene.add(p); const a = new THREE.Mesh(roofGeo, signMat); a.scale.set(0.9, 0.18, 0.04); a.position.set(x + 0.3, 2.3, z); scene.add(a); const b = new THREE.Mesh(roofGeo, signMat); b.scale.set(0.04, 0.18, 0.9); b.position.set(x, 2.1, z + 0.3); scene.add(b); }
+  for (const x of [-10.2, -18.4, 10.2, 18.4]) { bin(x, -8.0); bin(x, 8.9); }
+  for (const x of [-14.2, 14.2]) { bench(x, -7.9, 0); bench(x, 8.8, Math.PI); }
+  hydrant(-8.1, -4); hydrant(8.1, 5); hydrant(-3.6, 7.8); bin(3.6, -7.9); bin(-3.6, -7.9);
+  streetSign(-7.9, -8.3); streetSign(7.9, 9.2); streetSign(-7.9, 9.2); streetSign(7.9, -8.3);
+  bench(-3.4, 0, Math.PI / 2); bench(3.4, 0, -Math.PI / 2);
+
+  // cars: a body, a cabin, white headlights and red tail lights, looping along the roads
+  const carColors = [0xc84a3a, 0x3a6bc8, 0xd8d0c0, 0x2a2a30, 0xe0a030, 0x4a8a5a];
+  const headMat = new THREE.MeshBasicMaterial({ color: 0xfff4d0 }), tailMat = new THREE.MeshBasicMaterial({ color: 0xff3030 });
+  const cars = [];
+  function car(axis, lane, dir, pos, speed, color) {
+    const g = new THREE.Group();
+    const body = new THREE.Mesh(roofGeo, new THREE.MeshStandardMaterial({ color, roughness: 0.35, metalness: 0.5, envMapIntensity: 1.2 })); body.scale.set(1.9, 0.45, 0.9); body.position.y = 0.2; body.castShadow = true; g.add(body);
+    const cab = new THREE.Mesh(roofGeo, new THREE.MeshStandardMaterial({ color: 0x15202c, roughness: 0.15, metalness: 0.7, envMapIntensity: 1.4 })); cab.scale.set(1.0, 0.38, 0.82); cab.position.set(-0.1, 0.65, 0); g.add(cab);
+    for (const dz of [-0.3, 0.3]) {
+      const hl = new THREE.Mesh(roofGeo, headMat); hl.scale.set(0.06, 0.12, 0.16); hl.position.set(0.95, 0.4, dz); g.add(hl);
+      const tl = new THREE.Mesh(roofGeo, tailMat); tl.scale.set(0.06, 0.1, 0.16); tl.position.set(-0.95, 0.4, dz); g.add(tl);
+    }
+    for (const [dx, dz] of [[-0.6, -0.42], [0.6, -0.42], [-0.6, 0.42], [0.6, 0.42]]) { const wh = new THREE.Mesh(new THREE.CylinderGeometry(0.17, 0.17, 0.12, 10), ironMat); wh.rotation.x = Math.PI / 2; wh.position.set(dx, 0.17, dz); g.add(wh); }
+    const beam = new THREE.Mesh(new THREE.PlaneGeometry(3.2, 1.6), new THREE.MeshBasicMaterial({ map: lampGlowTex, color: 0xfff0c0, transparent: true, opacity: 0.35, blending: THREE.AdditiveBlending, depthWrite: false }));
+    beam.rotation.x = -Math.PI / 2; beam.position.set(2.2, 0.04, 0); g.add(beam);
+    g.rotation.y = axis === "x" ? (dir > 0 ? 0 : Math.PI) : (dir > 0 ? -Math.PI / 2 : Math.PI / 2);
+    scene.add(g); cars.push({ g, axis, lane, dir, pos, speed });
+  }
+  car("z", -6.5, 1, -30, 6, carColors[0]); car("z", -4.9, -1, 10, 5.2, carColors[1]); car("z", 4.9, 1, -5, 5.6, carColors[2]); car("z", 6.5, -1, 25, 6.4, carColors[3]);
+  car("x", -9.3, 1, -28, 5.5, carColors[4]); car("x", -10.7, -1, 12, 6.1, carColors[5]); car("x", 10.3, 1, -15, 5.8, carColors[1]); car("x", 11.7, -1, 30, 5.1, carColors[0]); car("x", 23.8, 1, 0, 5.4, carColors[2]);
+
+  // people: small dark figures strolling the sidewalks
+  const PEOPLE = 36, people = [];
+  const bodyGeo = new THREE.CylinderGeometry(0.12, 0.16, 0.62, 7), headGeo = new THREE.SphereGeometry(0.11, 8, 6);
+  const walkways = [
+    { axis: "x", at: -8.0, from: -24, to: -8 }, { axis: "x", at: -8.0, from: 8, to: 24 }, { axis: "x", at: 8.9, from: -24, to: -8 }, { axis: "x", at: 8.9, from: 8, to: 24 },
+    { axis: "z", at: -8.0, from: -8, to: 9 }, { axis: "z", at: 8.0, from: -8, to: 9 }, { axis: "z", at: -3.4, from: -8, to: 9 }, { axis: "z", at: 3.4, from: -8, to: 9 }, { axis: "x", at: 22.4, from: -16, to: 16 },
+  ];
+  const prnd = mulberry32(77);
+  for (let i = 0; i < PEOPLE; i++) {
+    const wk = walkways[i % walkways.length], g = new THREE.Group();
+    const shade = 0.12 + prnd() * 0.25, col = new THREE.Color().setHSL(prnd(), 0.35, shade);
+    const b = new THREE.Mesh(bodyGeo, new THREE.MeshStandardMaterial({ color: col, roughness: 0.9 })); b.position.y = 0.45; g.add(b);
+    const hd = new THREE.Mesh(headGeo, new THREE.MeshStandardMaterial({ color: 0x8a6a52, roughness: 0.9 })); hd.position.y = 0.86; g.add(hd);
+    scene.add(g);
+    people.push({ g, wk, p: wk.from + prnd() * (wk.to - wk.from), dir: prnd() < 0.5 ? 1 : -1, speed: 0.6 + prnd() * 0.7, phase: prnd() * 6.28, side: (prnd() - 0.5) * 0.5 });
+  }
+  function updateStreet(dt, t) {
+    for (const c of cars) {
+      c.pos += c.dir * c.speed * dt; if (c.pos > 42) c.pos = -42; if (c.pos < -42) c.pos = 42;
+      if (c.axis === "z") c.g.position.set(c.lane, 0, c.pos); else c.g.position.set(c.pos, 0, c.lane);
+    }
+    for (const p of people) {
+      p.p += p.dir * p.speed * dt;
+      if (p.p > p.wk.to) { p.p = p.wk.to; p.dir = -1; } else if (p.p < p.wk.from) { p.p = p.wk.from; p.dir = 1; }
+      const bob = Math.abs(Math.sin(t * 6 + p.phase)) * 0.04;
+      if (p.wk.axis === "x") { p.g.position.set(p.p, bob, p.wk.at + p.side); p.g.rotation.y = p.dir > 0 ? Math.PI / 2 : -Math.PI / 2; }
+      else { p.g.position.set(p.wk.at + p.side, bob, p.p); p.g.rotation.y = p.dir > 0 ? 0 : Math.PI; }
+    }
+    for (const tr of trees) tr.rotation.z = Math.sin(t * 0.9 + tr.userData.phase) * 0.012;
+  }
+
+  // ---------- Particles (sparks, dust) + build / demolition animation ----------
+  const PMAX = 600, pPos = new Float32Array(PMAX * 3), pCol = new Float32Array(PMAX * 3), parts = [];
+  for (let i = 0; i < PMAX; i++) pPos[i * 3 + 1] = -100;
+  const pGeo = new THREE.BufferGeometry(); pGeo.setAttribute("position", new THREE.BufferAttribute(pPos, 3)); pGeo.setAttribute("color", new THREE.BufferAttribute(pCol, 3));
+  const pMat = new THREE.PointsMaterial({ size: 0.22, vertexColors: true, transparent: true, opacity: 0.9, blending: THREE.AdditiveBlending, depthWrite: false, sizeAttenuation: true });
+  const points = new THREE.Points(pGeo, pMat); points.frustumCulled = false; scene.add(points);
+  const pTmp = new THREE.Color();
+  function emit(x, y, z, n, color, speed, up, life, spread) {
+    for (let i = 0; i < n && parts.length < PMAX; i++) {
+      pTmp.set(color); pTmp.offsetHSL(0, 0, (Math.random() - 0.5) * 0.2);
+      parts.push({ x: x + (Math.random() - 0.5) * spread, y, z: z + (Math.random() - 0.5) * spread, vx: (Math.random() - 0.5) * speed, vy: up + Math.random() * speed * 0.5, vz: (Math.random() - 0.5) * speed, life, max: life, r: pTmp.r, g: pTmp.g, b: pTmp.b, grav: up > 0.5 ? -4 : -0.6 });
+    }
+  }
+  function updateParticles(dt) {
+    for (let i = parts.length - 1; i >= 0; i--) {
+      const p = parts[i]; p.life -= dt;
+      if (p.life <= 0) { parts.splice(i, 1); continue; }
+      p.vy += p.grav * dt; p.x += p.vx * dt; p.y += p.vy * dt; p.z += p.vz * dt;
+      if (p.y < 0.02) { p.y = 0.02; p.vy *= -0.3; p.vx *= 0.7; p.vz *= 0.7; }
+    }
+    for (let i = 0; i < PMAX; i++) {
+      const p = parts[i];
+      if (p) { const f = p.life / p.max; pPos[i * 3] = p.x; pPos[i * 3 + 1] = p.y; pPos[i * 3 + 2] = p.z; pCol[i * 3] = p.r * f; pCol[i * 3 + 1] = p.g * f; pCol[i * 3 + 2] = p.b * f; }
+      else pPos[i * 3 + 1] = -100;
+    }
+    pGeo.attributes.position.needsUpdate = true; pGeo.attributes.color.needsUpdate = true;
+  }
+
+  // build: a tower crane swings in, scaffolding wraps the tower, floors rise one by one with welding sparks
+  const craneMat = new THREE.MeshStandardMaterial({ color: 0xe0a62a, roughness: 0.6, metalness: 0.4 });
+  const scaffMat = new THREE.LineBasicMaterial({ color: 0xffc86a, transparent: true, opacity: 0.7 });
+  const builds = [];
+  function startBuild(mesh) {
+    const u = mesh.userData; if (u.build) return;
+    const g = new THREE.Group(); g.position.set(mesh.position.x, 0, mesh.position.z);
+    const side = mesh.position.x < 0 ? -1 : 1, cx = side * (u.w / 2 + 1.0);
+    const mast = new THREE.Mesh(roofGeo, craneMat); mast.scale.set(0.3, u.targetH + 3, 0.3); mast.position.set(cx, 0, 0); g.add(mast);
+    const jib = new THREE.Group(); jib.position.set(cx, u.targetH + 3, 0);
+    const arm = new THREE.Mesh(roofGeo, craneMat); arm.scale.set(u.w + 3.5, 0.22, 0.22); arm.position.set(-side * (u.w + 3.5) / 2 + side * 1.2, 0, 0); jib.add(arm);
+    const counter = new THREE.Mesh(roofGeo, hvacMat); counter.scale.set(0.8, 0.5, 0.5); counter.position.set(side * 1.6, -0.3, 0); jib.add(counter);
+    const cable = new THREE.Mesh(roofGeo, ironMat); cable.scale.set(0.03, 1, 0.03); cable.position.set(-side * (u.w / 2 + 1.0), -1, 0); jib.add(cable);
+    const load = new THREE.Mesh(roofGeo, roofMat); load.scale.set(0.8, 0.5, 0.8); load.position.set(-side * (u.w / 2 + 1.0), -1.5, 0); jib.add(load);
+    g.add(jib);
+    const scaff = new THREE.LineSegments(edgeGeo, scaffMat); scaff.scale.set(u.w + 0.5, 0.001, u.d + 0.5); g.add(scaff);
+    for (let i = 0; i < 4; i++) { const pole = new THREE.Mesh(roofGeo, ironMat); pole.scale.set(0.05, 0.001, 0.05); pole.position.set((i % 2 ? 1 : -1) * (u.w / 2 + 0.25), 0, (i < 2 ? 1 : -1) * (u.d / 2 + 0.25)); pole.userData.isPole = true; g.add(pole); }
+    scene.add(g);
+    u.build = { g, jib, cable, load, scaff, t0: clock.elapsedTime, startH: mesh.scale.y, side, lastFloor: Math.floor(mesh.scale.y / FLOOR_H), done: false };
+    builds.push(mesh);
+  }
+  function updateBuilds(dt, t) {
+    for (let i = builds.length - 1; i >= 0; i--) {
+      const m = builds[i], u = m.userData, b = u.build;
+      if (!b || !m.parent) { builds.splice(i, 1); continue; }
+      const age = t - b.t0, rise = Math.min(1, age / 3.2);
+      // floors come up in steps, not a smooth stretch
+      const wantH = b.startH + (u.targetH - b.startH) * rise, floor = Math.floor(wantH / FLOOR_H);
+      m.scale.y = Math.max(b.startH, Math.min(u.targetH, floor * FLOOR_H + (wantH - floor * FLOOR_H) * 0.25));
+      if (floor > b.lastFloor) { b.lastFloor = floor; emit(m.position.x, m.scale.y, m.position.z, 40, 0xffc060, 3.5, 2.2, 0.8, u.w); }
+      if (Math.random() < 0.5) emit(m.position.x + (Math.random() - 0.5) * u.w, m.scale.y, m.position.z + (Math.random() - 0.5) * u.d, 3, 0xffd890, 2, 1.5, 0.5, 0.2);
+      const sh = Math.max(0.01, m.scale.y + 0.6);
+      b.scaff.scale.y = sh; b.g.children.forEach((c) => { if (c.userData.isPole) c.scale.y = sh; });
+      b.jib.rotation.y = Math.sin(age * 0.7) * 0.5;
+      const drop = Math.max(0.3, u.targetH + 2.5 - m.scale.y - 0.8 + Math.sin(age * 1.3) * 0.3);
+      b.cable.scale.y = drop; b.cable.position.y = -drop / 2; b.load.position.y = -drop - 0.5;
+      if (age > 4.2) {
+        const fade = Math.min(1, (age - 4.2) / 1.2);
+        b.g.position.y = -fade * (u.targetH + 4); b.scaff.material.opacity = 0.7 * (1 - fade);
+        if (fade >= 1) { scene.remove(b.g); u.build = null; builds.splice(i, 1); }
+      }
+    }
+  }
+  // demolition: the tower shudders, then sinks into a dust cloud while chunks of facade tumble into the street
+  const debris = [];
+  function spawnDebris(m) {
+    const u = m.userData;
+    for (let i = 0; i < 14; i++) {
+      const s = 0.3 + Math.random() * 0.7, piece = new THREE.Mesh(boxGeo, new THREE.MeshStandardMaterial({ color: 0x3a3238, emissive: C.danger, emissiveIntensity: 0.3, roughness: 0.9 }));
+      piece.scale.set(s, s * 0.6, s); piece.castShadow = true;
+      piece.position.set(m.position.x + (Math.random() - 0.5) * u.w, Math.random() * m.scale.y, m.position.z + (Math.random() - 0.5) * u.d);
+      scene.add(piece);
+      debris.push({ m: piece, vx: (Math.random() - 0.5) * 7, vy: 2 + Math.random() * 4, vz: (Math.random() - 0.5) * 7, sx: Math.random() * 4, sz: Math.random() * 4, life: 4 });
+    }
+    const flash = new THREE.PointLight(0xff6a3c, 6, 18); flash.position.set(m.position.x, 2, m.position.z); scene.add(flash); debris.push({ light: flash, life: 1.2 });
+  }
+  function updateDebris(dt) {
+    for (let i = debris.length - 1; i >= 0; i--) {
+      const d = debris[i]; d.life -= dt;
+      if (d.light) { d.light.intensity = Math.max(0, d.life * 5); if (d.life <= 0) { scene.remove(d.light); debris.splice(i, 1); } continue; }
+      d.vy -= 12 * dt; d.m.position.x += d.vx * dt; d.m.position.y += d.vy * dt; d.m.position.z += d.vz * dt;
+      d.m.rotation.x += d.sx * dt; d.m.rotation.z += d.sz * dt;
+      if (d.m.position.y < 0) { d.m.position.y = 0; d.vy *= -0.35; d.vx *= 0.6; d.vz *= 0.6; d.sx *= 0.5; d.sz *= 0.5; if (Math.abs(d.vy) > 1) emit(d.m.position.x, 0.1, d.m.position.z, 6, 0x8a7a70, 1.5, 0.8, 1.2, 0.4); }
+      if (d.life < 1) d.m.scale.multiplyScalar(1 - dt);
+      if (d.life <= 0) { scene.remove(d.m); debris.splice(i, 1); }
+    }
+  }
+
+  // ---------- Kaelis ----------
+  const kaelis = new THREE.Group();
+  const core = new THREE.Mesh(new THREE.IcosahedronGeometry(1, 1), new THREE.MeshStandardMaterial({ color: 0x0d1a22, emissive: C.signal, emissiveIntensity: 1.3, flatShading: true }));
+  const shell = new THREE.Mesh(new THREE.IcosahedronGeometry(1.7, 1), new THREE.MeshBasicMaterial({ color: C.signal, wireframe: true, transparent: true, opacity: 0.35 }));
+  const halo = new THREE.Sprite(new THREE.SpriteMaterial({ map: glowTexture("rgba(143,227,255,1)"), transparent: true, blending: THREE.AdditiveBlending, depthWrite: false }));
+  halo.scale.set(9, 9, 1);
+  const beam = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 1.4, 1, 16, 1, true),
+    new THREE.MeshBasicMaterial({ color: C.signal, transparent: true, opacity: 0, side: THREE.DoubleSide, blending: THREE.AdditiveBlending, depthWrite: false }));
+  kaelis.add(core, shell, halo);
+  scene.add(kaelis, beam);
+  const kLight = new THREE.PointLight(C.signal, 1.4, 12); // tight falloff: Kaelis lights what it hovers over, not the whole city
+  kaelis.add(kLight);
+  kaelis.userData = { focus: null, until: 0 };
+  core.userData = { kind: "kaelis" };
+  pickables.push(core);
+
+  // ---------- District labels ----------
+  const LABELS = [
+    { text: "Builders district", pos: new THREE.Vector3(-16.3, 0.2, 10) },
+    { text: "Kaelis tower", pos: new THREE.Vector3(0, TOWER_H + 6, 0) },
+    { text: "Scan district", pos: new THREE.Vector3(16.3, 0.2, 10) },
+    { text: "Scam graveyard", pos: new THREE.Vector3(-10, 0.2, 19) }
+  ].map((l) => { const d = document.createElement("div"); d.className = "dl"; d.textContent = l.text; $("labels").appendChild(d); return { ...l, el: d }; });
+
+  // ---------- Panel ----------
+  const panel = $("panel"), body = $("panelBody");
+  let selected = null;
+  function openPanel(mesh) {
+    selected = mesh;
+    const u = mesh.userData;
+    let html = "";
+    if (u.kind === "builder") {
+      const b = u.data;
+      html = `<span class="tag">Builder tower</span><h2>${b.name}</h2>
+        <p>${b.active ? "Active this week. Kaelis verified new commits and raised the tower." : "No verified work for a while, so the lights are dimming."}</p>
+        <div class="kv"><span>Main repo</span><span>${b.repo}</span><span>Commits this week</span><span>${b.commits}</span>
+        <span>Floors</span><span>${b.floors}</span><span>$KAEL earned this week</span><span>${fmt(b.kael)}</span></div>
+        <button class="btn" type="button" id="pushBtn">Simulate a verified commit</button>`;
+    } else if (u.kind === "token") {
+      const t = u.data, col = t.score >= 70 ? "var(--danger)" : t.score >= 40 ? "var(--warn)" : "var(--signal)";
+      html = `<span class="tag">Scanned token</span><h2>${t.name}</h2>
+        <div class="score"><div class="kv"><span>Risk score</span><span style="color:${col}">${t.score} / 100</span></div><div class="bar"><i style="width:${t.score}%;background:${col}"></i></div></div>
+        <ul class="flags">${FLAGS.map((f) => `<li class="${t.on.includes(f.key) ? "on" : "off"}">${f.text}</li>`).join("")}</ul>
+        <p class="quote">Kaelis: "${verdict(t)}"</p>
+        ${t.score >= 70 ? `<button class="btn bad" type="button" id="rugBtn">Simulate the rug pull</button>` : ""}`;
+    } else if (u.kind === "tower") {
+      html = `<span class="tag">Kaelis tower</span><h2>${fmt(holders)} windows lit</h2>
+        <p>Every lit window is one wallet holding $KAEL. Sell everything and your light goes out. The more holders, the brighter the city.</p>
+        <div class="kv"><span>Windows lit</span><span>${fmt(holders)} / ${fmt(WIN)}</span></div>`;
+    } else if (u.kind === "kaelis") {
+      html = `<span class="tag">The guardian</span><h2>Kaelis</h2>
+        <p>The first agent born from the chain. It patrols the city, rewards builders for real work and checks every token you send it.</p>
+        <p class="quote">Kaelis: "Top builder this week: 0xbima, 22 verified commits."</p>`;
+    }
+    body.innerHTML = html;
+    panel.hidden = false;
+    const push = $("pushBtn"), rug = $("rugBtn");
+    if (push) push.onclick = () => verifiedCommit(mesh);
+    if (rug) rug.onclick = () => rugPull(mesh);
+    if (u.kind !== "kaelis") focusKaelis(mesh, 6);
+  }
+  $("closePanel").onclick = () => { panel.hidden = true; selected = null; };
+
+  function focusKaelis(mesh, secs) {
+    kaelis.userData.focus = mesh;
+    kaelis.userData.until = clock.elapsedTime + secs;
+  }
+
+  // a taller target means more window rows: rebuild the facade geometry for the new height, keeping it hidden above the current roof
+  function redress(mesh) {
+    const u = mesh.userData; if (!u.dress) return;
+    const old = u.dress;
+    [old.frames, old.dark, old.lit, old.sills].forEach((o) => u.base.remove(o)); old.ledges.forEach((l) => u.base.remove(l.mesh));
+    const front = mesh.position.z < 0 ? -1 : 1;
+    u.dress = dressFacade(u.base, u.w, u.d, u.targetH, 0, 0, 0, mulberry32(Math.floor(Math.random() * 1e9)), 0.6, front < 0 ? 1 : 0);
+    u.dress.update(mesh.scale.y, true);
+  }
+  function applyCommit(mesh) {
+    const b = mesh.userData.data;
+    b.commits += 1; b.floors += 1; b.kael += 35; b.active = true;
+    mesh.userData.targetH = b.floors * 0.9;
+    redress(mesh);
+    startBuild(mesh);
+    mesh.userData.fm.emissive.setHex(C.ember); mesh.userData.fm.emissiveIntensity = 0.5;
+    mesh.userData.crown.material.emissiveIntensity = 3;
+    setTimeout(() => { mesh.userData.fm.emissiveIntensity = 0; mesh.userData.crown.material.emissiveIntensity = 1.6; }, 600);
+  }
+  function verifiedCommit(mesh) {
+    if (reduce || cine) { applyCommit(mesh); openPanel(mesh); return; }
+    const u = mesh.userData, b = u.data;
+    panel.hidden = true; selected = null;
+    camHome.pos.copy(camera.position); camHome.target.copy(controls.target);
+    cine = { kind: "build", mesh, phase: "verify", t0: clock.elapsedTime, built: false };
+    const foot = Math.max(u.w, u.d);
+    setCamKey(mesh, foot * 2.2 + (u.targetH + FLOOR_H) * 0.9 + 6, 0.85, 0.5, 1.6);
+    focusKaelis(mesh, 30);
+    scanRing.material.color.setHex(C.ember); scanSheet.material.color.setHex(C.ember);
+    scanRing.scale.set(foot * 0.95, foot * 0.95, 1); scanRing.position.set(mesh.position.x, 0.1, mesh.position.z); scanRing.material.opacity = 0;
+    scanSheet.scale.set(foot * 1.3, 1, 1); scanSheet.material.opacity = 0;
+    hud("VERIFYING", `${b.name} · commit #${b.commits + 1} · checking signature`, false, true); cineBar.style.width = "0%";
+    $("scanLog").textContent = `Kaelis is verifying a commit from ${b.name}...`;
+  }
+
+  function retireBuilding(mesh) {
+    if (!mesh.parent) return;
+    scene.remove(mesh); scene.remove(mesh.userData.roof); scene.remove(mesh.userData.base);
+    const i = pickables.indexOf(mesh); if (i >= 0) pickables.splice(i, 1);
+    const slot = SLOTS.find((s) => s.mesh === mesh); if (slot) slot.mesh = null;
+    const p = graveSpot(); addRubble(p.x, p.z);
+    rugs++; $("sRugs").textContent = rugs;
+  }
+
+  // ---------- Rug pull cinematic: scan -> zoom -> bomb -> boom -> collapse -> camera back ----------
+  const cineEl = $("cine"), cineK = $("cineK"), cineText = $("cineText"), cineBar = $("cineBar");
+  const scanRing = new THREE.Mesh(new THREE.RingGeometry(0.85, 1, 48), new THREE.MeshBasicMaterial({ color: C.signal, transparent: true, opacity: 0, side: THREE.DoubleSide, blending: THREE.AdditiveBlending, depthWrite: false }));
+  scanRing.rotation.x = -Math.PI / 2; scene.add(scanRing);
+  const scanSheet = new THREE.Mesh(new THREE.PlaneGeometry(1, 0.08), new THREE.MeshBasicMaterial({ color: C.signal, transparent: true, opacity: 0, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide }));
+  scene.add(scanSheet);
+  const bomb = new THREE.Group();
+  { const body = new THREE.Mesh(new THREE.SphereGeometry(0.42, 14, 10), new THREE.MeshStandardMaterial({ color: 0x1a1a1f, roughness: 0.4, metalness: 0.8 })); body.scale.set(1, 1.5, 1); bomb.add(body);
+    const tail = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.2, 0.5, 8), hvacMat); tail.position.y = 0.75; bomb.add(tail);
+    for (let i = 0; i < 4; i++) { const fin = new THREE.Mesh(roofGeo, new THREE.MeshStandardMaterial({ color: C.danger, roughness: 0.6 })); fin.scale.set(0.05, 0.4, 0.35); fin.position.set(0, 0.6, 0); fin.rotation.y = i * Math.PI / 2; fin.translateZ(0.2); bomb.add(fin); }
+    const blink = new THREE.Mesh(new THREE.SphereGeometry(0.08, 8, 6), new THREE.MeshBasicMaterial({ color: C.danger })); blink.position.y = -0.62; bomb.add(blink); bomb.userData.blink = blink; }
+  bomb.visible = false; scene.add(bomb);
+  const fireball = new THREE.Mesh(new THREE.SphereGeometry(1, 20, 14), new THREE.MeshBasicMaterial({ color: 0xffb060, transparent: true, opacity: 0, blending: THREE.AdditiveBlending, depthWrite: false }));
+  fireball.visible = false; scene.add(fireball);
+  const fireCore = new THREE.Mesh(new THREE.SphereGeometry(1, 16, 12), new THREE.MeshBasicMaterial({ color: 0xfff2d0, transparent: true, opacity: 0, blending: THREE.AdditiveBlending, depthWrite: false }));
+  fireCore.visible = false; scene.add(fireCore);
+  const shock = new THREE.Mesh(new THREE.RingGeometry(0.8, 1, 64), new THREE.MeshBasicMaterial({ color: 0xffc080, transparent: true, opacity: 0, side: THREE.DoubleSide, blending: THREE.AdditiveBlending, depthWrite: false }));
+  shock.rotation.x = -Math.PI / 2; shock.visible = false; scene.add(shock);
+  const boomLight = new THREE.PointLight(0xff8a3d, 0, 40); scene.add(boomLight);
+  let cine = null;
+  const camHome = { pos: new THREE.Vector3(), target: new THREE.Vector3() }, camFrom = { pos: new THREE.Vector3(), target: new THREE.Vector3() }, camTo = { pos: new THREE.Vector3(), target: new THREE.Vector3() };
+  const cv1 = new THREE.Vector3(), cv2 = new THREE.Vector3();
+  const ease = (x) => x < 0.5 ? 4 * x * x * x : 1 - Math.pow(-2 * x + 2, 3) / 2;
+  function shot(mesh, dist, heightK, lookK, out) {
+    const u = mesh.userData, h = u.targetH;
+    // look from outside the city inward, biased toward where the camera already is, so the Kaelis tower never blocks the shot
+    cv1.copy(camera.position).sub(mesh.position); cv1.y = 0; if (cv1.lengthSq() < 0.01) cv1.set(1, 0, 1); cv1.normalize();
+    cv2.copy(mesh.position); cv2.y = 0; if (cv2.lengthSq() > 1) { cv2.normalize(); cv1.multiplyScalar(0.35).addScaledVector(cv2, 0.65).normalize(); }
+    out.pos.copy(mesh.position).addScaledVector(cv1, dist); out.pos.y = h * heightK + 2;
+    out.target.copy(mesh.position); out.target.y = h * lookK;
+  }
+  function setCamKey(mesh, dist, heightK, lookK, dur) {
+    camFrom.pos.copy(camera.position); camFrom.target.copy(controls.target);
+    shot(mesh, dist, heightK, lookK, camTo);
+    cine.camT0 = clock.elapsedTime; cine.camDur = dur;
+  }
+  function hud(k, text, danger, ok) { cineEl.hidden = false; cineK.textContent = k; cineText.textContent = text; cineEl.classList.toggle("danger", !!danger); cineEl.classList.toggle("ok", !!ok); }
+  function rugPull(mesh) {
+    if (cine) return;
+    const u = mesh.userData, t = u.data;
+    panel.hidden = true; selected = null;
+    u.homeX = mesh.position.x; u.homeZ = mesh.position.z; u.debrisDone = false;
+    if (reduce) { // reduced motion: no camera ride, straight to the collapse
+      u.collapse = 0.3; $("scanLog").textContent = `${t.name} rugged. Kaelis moved it to the scam graveyard.`;
+      setTimeout(() => retireBuilding(mesh), 2600); return;
+    }
+    camHome.pos.copy(camera.position); camHome.target.copy(controls.target);
+    cine = { kind: "rug", mesh, phase: "scan", t0: clock.elapsedTime, impact: 0, removed: false, shake: 0 };
+    scanRing.material.color.setHex(C.signal); scanSheet.material.color.setHex(C.signal);
+    const foot = Math.max(u.w, u.d);
+    setCamKey(mesh, foot * 2.2 + u.targetH * 0.9 + 6, 0.8, 0.5, 1.6);
+    focusKaelis(mesh, 30);
+    scanRing.scale.set(foot * 0.95, foot * 0.95, 1); scanRing.position.set(mesh.position.x, 0.1, mesh.position.z); scanRing.material.opacity = 0;
+    scanSheet.scale.set(foot * 1.3, 1, 1); scanSheet.material.opacity = 0;
+    hud("SCANNING", t.name + " · reading contract", false); cineBar.style.width = "0%";
+    $("scanLog").textContent = `Kaelis is scanning ${t.name}...`;
+  }
+  function updateCine(dt, t) {
+    if (!cine) return;
+    const c = cine, m = c.mesh, u = m.userData, age = t - c.t0;
+    // camera ride between keyframes, with an optional shake
+    if (c.camDur) {
+      const k = ease(Math.min(1, (t - c.camT0) / c.camDur));
+      camera.position.lerpVectors(camFrom.pos, camTo.pos, k); controls.target.lerpVectors(camFrom.target, camTo.target, k);
+    }
+    if (c.shake > 0) { camera.position.x += (Math.random() - 0.5) * c.shake; camera.position.y += (Math.random() - 0.5) * c.shake; camera.position.z += (Math.random() - 0.5) * c.shake; c.shake *= 0.9; if (c.shake < 0.01) c.shake = 0; }
+    camera.lookAt(controls.target);
+    const top = m.scale.y, foot = Math.max(u.w, u.d);
+    if (c.phase === "scan") {
+      const p = Math.min(1, age / 2.6);
+      cineBar.style.width = Math.round(p * 100) + "%";
+      // a ring and a horizontal sheet sweep the facade from the ground to the roof and back
+      const sweep = (Math.sin(age * 2.4 - Math.PI / 2) + 1) / 2;
+      scanRing.position.y = 0.1 + sweep * top; scanRing.material.opacity = 0.55;
+      scanSheet.position.set(m.position.x, 0.1 + sweep * top, m.position.z); scanSheet.scale.set(foot * 1.3, 1, foot * 1.3); scanSheet.lookAt(camera.position.x, scanSheet.position.y, camera.position.z); scanSheet.material.opacity = 0.35;
+      beam.material.opacity = 0.3;
+      if (age > 1.4 && !c.flagged) { c.flagged = true; hud("RUG DETECTED", `${u.data.name} · risk ${u.data.score}/100 · liquidity pulled`, true); u.crown.material.emissiveIntensity = 3; }
+      if (age > 2.6) { c.phase = "zoom"; c.t0 = t; scanRing.material.opacity = 0; scanSheet.material.opacity = 0; setCamKey(m, foot * 3.2 + 6, 0.7, 0.55, 1.1); }
+    } else if (c.phase === "zoom") {
+      if (age > 1.1) {
+        c.phase = "bomb"; c.t0 = t;
+        bomb.visible = true; bomb.position.copy(kaelis.position); bomb.position.y -= 1.2; bomb.userData.vy = 0; bomb.rotation.set(0, 0, 0);
+        hud("KAELIS", "dropping the charge", true);
+      }
+    } else if (c.phase === "bomb") {
+      bomb.userData.vy -= 9 * dt; bomb.position.y += bomb.userData.vy * dt;
+      bomb.position.x += (m.position.x - bomb.position.x) * Math.min(1, dt * 3); bomb.position.z += (m.position.z - bomb.position.z) * Math.min(1, dt * 3);
+      bomb.rotation.z = Math.sin(age * 7) * 0.15; bomb.userData.blink.visible = (age * 8) % 1 < 0.5;
+      if (bomb.position.y <= top + 0.3 || age > 3) {
+        c.phase = "boom"; c.t0 = t; c.impact = t; bomb.visible = false;
+        const bx = m.position.x, by = top, bz = m.position.z;
+        fireball.visible = fireCore.visible = shock.visible = true; fireball.position.set(bx, by, bz); fireCore.position.copy(fireball.position); shock.position.set(bx, 0.08, bz);
+        boomLight.position.set(bx, by + 1, bz); boomLight.intensity = 12;
+        emit(bx, by, bz, 160, 0xffb050, 10, 6, 1.6, u.w); emit(bx, by, bz, 120, 0xff5a2a, 7, 3, 2.2, u.w); emit(bx, by * 0.5, bz, 80, 0x6a5a55, 4, 2, 2.6, u.w);
+        c.shake = 0.9;
+        u.collapse = 0.3; // straight into the debris + sink stage of the collapse choreography
+        hud("DETONATED", `${u.data.name} removed from Forge City`, true);
+        $("scanLog").textContent = `${u.data.name} rugged. Kaelis moved it to the scam graveyard.`;
+      }
+    } else if (c.phase === "boom") {
+      const f = Math.min(1, age / 1.1);
+      const r = foot * (0.5 + f * 1.9);
+      fireball.scale.setScalar(r); fireball.material.opacity = 0.7 * (1 - f) * (1 - f); fireball.material.color.setHSL(0.07 - f * 0.05, 1, 0.55 - f * 0.2);
+      fireCore.scale.setScalar(r * 0.55); fireCore.material.opacity = 1 - f;
+      fireball.position.y = top * (1 - u.collapse * 0.5) + f * 2;
+      fireCore.position.copy(fireball.position);
+      shock.scale.setScalar(1 + f * foot * 7); shock.material.opacity = 0.7 * (1 - f);
+      boomLight.intensity = 12 * (1 - f);
+      if (Math.random() < 0.7) emit(m.position.x + (Math.random() - 0.5) * u.w * 1.5, 0.5 + Math.random() * top * 0.6, m.position.z + (Math.random() - 0.5) * u.d * 1.5, 6, 0x4a4040, 2, 1.5, 2.4, 0.8);
+      if (age > 1.1) { fireball.visible = fireCore.visible = shock.visible = false; boomLight.intensity = 0; }
+      if (u.collapse >= 1 && !c.removed) { c.removed = true; retireBuilding(m); }
+      if (age > 2.4) {
+        c.phase = "return"; c.t0 = t;
+        camFrom.pos.copy(camera.position); camFrom.target.copy(controls.target); camTo.pos.copy(camHome.pos); camTo.target.copy(camHome.target);
+        c.camT0 = t; c.camDur = 1.6; hud("KAELIS", "back on patrol", false);
+        kaelis.userData.until = 0;
+      }
+    } else if (c.phase === "verify") {
+      const p = Math.min(1, age / 2.2);
+      cineBar.style.width = Math.round(p * 100) + "%";
+      const sweep = (Math.sin(age * 2.8 - Math.PI / 2) + 1) / 2;
+      scanRing.position.y = 0.1 + sweep * top; scanRing.material.opacity = 0.55;
+      scanSheet.position.set(m.position.x, 0.1 + sweep * top, m.position.z); scanSheet.scale.set(foot * 1.3, 1, foot * 1.3); scanSheet.lookAt(camera.position.x, scanSheet.position.y, camera.position.z); scanSheet.material.opacity = 0.35;
+      beam.material.opacity = 0.3;
+      if (age > 1.3 && !c.flagged) { c.flagged = true; hud("COMMIT VERIFIED", `${u.data.name} · +1 floor · +35 KAEL`, false, true); u.crown.material.emissiveIntensity = 3; emit(m.position.x, top + 0.3, m.position.z, 60, C.ember, 4, 3, 1.6, u.w); }
+      if (age > 2.2) { c.phase = "zoomb"; c.t0 = t; scanRing.material.opacity = 0; scanSheet.material.opacity = 0; setCamKey(m, foot * 4 + 9, 1.4, 0.75, 1.1); } // high enough to look over the neighbouring towers
+    } else if (c.phase === "zoomb") {
+      if (age > 1.1) { c.phase = "build"; c.t0 = t; applyCommit(m); hud("BUILDING", `${u.data.name} · floor ${u.data.floors} going up`, false, true); cineBar.style.width = "0%"; }
+    } else if (c.phase === "build") {
+      cineBar.style.width = Math.round(Math.min(1, (m.scale.y - (u.targetH - FLOOR_H)) / FLOOR_H) * 100) + "%";
+      if (!c.built && m.scale.y >= u.targetH - 0.02) {
+        c.built = true; hud("ONLINE", `${u.data.name} · ${u.data.floors} floors · ${u.data.commits} commits`, false, true); cineBar.style.width = "100%";
+        emit(m.position.x, u.targetH + 0.4, m.position.z, 140, C.ember, 6, 5, 2.2, u.w * 1.2); emit(m.position.x, u.targetH + 0.4, m.position.z, 60, 0xffe0a0, 5, 4, 2.0, u.w);
+        u.crown.material.emissiveIntensity = 4; if (u.dress) u.dress.setAllLit(0.85);
+      }
+      if (age > 5.6) {
+        c.phase = "return"; c.t0 = t;
+        camFrom.pos.copy(camera.position); camFrom.target.copy(controls.target); camTo.pos.copy(camHome.pos); camTo.target.copy(camHome.target);
+        c.camT0 = t; c.camDur = 1.6; hud("KAELIS", "back on patrol", false, true); kaelis.userData.until = 0;
+      }
+    } else if (c.phase === "return") {
+      if (age > 1.6) { if (c.kind === "rug" && !c.removed) retireBuilding(m); cineEl.hidden = true; const done = c; cine = null; controls.update(); if (done.kind === "build") openPanel(m); }
+    }
+  }
+
+  // ---------- Scan flow (simulated with a seeded hash) ----------
+  function hash(str) { let h = 2166136261; for (let i = 0; i < str.length; i++) { h ^= str.charCodeAt(i); h = Math.imul(h, 16777619); } return h >>> 0; }
+  const STEPS = ["Reading holders…", "Checking liquidity pool…", "Simulating a sell…", "Tracing the developer wallet…"];
+  $("scanForm").addEventListener("submit", (e) => {
+    e.preventDefault();
+    const q = $("scanInput").value.trim();
+    if (!q) { $("scanLog").textContent = "Paste a token address or ticker first."; return; }
+    const btn = $("scanBtn"); btn.disabled = true;
+    let i = 0;
+    const tick = () => {
+      if (i < STEPS.length) { $("scanLog").textContent = "Kaelis: " + STEPS[i++]; setTimeout(tick, reduce ? 50 : 380); return; }
+      let h = hash(q.toLowerCase());
+      const on = FLAGS.filter((f, j) => ((h >>> (j * 4)) & 15) < (/rug|scam|honey/i.test(q) ? 13 : 5)).map((f) => f.key);
+      const name = q.startsWith("$") ? q.toUpperCase() : q.length > 12 ? q.slice(0, 4) + "…" + q.slice(-4) : q;
+      const m = placeToken({ name, on });
+      $("scanLog").textContent = `Done. ${name} scored ${m.userData.data.score}/100.`;
+      btn.disabled = false;
+      setTimeout(() => openPanel(m), 300);
+    };
+    tick();
+  });
+  document.querySelectorAll(".chip").forEach((c) => c.addEventListener("click", () => { $("scanInput").value = c.dataset.q; $("scanForm").requestSubmit(); }));
+  $("holdBtn").addEventListener("click", () => { lightWindows(1); focusKaelis(tower, 3); $("scanLog").textContent = "Demo: one new holder. A window in the Kaelis tower lights up."; if (selected === tower) openPanel(tower); });
+
+  // ---------- Picking ----------
+  const ray = new THREE.Raycaster(), ptr = new THREE.Vector2(), tip = $("tip");
+  let downAt = null;
+  function pick(e) {
+    const r = canvas.getBoundingClientRect();
+    ptr.set(((e.clientX - r.left) / r.width) * 2 - 1, -((e.clientY - r.top) / r.height) * 2 + 1);
+    ray.setFromCamera(ptr, camera);
+    const hit = ray.intersectObjects(pickables, false)[0];
+    return hit ? hit.object : null;
+  }
+  function nameOf(m) { const u = m.userData; return u.kind === "builder" ? u.data.name : u.kind === "token" ? `${u.data.name} · risk ${u.data.score}` : u.kind === "tower" ? "Kaelis tower" : "Kaelis"; }
+  canvas.addEventListener("pointerdown", (e) => { downAt = [e.clientX, e.clientY]; });
+  canvas.addEventListener("pointerup", (e) => {
+    if (!downAt || Math.hypot(e.clientX - downAt[0], e.clientY - downAt[1]) > 6) return;
+    const m = pick(e);
+    if (m) { controls.autoRotate = false; openPanel(m); }
+  });
+  canvas.addEventListener("pointermove", (e) => {
+    if (e.pointerType !== "mouse") return;
+    const m = pick(e);
+    canvas.style.cursor = m ? "pointer" : "grab";
+    if (m) { tip.hidden = false; tip.textContent = nameOf(m); tip.style.left = e.clientX + "px"; tip.style.top = e.clientY + "px"; } else tip.hidden = true;
+  });
+
+  // bloom makes lit windows, lamps and Kaelis glow like a long exposure
+  const composer = new THREE.EffectComposer(renderer);
+  // ambient occlusion darkens the creases between ledges, window reveals and the street. Desktop only: phones get the plain render.
+  const useSSAO = window.innerWidth >= 720 && !reduce;
+  let ssao = null;
+  if (useSSAO) {
+    ssao = new THREE.SSAOPass(scene, camera, window.innerWidth, window.innerHeight);
+    ssao.kernelRadius = 1.6; ssao.minDistance = 0.0008; ssao.maxDistance = 0.05;
+    composer.addPass(ssao);
+  } else composer.addPass(new THREE.RenderPass(scene, camera));
+  const bloom = new THREE.UnrealBloomPass(new THREE.Vector2(1, 1), 0.45, 0.5, 0.86);
+  composer.addPass(bloom);
+  // the composer renders off-screen, so tone mapping + sRGB must be applied by hand at the end
+  composer.addPass(new THREE.ShaderPass({
+    uniforms: { tDiffuse: { value: null }, exposure: { value: 1.05 } },
+    vertexShader: "varying vec2 vUv; void main(){ vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }",
+    fragmentShader: `uniform sampler2D tDiffuse; uniform float exposure; varying vec2 vUv;
+      vec3 aces(vec3 c){ const mat3 a = mat3(0.59719,0.07600,0.02840, 0.35458,0.90834,0.13383, 0.04823,0.01566,0.83777);
+        const mat3 b = mat3(1.60475,-0.10208,-0.00327, -0.53108,1.10813,-0.07276, -0.07367,-0.00605,1.07602);
+        c = a * c; c = (c * (c + 0.0245786) - 0.000090537) / (c * (0.983729 * c + 0.4329510) + 0.238081); return clamp(b * c, 0.0, 1.0); }
+      void main(){ vec4 t = texture2D(tDiffuse, vUv); vec3 c = aces(t.rgb * exposure / 0.6); gl_FragColor = LinearTosRGB(vec4(c, t.a)); }`
+  }));
+  function resize() {
+    const w = window.innerWidth, h = window.innerHeight;
+    renderer.setSize(w, h, false);
+    composer.setSize(w, h);
+    if (ssao) ssao.setSize(w, h);
+    bloom.resolution.set(Math.round(w / 2), Math.round(h / 2));
+    camera.aspect = w / h;
+    camera.fov = w < 720 ? 62 : 50;
+    camera.updateProjectionMatrix();
+  }
+  window.addEventListener("resize", resize);
+  resize();
+
+  // ---------- Loop ----------
+  const v = new THREE.Vector3(), kTarget = new THREE.Vector3();
+  // embedded at the end of the home page: the parent pauses us while the story is on screen
+  const embedded = window.parent !== window;
+  let paused = false;
+  if (embedded) {
+    window.addEventListener("message", (e) => { if (e.data && e.data.kaelis === "pause") paused = true; if (e.data && e.data.kaelis === "resume") { paused = false; clock.getDelta(); } });
+    const back = document.getElementById("backLink");
+    if (back) { back.textContent = "↑ Back to the Kaelis story"; back.addEventListener("click", (e) => { e.preventDefault(); window.parent.postMessage({ kaelis: "story" }, "*"); }); }
+  }
+  function frame() {
+    if (paused) { requestAnimationFrame(frame); return; }
+    const dt = Math.min(clock.getDelta(), 0.05), t = clock.elapsedTime;
+
+    // grow and flicker buildings
+    if (!reduce && t - lastTwinkle > 0.3) { lastTwinkle = t; twinkle(); }
+    pickables.forEach((m) => {
+      const u = m.userData;
+      if (!u.targetH) return;
+      if (u.collapse > 0) {
+        u.collapse = Math.min(1, u.collapse + dt * 0.34);
+        const c = u.collapse;
+        u.fm.emissive.setHex(C.danger);
+        u.fm.emissiveIntensity = Math.random() * 0.5;
+        if (c < 0.3) {
+          // shudder: lights flicker, dust puffs out of the base
+          const sh = c * 0.5; m.position.x = u.homeX + (Math.random() - 0.5) * sh; m.position.z = u.homeZ + (Math.random() - 0.5) * sh;
+          if (Math.random() < 0.6) emit(m.position.x + (Math.random() - 0.5) * u.w, 0.2, m.position.z + (Math.random() - 0.5) * u.d, 4, 0x8a7a70, 1.2, 0.6, 1.4, 0.6);
+          u.roof.position.y = m.scale.y;
+        } else {
+          if (!u.debrisDone) { u.debrisDone = true; spawnDebris(m); u.roof.visible = false; }
+          const f = (c - 0.3) / 0.7;
+          m.scale.y = u.targetH * Math.max(0.001, 1 - f * f);
+          if (u.dress) u.dress.update(m.scale.y); // floors vanish one by one as the tower sinks
+          if (u.base) { u.base.visible = m.scale.y > 1.3; u.base.position.set(m.position.x, 0, m.position.z); u.base.rotation.copy(m.rotation); }
+          m.rotation.z = f * 0.35; m.rotation.x = f * 0.12;
+          emit(m.position.x + (Math.random() - 0.5) * u.w * 1.6, 0.3 + Math.random() * m.scale.y * 0.3, m.position.z + (Math.random() - 0.5) * u.d * 1.6, 8, 0x9a8a80, 2.5, 1.2, 1.8, 1.0);
+        }
+      } else {
+        if (!u.build) m.scale.y += (u.targetH - m.scale.y) * Math.min(1, dt * 2.5);
+        if (u.kind === "token" && u.data.score >= 70) {
+          const flick = reduce ? 1 : (Math.sin(t * 9 + u.phase) > 0.6 ? 2.4 : 0.6);
+          u.crown.material.emissiveIntensity = flick;
+          u.fm.emissiveIntensity = (reduce ? 0.8 : 0.5 + flick * 0.25) * 0.3;
+          m.rotation.z = 0.03;
+        }
+        if (u.kind === "builder" && u.data.active) u.fm.emissiveIntensity += ((1.0 + Math.sin(t * 1.5 + u.phase) * 0.12) - u.fm.emissiveIntensity) * 0.05;
+        u.roof.position.y = m.scale.y;
+        u.roof.visible = m.visible && m.scale.y > 0.5;
+        if (u.base) { u.base.visible = m.visible && m.scale.y > 1.3; if (u.base.userData.trims) u.base.userData.trims.forEach((tr) => { tr.scale.y = m.scale.y; }); }
+        if (u.dress) u.dress.update(m.scale.y);
+        if (u.roof.userData.beacon) u.roof.userData.beacon.visible = reduce || ((t * 1.2 + u.phase) % 1) < 0.5;
+      }
+      // keep windows the same real-world size however tall the tower grows
+      if (u.fac) { const ry = Math.max(0.01, m.scale.y / (FLOOR_H * TILE)), rx = Math.max(0.25, u.w / (WIN_W * TILE)); u.fac.map.repeat.set(rx, ry); u.fac.lit.repeat.set(rx, ry); u.fac.nrm.repeat.set(rx, ry); }
+    });
+
+    // Kaelis patrol or focus
+    const k = kaelis.userData;
+    if (k.focus && t < k.until && k.focus.parent) {
+      v.copy(k.focus.position); v.y = k.focus.scale.y + 4;
+      kTarget.copy(v);
+      if (!cine) beam.material.opacity = 0.18;
+    } else {
+      const a = t * (reduce ? 0 : 0.18);
+      kTarget.set(Math.cos(a) * 20, 15 + Math.sin(t * 0.7) * 1.5, Math.sin(a) * 20);
+      beam.material.opacity *= 0.9;
+    }
+    kaelis.position.lerp(kTarget, Math.min(1, dt * 1.6));
+    shell.rotation.y = t * 0.3; shell.rotation.x = t * 0.17;
+    halo.material.opacity = 0.75 + Math.sin(t * 2.4) * 0.15;
+    const bh = Math.max(0.1, kaelis.position.y);
+    beam.scale.set(1, bh, 1);
+    beam.position.set(kaelis.position.x, bh / 2, kaelis.position.z);
+
+    updateStreet(dt, t);
+    updateBuilds(dt, t);
+    updateDebris(dt);
+    updateParticles(dt);
+    updateCine(dt, t);
+    if (!cine) controls.update();
+    composer.render();
+
+    // labels
+    LABELS.forEach((l) => {
+      v.copy(l.pos).project(camera);
+      const vis = v.z < 1;
+      l.el.style.display = vis ? "block" : "none";
+      if (vis) { l.el.style.left = ((v.x + 1) / 2) * window.innerWidth + "px"; l.el.style.top = ((1 - v.y) / 2) * window.innerHeight + "px"; }
+    });
+    requestAnimationFrame(frame);
+  }
+  requestAnimationFrame(frame);
+})();
+</script>
+
+</body></html>

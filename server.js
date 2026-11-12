@@ -3,6 +3,7 @@
 const http = require("http");
 const fs = require("fs");
 const path = require("path");
+try { process.loadEnvFile?.(path.join(__dirname, ".env")); } catch {} // local .env only; on Railway the file is absent and Variables win
 
 const ROOT = path.join(__dirname, "site");
 const PORT = Number(process.env.PORT || 3000);
@@ -11,6 +12,13 @@ const API = {
   "/api/holders": require("./api/holders.js"),
   "/api/health": require("./api/health.js"),
   "/mcp": require("./api/mcp.js"),
+  "/api/builders": require("./api/builders.js"),
+  "/api/builders/register": require("./api/builders.js"),
+  "/api/builders/refresh": require("./api/builders.js"),
+  "/api/ledger": require("./api/ledger.js"),
+  "/api/genome": require("./api/genome.js"),
+  "/api/markets": require("./api/markets.js"),
+  "/api/filings": require("./api/filings.js"),
 };
 const TYPES = {
   ".html": "text/html; charset=utf-8", ".js": "text/javascript; charset=utf-8", ".css": "text/css; charset=utf-8",
@@ -59,5 +67,9 @@ const server = http.createServer(async (req, res) => {
   serveFile(req, res, pathname);
 });
 
-if (require.main === module) server.listen(PORT, () => console.log(`Kaelis running on port ${PORT}`));
+if (require.main === module) server.listen(PORT, () => {
+  console.log(`Kaelis running on port ${PORT}`);
+  const p = require("./lib/patrol.js").start(); // autonomous scans + nightly evolution (PATROL=off to stop)
+  console.log(p.on ? `Patrol on, first round ${p.nextRound}` : "Patrol off");
+});
 module.exports = server;

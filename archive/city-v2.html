@@ -1,0 +1,1187 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Forge City · Kaelis</title>
+<meta name="description" content="A neon city run by Kaelis. Each tower is one job: scan tokens, light a window for every holder, reward builders, watch tokens. Step inside to see the agent at work.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter+Tight:wght@400;500;600&family=JetBrains+Mono:wght@400;500;700&display=swap">
+<style>
+  :root {
+    --night: #0a0718; --panel: rgba(14, 10, 34, 0.86); --line: rgba(160, 150, 255, 0.28);
+    --text: #f1eefc; --mute: #a59fc4;
+    --mint: #59e7ca; --amber: #ffc24a; --ember: #ff8a4d; --violet: #9d8bff; --danger: #ff4d6a;
+    --f-sans: "Inter Tight", "Helvetica Neue", Arial, system-ui, sans-serif;
+    --f-mono: "JetBrains Mono", ui-monospace, Menlo, monospace;
+    --gut: max(16px, env(safe-area-inset-left, 0px));
+    color-scheme: dark;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; height: 100%; background: var(--night); color: var(--text); overflow: hidden; }
+  body { font-family: var(--f-sans); -webkit-font-smoothing: antialiased; }
+  canvas#c { position: fixed; inset: 0; width: 100%; height: 100%; display: block; touch-action: none; }
+  a { color: inherit; }
+  .mono { font-family: var(--f-mono); font-size: 11px; letter-spacing: .08em; text-transform: uppercase; }
+
+  header.top { position: fixed; top: 0; left: 0; right: 0; z-index: 5; display: flex; align-items: center; justify-content: space-between; gap: 12px;
+    padding: max(12px, env(safe-area-inset-top, 0px)) var(--gut) 12px; pointer-events: none; }
+  header.top > * { pointer-events: auto; }
+  .brand { display: grid; gap: 2px; text-decoration: none; }
+  .brand b { font-family: var(--f-mono); font-weight: 700; letter-spacing: .3em; font-size: 14px; }
+  .brand span { font-family: var(--f-mono); font-size: 10px; letter-spacing: .14em; color: var(--mute); text-transform: uppercase; }
+  nav.links { display: flex; gap: 6px; flex-wrap: wrap; justify-content: flex-end; }
+  .pill { font-family: var(--f-mono); font-size: 10.5px; letter-spacing: .1em; text-transform: uppercase; text-decoration: none; color: var(--text);
+    border: 1px solid var(--line); background: rgba(10, 7, 24, .6); padding: 8px 12px; border-radius: 999px; cursor: pointer; backdrop-filter: blur(6px); }
+  .pill:hover { border-color: var(--mint); color: var(--mint); }
+  .pill:focus-visible, button:focus-visible, input:focus-visible { outline: 2px solid var(--mint); outline-offset: 2px; }
+
+  /* floating tower labels (projected from 3D each frame) */
+  #labels { position: fixed; inset: 0; pointer-events: none; z-index: 3; }
+  .lbl { position: absolute; transform: translate(-50%, -100%); display: grid; gap: 3px; padding: 6px 9px 7px; min-width: 112px;
+    background: rgba(8, 6, 22, .82); border: 1px solid var(--c, var(--mint)); border-radius: 4px; box-shadow: 0 0 18px -6px var(--c, var(--mint));
+    font-family: var(--f-mono); text-transform: uppercase; white-space: nowrap; transition: opacity .25s; pointer-events: auto; cursor: pointer; }
+  .lbl .n { font-size: 10px; letter-spacing: .14em; color: var(--c); font-weight: 700; }
+  .lbl .v { font-size: 15px; font-weight: 700; letter-spacing: .02em; color: #fff; }
+  .lbl .s { font-size: 9px; letter-spacing: .1em; color: var(--mute); }
+  .lbl::after { content: ""; position: absolute; left: 50%; bottom: -7px; width: 1px; height: 7px; background: var(--c); }
+
+  /* bottom tower bar: keyboard + touch way in */
+  .dock { position: fixed; left: 0; right: 0; bottom: 0; z-index: 5; display: flex; flex-wrap: wrap; justify-content: center; gap: 8px;
+    padding: 12px var(--gut) max(14px, env(safe-area-inset-bottom, 0px)); background: linear-gradient(transparent, rgba(6, 4, 16, .85)); }
+  .dock button { font-family: var(--f-mono); font-size: 10.5px; letter-spacing: .1em; text-transform: uppercase; color: var(--text); cursor: pointer;
+    background: rgba(12, 9, 30, .8); border: 1px solid var(--c); border-radius: 4px; padding: 9px 12px; display: flex; gap: 8px; align-items: center; }
+  .dock button i { width: 8px; height: 8px; border-radius: 50%; background: var(--c); box-shadow: 0 0 10px var(--c); }
+  .dock button:hover { background: rgba(30, 22, 70, .9); }
+  .hint { position: fixed; left: 50%; transform: translateX(-50%); bottom: 64px; z-index: 4; color: var(--mute); pointer-events: none; text-align: center; }
+
+  /* inside a tower: info + actions */
+  .panel { position: fixed; z-index: 6; top: 76px; right: var(--gut); width: min(360px, calc(100vw - 32px)); max-height: calc(100dvh - 160px); overflow: auto;
+    background: var(--panel); border: 1px solid var(--c, var(--line)); border-radius: 6px; box-shadow: 0 0 40px -18px var(--c); backdrop-filter: blur(10px); }
+  .panel[hidden] { display: none; }
+  .panel .bar { display: flex; justify-content: space-between; align-items: center; padding: 9px 12px; background: var(--c); color: #090616; }
+  .panel .bar b { font-family: var(--f-mono); font-size: 11px; letter-spacing: .14em; text-transform: uppercase; }
+  .panel .bar button { background: none; border: 0; color: inherit; font: 700 11px var(--f-mono); letter-spacing: .1em; cursor: pointer; text-transform: uppercase; }
+  .panel .body { padding: 14px; display: grid; gap: 12px; }
+  .panel h2 { margin: 0; font-size: 22px; font-weight: 500; letter-spacing: -.02em; }
+  .panel p { margin: 0; color: var(--mute); font-size: 14px; line-height: 1.5; }
+  .panel .row { display: flex; gap: 8px; }
+  .panel input { flex: 1; min-width: 0; font: 13px var(--f-mono); color: var(--text); background: rgba(0, 0, 0, .35); border: 1px solid var(--line); border-radius: 4px; padding: 10px; }
+  .act { font: 700 11px var(--f-mono); letter-spacing: .1em; text-transform: uppercase; color: #090616; background: var(--c); border: 0; border-radius: 4px; padding: 10px 14px; cursor: pointer; }
+  .act:disabled { opacity: .5; cursor: wait; }
+  .kv { display: grid; grid-template-columns: 1fr auto; gap: 6px 12px; font-family: var(--f-mono); font-size: 12px; }
+  .kv span:nth-child(odd) { color: var(--mute); }
+  .tagx { display: inline-block; font: 700 9.5px var(--f-mono); letter-spacing: .14em; padding: 3px 6px; border-radius: 3px; border: 1px solid currentColor; text-transform: uppercase; }
+  .out { font-family: var(--f-mono); font-size: 12px; line-height: 1.55; color: var(--text); white-space: pre-wrap; }
+  .score { font: 700 40px var(--f-mono); letter-spacing: -.02em; }
+  .fine { font-size: 11px !important; }
+
+  .fade { position: fixed; inset: 0; background: #05030c; opacity: 0; pointer-events: none; z-index: 8; transition: opacity .28s ease; }
+  .fade.on { opacity: 1; }
+  .nogl { position: fixed; inset: 0; z-index: 9; display: grid; place-content: center; gap: 12px; text-align: center; padding: 24px; background: var(--night); }
+  .nogl[hidden] { display: none; }
+  .sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
+
+  @media (max-width: 700px) {
+    .panel { top: auto; bottom: 0; right: 0; left: 0; width: 100%; max-height: 48dvh; border-radius: 10px 10px 0 0; }
+    .hint { bottom: 112px; }
+    .lbl { min-width: 0; padding: 4px 6px; } .lbl .v { font-size: 12px; } .lbl .s { display: none; }
+    nav.links .opt { display: none; }
+  }
+  @media (prefers-reduced-motion: reduce) { .fade { transition: none; } }
+</style>
+</head>
+<body>
+<canvas id="c" aria-label="Forge City: a neon plaza with four towers around the Kaelis core"></canvas>
+<div id="labels"></div>
+
+<header class="top">
+  <a class="brand" href="index.html" id="backStory"><b>KAELIS</b><span>Forge City</span></a>
+  <nav class="links" aria-label="Main">
+    <a class="pill opt" href="scan.html">Scanner page</a>
+    <a class="pill opt" href="tower.html">Holder tower</a>
+    <a class="pill opt" href="evolution.html">Evolution</a>
+    <a class="pill opt" href="ledger.html">Ledger</a>
+    <a class="pill opt" href="guide.html">Guide</a>
+    <button class="pill" id="exitBtn" hidden>← Back to city</button>
+  </nav>
+</header>
+
+<p class="hint mono" id="hint">Drag to look around · tap a tower to step inside</p>
+
+<div class="dock" id="dock" role="toolbar" aria-label="Towers"></div>
+
+<aside class="panel" id="panel" hidden aria-live="polite">
+  <div class="bar"><b id="pTitle">Tower</b><button id="pClose" aria-label="Back to the city">Exit ×</button></div>
+  <div class="body" id="pBody"></div>
+</aside>
+
+<div class="fade" id="fade"></div>
+<div class="nogl" id="nogl" hidden>
+  <h1 style="margin:0;font-weight:500">Forge City needs WebGL</h1>
+  <p style="margin:0;color:var(--mute)">Your browser can't draw the 3D city. The tools still work:</p>
+  <p style="margin:0"><a class="pill" href="scan.html">Open the scanner</a> <a class="pill" href="tower.html">Holder tower</a></p>
+</div>
+
+<script src="js/kaelis-config.js?v=1.2.1"></script>
+<script src="js/kaelis-core.js?v=1.2.1"></script>
+<script type="importmap">
+{ "imports": {
+  "three": "https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.js",
+  "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.170.0/examples/jsm/"
+} }
+</script>
+<script type="module">
+import * as THREE from "three";
+import { OrbitControls } from "three/addons/controls/OrbitControls.js";
+import { EffectComposer } from "three/addons/postprocessing/EffectComposer.js";
+import { RenderPass } from "three/addons/postprocessing/RenderPass.js";
+import { UnrealBloomPass } from "three/addons/postprocessing/UnrealBloomPass.js";
+import { OutputPass } from "three/addons/postprocessing/OutputPass.js";
+import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
+import { MeshoptDecoder } from "three/addons/libs/meshopt_decoder.module.js";
+import { RoomEnvironment } from "three/addons/environments/RoomEnvironment.js";
+
+const K = window.KaelisCore, CFG = window.KAELIS_CONFIG || {};
+const $ = (id) => document.getElementById(id);
+const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
+const small = matchMedia("(max-width: 700px)").matches;
+const clamp = (v, a, b) => Math.min(b, Math.max(a, v));
+const lerp = (a, b, t) => a + (b - a) * t;
+const ease = (t) => (t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2);
+const fmt = (n) => Number(n).toLocaleString("en-US");
+const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+
+// When the city is shown inside the story page, "back" talks to the parent instead of navigating
+if (window.parent !== window) $("backStory").addEventListener("click", (e) => { e.preventDefault(); window.parent.postMessage({ kaelis: "story" }, "*"); });
+
+// ---------------------------------------------------------------- towers (one per Kaelis job)
+const TOWERS = [
+  { id: "scanner", name: "Scanner", color: "#59e7ca", angle: -0.55, h: 15, intro: "Kaelis checks a Solana token before you buy: a sell test, liquidity, top holders, locked LP, mint and freeze authority, Token-2022 controls and pool age. Live data." },
+  { id: "holders", name: "Holders", color: "#ffc24a", angle: 0.85, h: 18, intro: "One lit window for every wallet that holds $KAEL, read from the chain. Sell everything and the window goes dark. Before launch you can try it with any token." },
+  { id: "builders", name: "Builders", color: "#ff8a4d", angle: 2.35, h: 13, intro: "Proof-of-Build: link your GitHub and a Solana wallet. Kaelis counts your pull requests merged into other people's projects every week and keeps your points. Points convert to $KAEL at launch." },
+  { id: "watch", name: "Watch", color: "#9d8bff", angle: -2.2, h: 11.5, intro: "Keep an eye on a token you scanned. Kaelis re-checks it every 60 seconds while this page is open and warns you when liquidity drops or an authority comes back." },
+];
+const byId = Object.fromEntries(TOWERS.map((t) => [t.id, t]));
+
+// ---------------------------------------------------------------- shared live state
+const state = {
+  server: false, health: null,
+  lastScan: null,          // { mint, symbol, result, data, at, source }
+  scanning: false,
+  holders: null,           // { count, complete } when $KAEL is live
+  holdersPreview: null,    // { mint, count, complete, top10 } for any token before launch
+  builders: null,          // leaderboard from /api/builders
+  join: { wallet: null },
+  watch: { log: [], timer: null, prev: null, checks: 0 },
+};
+
+async function checkHealth() {
+  try {
+    const r = await fetch("api/health", { cache: "no-store" });
+    if (r.ok) { state.health = await r.json(); state.server = !!state.health.ok; }
+  } catch (e) { state.server = false; }
+}
+function tokenSymbol(data, mint) {
+  const p = (data && data.pairs && data.pairs[0]) || null;
+  const t = p ? (p.baseToken && p.baseToken.address === mint ? p.baseToken : p.quoteToken) : null;
+  return (t && t.symbol) || mint.slice(0, 4) + "…";
+}
+async function scanMint(mint) {
+  mint = String(mint || "").trim();
+  if (!K || !K.isAddress(mint)) throw new Error("That doesn't look like a Solana token address (32 to 44 characters).");
+  if (state.server) {
+    try {
+      const r = await fetch("api/scan?mint=" + encodeURIComponent(mint));
+      if (r.ok) { const j = await r.json(); if (j.result) return { mint, data: j.data, result: j.result, source: "Kaelis server", explain: j.explain }; }
+    } catch (e) { /* fall back to the browser */ }
+  }
+  const data = await K.gather(mint, { rpcUrls: CFG.rpcUrls });
+  return { mint, data, result: K.evaluate(data), source: "your browser" };
+}
+async function loadHolders() {
+  const mint = CFG.kaelMint;
+  if (!mint) return;
+  try {
+    const r = await fetch("api/holders?mint=" + encodeURIComponent(mint));
+    if (r.ok) { const j = await r.json(); state.holders = { count: j.count != null ? j.count : (j.holders || []).length, complete: !!j.complete }; }
+  } catch (e) { /* stays "at launch" */ }
+}
+async function loadBuilders() {
+  if (!state.server) return;
+  try { const r = await fetch("api/builders", { cache: "no-store" }); if (r.ok) state.builders = await r.json(); } catch (e) { /* keep last */ }
+}
+async function previewHolders(mint) {
+  mint = String(mint || "").trim();
+  if (!K.isAddress(mint)) throw new Error("That doesn't look like a Solana token address.");
+  if (!state.server) throw new Error("The holder count needs the Kaelis server (npm start).");
+  const r = await fetch("api/holders?mint=" + encodeURIComponent(mint)), j = await r.json();
+  if (!r.ok) throw new Error(j.error || "Holder lookup failed.");
+  const list = j.holders || [];
+  state.holdersPreview = { mint, count: j.count, complete: !!j.complete, shown: list.length, top10: list.slice(0, 10).reduce((t, h) => t + (h.share || 0), 0) };
+}
+// watch baseline; tolerate partial data (a failed RPC read must not break the scan)
+const safePulse = (d) => { try { return K.pulse ? K.pulse(d) : null; } catch (e) { return null; } };
+const walletProvider = () => (window.phantom && window.phantom.solana) || window.solflare || window.solana || null;
+const riskColor = (s) => (s >= 70 ? "#ff4d6a" : s >= 40 ? "#ffc24a" : "#59e7ca");
+const bandText = (b) => (b === "dangerous" ? "Danger" : b === "suspicious" ? "Suspicious" : "Low risk");
+
+
+// ---------------------------------------------------------------- renderer
+const canvas = $("c");
+let renderer;
+try {
+  renderer = new THREE.WebGLRenderer({ canvas, antialias: !small, powerPreference: "high-performance" });
+} catch (e) { $("nogl").hidden = false; throw e; }
+renderer.setPixelRatio(Math.min(devicePixelRatio || 1, small ? 1.5 : 2));
+renderer.outputColorSpace = THREE.SRGBColorSpace;
+renderer.toneMapping = THREE.ACESFilmicToneMapping;   // dark neon scene: a filmic curve keeps glows rich instead of clipping
+renderer.toneMappingExposure = 0.95;
+const pmrem = new THREE.PMREMGenerator(renderer);
+const envTex = pmrem.fromScene(new RoomEnvironment(), 0.04).texture;
+
+const camera = new THREE.PerspectiveCamera(small ? 52 : 40, 1, 0.1, 600);
+const controls = new OrbitControls(camera, canvas);
+controls.enableDamping = true; controls.dampingFactor = 0.07; controls.enablePan = false;
+
+const city = new THREE.Scene();
+const room = new THREE.Scene();
+city.environment = envTex; city.environmentIntensity = 0.35;
+room.environment = envTex; room.environmentIntensity = 0.5;
+let scene = city;
+
+const composer = new EffectComposer(renderer);
+const renderPass = new RenderPass(city, camera);
+const bloom = new UnrealBloomPass(new THREE.Vector2(256, 256), 0.6, 0.45, 0.82);
+const BLOOM = { city: [small ? 0.5 : 0.62, 0.45, 0.8], room: [0.32, 0.3, 0.93] };
+const setBloom = (k) => { [bloom.strength, bloom.radius, bloom.threshold] = BLOOM[k]; };
+setBloom("city");
+composer.addPass(renderPass); composer.addPass(bloom); composer.addPass(new OutputPass());
+
+// ---------------------------------------------------------------- texture helpers
+const srgb = (t) => { t.colorSpace = THREE.SRGBColorSpace; return t; };
+function canvasTex(w, h, draw) { const c = document.createElement("canvas"); c.width = w; c.height = h; draw(c.getContext("2d"), w, h); return srgb(new THREE.CanvasTexture(c)); }
+function rand(seed) { let s = seed >>> 0; return () => ((s = (s * 1664525 + 1013904223) >>> 0) / 4294967296); }
+
+// window grid for tower facades: dark glass with a share of lit windows (white, tinted by emissive colour)
+function windowsTex(seed, cols = 6, rows = 24, lit = 0.42) {
+  const r = rand(seed);
+  return canvasTex(128, 512, (g, w, h) => {
+    g.fillStyle = "#000"; g.fillRect(0, 0, w, h);
+    const cw = w / cols, rh = h / rows;
+    for (let y = 0; y < rows; y++) for (let x = 0; x < cols; x++) {
+      if (r() < lit) { const b = 150 + r() * 105; g.fillStyle = `rgb(${b},${b},${b})`; g.fillRect(x * cw + cw * 0.22, y * rh + rh * 0.22, cw * 0.56, rh * 0.5); }
+    }
+  });
+}
+function gridTex(color, cells = 8, alpha = 0.55) {
+  const t = canvasTex(256, 256, (g, w, h) => {
+    g.fillStyle = "#000"; g.fillRect(0, 0, w, h);
+    g.strokeStyle = color; g.globalAlpha = alpha; g.lineWidth = 2;
+    for (let i = 0; i <= cells; i++) { const p = (i / cells) * w; g.beginPath(); g.moveTo(p, 0); g.lineTo(p, h); g.stroke(); g.beginPath(); g.moveTo(0, p); g.lineTo(w, p); g.stroke(); }
+  });
+  t.wrapS = t.wrapT = THREE.RepeatWrapping; t.anisotropy = 8; return t;
+}
+function glowSprite(color, size) {
+  const tex = canvasTex(128, 128, (g) => { const gr = g.createRadialGradient(64, 64, 0, 64, 64, 64); gr.addColorStop(0, "#fff"); gr.addColorStop(0.25, color); gr.addColorStop(1, "rgba(0,0,0,0)"); g.fillStyle = gr; g.fillRect(0, 0, 128, 128); });
+  const s = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex, blending: THREE.AdditiveBlending, depthWrite: false, transparent: true }));
+  s.scale.setScalar(size); return s;
+}
+
+const beams = [];
+// =================================================================== CITY
+// sky dome: deep indigo to violet horizon, plus stars
+{
+  const sky = new THREE.Mesh(new THREE.SphereGeometry(400, 32, 16), new THREE.ShaderMaterial({
+    side: THREE.BackSide, depthWrite: false,
+    vertexShader: "varying vec3 vP; void main(){ vP = normalize(position); gl_Position = projectionMatrix * modelViewMatrix * vec4(position,1.); }",
+    fragmentShader: "varying vec3 vP; void main(){ float h = clamp(vP.y*1.6+0.08, 0., 1.); vec3 top = vec3(0.012,0.008,0.05); vec3 mid = vec3(0.07,0.03,0.22); vec3 hor = vec3(0.32,0.12,0.55); vec3 c = mix(hor, mid, smoothstep(0.,0.18,h)); c = mix(c, top, smoothstep(0.18,0.9,h)); gl_FragColor = vec4(c,1.); }",
+  }));
+  city.add(sky);
+  const n = 1400, pos = new Float32Array(n * 3), r = rand(7);
+  for (let i = 0; i < n; i++) { const th = r() * Math.PI * 2, ph = Math.acos(0.15 + r() * 0.85), R = 380; pos.set([R * Math.sin(ph) * Math.cos(th), R * Math.cos(ph), R * Math.sin(ph) * Math.sin(th)], i * 3); }
+  const g = new THREE.BufferGeometry(); g.setAttribute("position", new THREE.BufferAttribute(pos, 3));
+  city.add(new THREE.Points(g, new THREE.PointsMaterial({ color: 0xcfc8ff, size: 1.3, sizeAttenuation: true, depthWrite: false })));
+  city.fog = new THREE.FogExp2(0x120830, 0.0065);
+}
+
+// ground: dark plaza with a glowing grid, light rings and spokes
+const plaza = new THREE.Group(); city.add(plaza);
+{
+  const floor = new THREE.Mesh(new THREE.CircleGeometry(140, 96), new THREE.MeshStandardMaterial({
+    color: 0x0a0820, roughness: 0.55, metalness: 0.35, emissive: 0xffffff, emissiveIntensity: 0.32,
+    emissiveMap: (() => { const t = gridTex("#6b5cff", 8, 0.5); t.repeat.set(34, 34); return t; })(),
+  }));
+  floor.rotation.x = -Math.PI / 2; plaza.add(floor);
+  const ringMat = (c, k = 1.6) => new THREE.MeshBasicMaterial({ color: new THREE.Color(c).multiplyScalar(k), side: THREE.DoubleSide });
+  for (const [ri, ro, c, k] of [[7.4, 7.6, "#59e7ca", 1.5], [16.6, 16.75, "#8f7dff", 1.2], [24, 24.25, "#cfc6ff", 1.4], [24.9, 24.98, "#59e7ca", 1.1]]) {
+    const ring = new THREE.Mesh(new THREE.RingGeometry(ri, ro, 160), ringMat(c, k)); ring.rotation.x = -Math.PI / 2; ring.position.y = 0.02; plaza.add(ring);
+  }
+  // spokes from the core to each tower
+  TOWERS.forEach((t) => {
+    const len = 9.2, sp = new THREE.Mesh(new THREE.PlaneGeometry(0.14, len), ringMat(t.color, 1.8));
+    sp.rotation.x = -Math.PI / 2; sp.rotation.z = -t.angle + Math.PI / 2;
+    const mid = 7.6 + len / 2; sp.position.set(Math.cos(t.angle) * mid, 0.03, Math.sin(t.angle) * mid); plaza.add(sp);
+  });
+  // raised outer rail (the bright track in the reference shots) with travelling lights
+  const rail = new THREE.Mesh(new THREE.TorusGeometry(24.2, 0.09, 8, 200), ringMat("#e8e2ff", 1.5)); rail.rotation.x = Math.PI / 2; rail.position.y = 0.45; plaza.add(rail);
+}
+const runners = new THREE.InstancedMesh(new THREE.SphereGeometry(0.22, 10, 10), new THREE.MeshBasicMaterial({ color: new THREE.Color("#ffffff").multiplyScalar(2) }), 30);
+city.add(runners);
+
+// grid wall behind the city (a data screen arc, like a stadium board)
+{
+  const wallTex = gridTex("#7b6bff", 6, 0.6); wallTex.repeat.set(26, 3);
+  const wall = new THREE.Mesh(new THREE.CylinderGeometry(70, 70, 22, 128, 1, true, Math.PI * 0.15, Math.PI * 1.7), new THREE.MeshBasicMaterial({
+    map: wallTex, color: new THREE.Color("#8a7cff").multiplyScalar(0.55), side: THREE.BackSide, transparent: true, opacity: 0.6, blending: THREE.AdditiveBlending, depthWrite: false }));
+  wall.position.y = 10; city.add(wall);
+}
+
+// scattered low-rise blocks between the towers and the wall
+const fillerTex = [windowsTex(11, 5, 16, 0.3), windowsTex(12, 4, 14, 0.25), windowsTex(13, 6, 20, 0.35)];
+{
+  const r = rand(99);
+  for (let i = 0; i < 70; i++) {
+    const a = r() * Math.PI * 2, d = 29 + r() * 34, w = 1.6 + r() * 3, h = 2 + r() * (d < 40 ? 9 : 16);
+    const tex = fillerTex[i % 3].clone(); tex.needsUpdate = true; tex.repeat.set(1, h / 10);
+    const tint = ["#59e7ca", "#9d8bff", "#ff8a4d", "#7aa8ff"][i % 4];
+    const m = new THREE.Mesh(new THREE.BoxGeometry(w, h, w), new THREE.MeshStandardMaterial({ color: 0x0b0920, roughness: 0.7, metalness: 0.2,
+      emissive: new THREE.Color(tint).multiplyScalar(0.9), emissiveMap: tex }));
+    m.position.set(Math.cos(a) * d, h / 2, Math.sin(a) * d); city.add(m);
+  }
+}
+
+// central core: ribbed glowing dome, pedestal, light column, and Kaelis floating above
+const core = new THREE.Group(); city.add(core);
+{
+  const ribs = canvasTex(512, 64, (g, w, h) => { g.fillStyle = "#fff"; g.fillRect(0, 0, w, h); g.fillStyle = "#3a2a20"; for (let i = 0; i < 24; i++) g.fillRect(i * (w / 24), 0, 3, h); g.fillRect(0, h * 0.62, w, 3); });
+  const dome = new THREE.Mesh(new THREE.SphereGeometry(4.2, 64, 24, 0, Math.PI * 2, 0, Math.PI / 2), new THREE.MeshStandardMaterial({
+    color: 0x1a1010, emissive: new THREE.Color("#ffd2a6").multiplyScalar(1.15), emissiveMap: ribs, roughness: 0.4 }));
+  dome.position.y = 0.6; core.add(dome);
+  const base = new THREE.Mesh(new THREE.CylinderGeometry(5.6, 6.2, 0.6, 64), new THREE.MeshStandardMaterial({ color: 0x15102e, roughness: 0.4, metalness: 0.6 }));
+  base.position.y = 0.3; core.add(base);
+  const baseRing = new THREE.Mesh(new THREE.TorusGeometry(5.62, 0.06, 8, 128), new THREE.MeshBasicMaterial({ color: new THREE.Color("#59e7ca").multiplyScalar(2.4) }));
+  baseRing.rotation.x = Math.PI / 2; baseRing.position.y = 0.6; core.add(baseRing);
+  // little cone markers around the dome (like the cyan pins in the reference)
+  for (let i = 0; i < 10; i++) {
+    const a = (i / 10) * Math.PI * 2, c = new THREE.Mesh(new THREE.ConeGeometry(0.16, 0.5, 6), new THREE.MeshBasicMaterial({ color: new THREE.Color("#59e7ca").multiplyScalar(2) }));
+    c.position.set(Math.cos(a) * 5.0, 0.85, Math.sin(a) * 5.0); core.add(c);
+  }
+}
+const coreBeam = beam("#ffd9b0", 1.0, 90, 0.3); coreBeam.position.y = 4; core.add(coreBeam);
+const kaelisCity = new THREE.Group(); kaelisCity.position.y = 8.2; core.add(kaelisCity);
+kaelisCity.add(glowSprite("rgba(89,231,202,0.55)", 7));
+
+// tower light beam: additive shader cylinder, bright at the base, scanning bands moving up
+function beam(color, radius, height, strength = 1) {
+  const m = new THREE.ShaderMaterial({
+    transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, side: THREE.DoubleSide,
+    uniforms: { uColor: { value: new THREE.Color(color) }, uTime: { value: 0 }, uK: { value: strength } },
+    vertexShader: "varying vec2 vUv; void main(){ vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position,1.); }",
+    fragmentShader: "uniform vec3 uColor; uniform float uTime; uniform float uK; varying vec2 vUv; void main(){ float fall = pow(1.0 - vUv.y, 1.6); float band = 0.75 + 0.25 * sin(vUv.y * 60.0 - uTime * 4.0); float edge = 0.55 + 0.45 * sin(vUv.x * 6.2832 * 3.0); float a = fall * band * edge * uK; gl_FragColor = vec4(uColor * a * 2.2, a); }",
+  });
+  const b = new THREE.Mesh(new THREE.CylinderGeometry(radius * 0.35, radius, height, 24, 1, true), m);
+  b.geometry.translate(0, height / 2, 0); b.userData.mat = m; beams.push(m); return b;
+}
+
+// the four towers
+const towerHits = [];
+TOWERS.forEach((t, i) => {
+  const g = new THREE.Group(), R = 15.5;
+  g.position.set(Math.cos(t.angle) * R, 0, Math.sin(t.angle) * R);
+  g.lookAt(0, 0, 0);
+  const col = new THREE.Color(t.color);
+  const tex = windowsTex(20 + i, 6, 30, 0.5);
+  const body = new THREE.MeshStandardMaterial({ color: 0x0c0a22, roughness: 0.35, metalness: 0.5, emissive: col.clone().multiplyScalar(0.85), emissiveMap: tex });
+  const edgeMat = new THREE.LineBasicMaterial({ color: col.clone().multiplyScalar(1.6) });
+  // stacked tiers, each a bit narrower
+  let y = 0;
+  const tiers = [[3.4, t.h * 0.45], [2.6, t.h * 0.33], [1.8, t.h * 0.22]];
+  tiers.forEach(([w, h], k) => {
+    const geo = new THREE.BoxGeometry(w, h, w); const tx = tex.clone(); tx.needsUpdate = true; tx.repeat.set(1, h / 14);
+    const m = new THREE.Mesh(geo, body.clone()); m.material.emissiveMap = tx; m.position.y = y + h / 2; g.add(m); (t.mats = t.mats || []).push(m.material);
+    const e = new THREE.LineSegments(new THREE.EdgesGeometry(geo), edgeMat); e.position.copy(m.position); g.add(e);
+    const ledge = new THREE.Mesh(new THREE.BoxGeometry(w + 0.3, 0.12, w + 0.3), new THREE.MeshBasicMaterial({ color: col.clone().multiplyScalar(1.4) }));
+    ledge.position.y = y + h; g.add(ledge);
+    y += h;
+  });
+  // base platform + crown ring + antenna
+  const plat = new THREE.Mesh(new THREE.CylinderGeometry(3.4, 3.8, 0.5, 6), new THREE.MeshStandardMaterial({ color: 0x120e2c, metalness: 0.6, roughness: 0.4 }));
+  plat.position.y = 0.25; g.add(plat);
+  const crown = new THREE.Mesh(new THREE.TorusGeometry(1.5, 0.07, 8, 64), new THREE.MeshBasicMaterial({ color: col.clone().multiplyScalar(2.5) }));
+  crown.rotation.x = Math.PI / 2; crown.position.y = y + 0.9; g.add(crown);
+  const ant = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.08, 3, 6), new THREE.MeshBasicMaterial({ color: 0xbbb4ff })); ant.position.y = y + 1.5; g.add(ant);
+  const tip = glowSprite(t.color, 2.4); tip.position.y = y + 3.1; g.add(tip);
+  const b = beam(t.color, 0.8, 80, 0.6); b.position.y = y + 0.3; g.add(b);
+  // invisible hit box for clicks
+  const hit = new THREE.Mesh(new THREE.BoxGeometry(4.2, y + 3, 4.2), new THREE.MeshBasicMaterial({ visible: false }));
+  hit.position.y = (y + 3) / 2; hit.userData.tower = t.id; g.add(hit); towerHits.push(hit);
+  t.group = g; t.top = new THREE.Vector3(0, y + 3.8, 0); t.crown = crown; t.body = body; t.beamMat = b.userData.mat; t.height = y;
+  city.add(g);
+});
+
+// =================================================================== ROOM (inside a tower)
+const roomParts = {};
+{
+  room.background = new THREE.Color(0x07051a);
+  room.fog = new THREE.Fog(0x07051a, 9, 22);
+  room.add(new THREE.HemisphereLight(0x8a7cff, 0x120a2a, 0.85));
+  const key = new THREE.DirectionalLight(0xc9c2ff, 0.9); key.position.set(3, 5, 4); room.add(key);
+  const screenLight = new THREE.PointLight(0x59e7ca, 6, 5, 2); screenLight.position.set(0, 1.5, -0.6); room.add(screenLight);
+  roomParts.screenLight = screenLight;
+
+  // round platform with grid, like a stage
+  const floor = new THREE.Mesh(new THREE.CircleGeometry(4.2, 72), new THREE.MeshStandardMaterial({ color: 0x0c0a24, roughness: 0.5, metalness: 0.3,
+    emissive: 0xffffff, emissiveIntensity: 0.4, emissiveMap: (() => { const t = gridTex("#5d4fff", 8, 0.55); t.repeat.set(9, 9); return t; })() }));
+  floor.rotation.x = -Math.PI / 2; room.add(floor);
+  const edge = new THREE.Mesh(new THREE.TorusGeometry(4.2, 0.02, 6, 128), new THREE.MeshBasicMaterial({ color: new THREE.Color("#8f7dff").multiplyScalar(1.3) }));
+  edge.rotation.x = Math.PI / 2; room.add(edge); roomParts.edge = edge;
+
+  // panoramic window: night skyline painted once
+  const sky = canvasTex(2048, 768, (g, w, h) => {
+    const gr = g.createLinearGradient(0, 0, 0, h); gr.addColorStop(0, "#160a3a"); gr.addColorStop(0.55, "#3a1a7a"); gr.addColorStop(1, "#6a2fb0");
+    g.fillStyle = gr; g.fillRect(0, 0, w, h);
+    const r = rand(5); g.fillStyle = "#fff";
+    for (let i = 0; i < 260; i++) { const s = r() * 2.4; g.globalAlpha = 0.4 + r() * 0.6; g.fillRect(r() * w, r() * h * 0.6, s, s); }
+    g.globalAlpha = 1;
+    for (let layer = 0; layer < 2; layer++) {
+      let x = 0;
+      while (x < w) {
+        const bw = 60 + r() * 120, bh = (layer ? 160 : 260) + r() * (layer ? 220 : 330);
+        g.fillStyle = layer ? "#14093a" : "#0b0624"; g.fillRect(x, h - bh, bw, bh);
+        for (let wy = h - bh + 16; wy < h - 10; wy += 22) for (let wx = x + 10; wx < x + bw - 10; wx += 18) {
+          if (r() < (layer ? 0.18 : 0.26)) { g.fillStyle = ["#ffd27a", "#9ff3e3", "#c9b9ff"][Math.floor(r() * 3)]; g.fillRect(wx, wy, 8, 11); }
+        }
+        x += bw + 6 + r() * 30;
+      }
+    }
+  });
+  const win = new THREE.Mesh(new THREE.PlaneGeometry(10, 3.75), new THREE.MeshBasicMaterial({ map: sky, color: new THREE.Color(0.8, 0.8, 0.8) }));
+  win.position.set(0, 2.2, -3.4); room.add(win);
+  const frameMat = new THREE.MeshStandardMaterial({ color: 0x1a1438, roughness: 0.5, metalness: 0.5 });
+  for (const [w, h, x, y] of [[10.3, 0.15, 0, 4.1], [10.3, 0.15, 0, 0.3], [0.15, 3.9, -5.1, 2.2], [0.15, 3.9, 5.1, 2.2], [0.08, 3.8, -1.7, 2.2], [0.08, 3.8, 1.7, 2.2]]) {
+    const f = new THREE.Mesh(new THREE.BoxGeometry(w, h, 0.15), frameMat); f.position.set(x, y, -3.35); room.add(f);
+  }
+
+  // wall clock (real time)
+  const clockCv = document.createElement("canvas"); clockCv.width = clockCv.height = 256;
+  const clockTex = srgb(new THREE.CanvasTexture(clockCv));
+  const clock = new THREE.Mesh(new THREE.CircleGeometry(0.42, 48), new THREE.MeshBasicMaterial({ map: clockTex, transparent: true }));
+  clock.position.set(-3.6, 3.15, -3.25); room.add(clock); roomParts.clock = { cv: clockCv, tex: clockTex };
+
+  // desk
+  const deskMat = new THREE.MeshStandardMaterial({ color: 0x1b1550, roughness: 0.35, metalness: 0.4 });
+  const top = new THREE.Mesh(new THREE.BoxGeometry(2.9, 0.07, 1.0), deskMat); top.position.set(0, 0.82, -1.05); room.add(top);
+  const lip = new THREE.Mesh(new THREE.BoxGeometry(2.9, 0.02, 0.02), new THREE.MeshBasicMaterial({ color: new THREE.Color("#59e7ca").multiplyScalar(2) }));
+  lip.material.color.multiplyScalar(0.6); lip.position.set(0, 0.84, -0.54); room.add(lip); roomParts.lip = lip;
+  for (const x of [-1.35, 1.35]) for (const z of [-1.45, -0.65]) { const leg = new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.8, 0.06), deskMat); leg.position.set(x, 0.4, z); room.add(leg); }
+
+  // monitors (canvas screens updated with live data)
+  roomParts.screens = [];
+  const monMat = new THREE.MeshStandardMaterial({ color: 0x0b0918, roughness: 0.4, metalness: 0.5 });
+  for (const [w, h, x, y, z, ry] of [[1.25, 0.74, 0, 1.38, -1.38, 0], [0.92, 0.6, -1.08, 1.3, -1.22, 0.42], [0.92, 0.6, 1.08, 1.3, -1.22, -0.42]]) {
+    const grp = new THREE.Group(); grp.position.set(x, y, z); grp.rotation.y = ry; room.add(grp);
+    const bezel = new THREE.Mesh(new THREE.BoxGeometry(w + 0.06, h + 0.06, 0.05), monMat); grp.add(bezel);
+    const cv = document.createElement("canvas"); cv.width = 640; cv.height = Math.round(640 * h / w);
+    const tex = srgb(new THREE.CanvasTexture(cv)); tex.anisotropy = 8;
+    const scr = new THREE.Mesh(new THREE.PlaneGeometry(w, h), new THREE.MeshBasicMaterial({ map: tex, toneMapped: false, color: new THREE.Color(0.92, 0.92, 0.92) }));
+    scr.position.z = 0.028; grp.add(scr);
+    const stand = new THREE.Mesh(new THREE.BoxGeometry(0.05, y - 0.86 - h / 2 + 0.05, 0.05), monMat); stand.position.y = -h / 2 - (y - 0.86 - h / 2) / 2; grp.add(stand);
+    roomParts.screens.push({ cv, tex });
+  }
+
+  // keyboard (lit keys), red action button, mint pad, mug
+  const kbTex = canvasTex(256, 96, (g, w, h) => { g.fillStyle = "#08061a"; g.fillRect(0, 0, w, h); g.fillStyle = "#7d6dff"; for (let y = 0; y < 4; y++) for (let x = 0; x < 14; x++) g.fillRect(6 + x * 17.6, 8 + y * 21, 13, 15); });
+  const kb = new THREE.Mesh(new THREE.BoxGeometry(0.8, 0.025, 0.26), new THREE.MeshStandardMaterial({ color: 0x0c0a1c, emissive: 0xffffff, emissiveIntensity: 0.7, emissiveMap: kbTex }));
+  kb.position.set(-0.05, 0.87, -0.78); room.add(kb);
+  const btnBase = new THREE.Mesh(new THREE.CylinderGeometry(0.16, 0.18, 0.05, 32), new THREE.MeshStandardMaterial({ color: 0x1d1830, metalness: 0.6, roughness: 0.3 }));
+  btnBase.position.set(0.82, 0.88, -0.82); room.add(btnBase);
+  const btn = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.13, 0.08, 32), new THREE.MeshStandardMaterial({ color: 0xff2d55, emissive: 0xff2d55, emissiveIntensity: 0.6, roughness: 0.3 }));
+  btn.position.set(0.82, 0.94, -0.82); room.add(btn); roomParts.btn = btn;
+  const pad = new THREE.Mesh(new THREE.BoxGeometry(0.22, 0.03, 0.22), new THREE.MeshStandardMaterial({ color: 0x59e7ca, emissive: 0x59e7ca, emissiveIntensity: 0.9 }));
+  pad.position.set(-0.85, 0.87, -0.8); room.add(pad);
+  const mug = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.055, 0.13, 24), new THREE.MeshStandardMaterial({ color: 0xf0ecff, roughness: 0.3 }));
+  mug.position.set(1.15, 0.92, -0.95); room.add(mug); roomParts.mug = mug;
+
+  // gaming chair: black, with a glowing strip down the back
+  const chairMat = new THREE.MeshStandardMaterial({ color: 0x08070f, roughness: 0.55, metalness: 0.2 });
+  const chair = new THREE.Group(); chair.position.set(0, 0, -0.2); room.add(chair); roomParts.chair = chair;
+  const seat = new THREE.Mesh(new THREE.BoxGeometry(0.62, 0.1, 0.58), chairMat); seat.position.y = 0.52; chair.add(seat);
+  const back = new THREE.Mesh(new THREE.BoxGeometry(0.58, 0.62, 0.1), chairMat); back.position.set(0, 0.9, 0.29); back.rotation.x = -0.08; chair.add(back);
+  const strip = new THREE.Mesh(new THREE.PlaneGeometry(0.05, 0.46), new THREE.MeshBasicMaterial({ color: new THREE.Color("#ffffff").multiplyScalar(1.3) }));
+  strip.position.set(0, 0.9, 0.345); strip.rotation.x = -0.08; chair.add(strip); roomParts.strip = strip;
+  const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.04, 0.42, 12), chairMat); pole.position.y = 0.26; chair.add(pole);
+  for (let i = 0; i < 5; i++) { const a = (i / 5) * Math.PI * 2, leg = new THREE.Mesh(new THREE.BoxGeometry(0.05, 0.04, 0.34), chairMat); leg.position.set(Math.sin(a) * 0.16, 0.04, Math.cos(a) * 0.16); leg.rotation.y = a; chair.add(leg); }
+}
+
+// ---------------------------------------------------------------- the robot (Kaelis at work)
+// White shell, one mint eye in a dark visor (Kaelis' eye), glowing ear rings, antenna with an ember tip.
+const robot = (() => {
+  const shell = new THREE.MeshStandardMaterial({ color: 0xc9d0dc, roughness: 0.38, metalness: 0.1 });
+  const joint = new THREE.MeshStandardMaterial({ color: 0x9aa3b5, roughness: 0.4, metalness: 0.6 });
+  const dark = new THREE.MeshStandardMaterial({ color: 0x0a0c14, roughness: 0.15, metalness: 0.4 });
+  const mint = new THREE.MeshStandardMaterial({ color: 0x0a1a16, emissive: 0x59e7ca, emissiveIntensity: 1.6 });
+  const R = new THREE.Group(); R.position.set(0, 0, -0.22); // faces -Z (the desk)
+
+  const hips = new THREE.Group(); hips.position.y = 0.62; R.add(hips);
+  const pelvis = new THREE.Mesh(new THREE.SphereGeometry(0.17, 24, 16), joint); pelvis.scale.set(1.25, 0.7, 1); hips.add(pelvis);
+  const torso = new THREE.Mesh(new THREE.CapsuleGeometry(0.2, 0.26, 8, 20), shell); torso.position.y = 0.3; torso.scale.set(1.1, 1, 0.85); hips.add(torso);
+  const chest = new THREE.Mesh(new THREE.BoxGeometry(0.16, 0.05, 0.02), mint); chest.position.set(0, 0.38, -0.175); hips.add(chest);
+
+  const neck = new THREE.Group(); neck.position.y = 0.62; hips.add(neck);
+  const head = new THREE.Group(); head.position.y = 0.2; neck.add(head);
+  const skull = new THREE.Mesh(new THREE.SphereGeometry(0.23, 40, 28), shell); skull.scale.set(1.08, 0.95, 1); head.add(skull);
+  const visor = new THREE.Mesh(new THREE.SphereGeometry(0.205, 40, 20, Math.PI * 1.12, Math.PI * 0.76, Math.PI * 0.3, Math.PI * 0.4), dark);
+  visor.scale.set(1.13, 1, 1.07); head.add(visor);
+  const eyeRing = new THREE.Mesh(new THREE.TorusGeometry(0.07, 0.012, 10, 40), mint); eyeRing.position.set(0, 0.01, -0.222); head.add(eyeRing);
+  const eye = new THREE.Mesh(new THREE.CircleGeometry(0.045, 32), mint); eye.position.set(0, 0.01, -0.223); eye.rotation.y = Math.PI; head.add(eye);
+  for (const s of [-1, 1]) {
+    const ear = new THREE.Mesh(new THREE.CylinderGeometry(0.075, 0.075, 0.05, 28), shell); ear.rotation.z = Math.PI / 2; ear.position.x = s * 0.25; head.add(ear);
+    const ring = new THREE.Mesh(new THREE.TorusGeometry(0.06, 0.012, 8, 32), mint); ring.rotation.y = Math.PI / 2; ring.position.x = s * 0.278; head.add(ring);
+  }
+  const ant = new THREE.Mesh(new THREE.CylinderGeometry(0.01, 0.014, 0.18, 8), joint); ant.position.set(0.08, 0.27, 0); ant.rotation.z = -0.25; head.add(ant);
+  const antTip = new THREE.Mesh(new THREE.SphereGeometry(0.03, 12, 12), new THREE.MeshStandardMaterial({ color: 0x2a0f05, emissive: 0xff8a4d, emissiveIntensity: 2.5 }));
+  antTip.position.set(0.105, 0.36, 0); head.add(antTip);
+
+  // arms: shoulder -> elbow -> hand, posed over the keyboard
+  const arms = [];
+  for (const s of [-1, 1]) {
+    const shoulder = new THREE.Group(); shoulder.position.set(s * 0.29, 0.5, 0); hips.add(shoulder);
+    shoulder.add(new THREE.Mesh(new THREE.SphereGeometry(0.075, 16, 12), joint));
+    const upper = new THREE.Mesh(new THREE.CapsuleGeometry(0.05, 0.2, 6, 12), shell); upper.position.y = -0.15; shoulder.add(upper);
+    const elbow = new THREE.Group(); elbow.position.y = -0.29; shoulder.add(elbow);
+    elbow.add(new THREE.Mesh(new THREE.SphereGeometry(0.055, 14, 10), joint));
+    const fore = new THREE.Mesh(new THREE.CapsuleGeometry(0.045, 0.2, 6, 12), shell); fore.position.y = -0.14; elbow.add(fore);
+    const hand = new THREE.Mesh(new THREE.SphereGeometry(0.06, 14, 10), joint); hand.scale.set(1, 0.7, 1.2); hand.position.y = -0.3; elbow.add(hand);
+    arms.push({ s, shoulder, elbow });
+  }
+  // legs: thighs forward on the seat, shins down
+  for (const s of [-1, 1]) {
+    const thigh = new THREE.Mesh(new THREE.CapsuleGeometry(0.075, 0.26, 6, 12), shell); thigh.rotation.x = Math.PI / 2; thigh.position.set(s * 0.12, -0.02, -0.2); hips.add(thigh);
+    const shin = new THREE.Mesh(new THREE.CapsuleGeometry(0.065, 0.32, 6, 12), shell); shin.position.set(s * 0.12, -0.27, -0.4); hips.add(shin);
+    const foot = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.06, 0.2), joint); foot.position.set(s * 0.12, -0.52, -0.45); hips.add(foot);
+  }
+  room.add(R);
+  return { R, hips, head, neck, arms, eyeMat: mint, antTip };
+})();
+
+// Kaelis core model (same GLB as the home page) for the plaza
+new GLTFLoader().setMeshoptDecoder(MeshoptDecoder).load("models/kaelis.glb", (g) => {
+  const m = g.scene, box = new THREE.Box3().setFromObject(m), size = box.getSize(new THREE.Vector3());
+  const k = 3.4 / Math.max(size.x, size.y, size.z); m.scale.setScalar(k);
+  m.position.sub(box.getCenter(new THREE.Vector3()).multiplyScalar(k));
+  m.traverse((o) => { if (o.isMesh && o.material.emissiveIntensity > 1) o.material.emissiveIntensity = Math.min(o.material.emissiveIntensity, 4); });
+  kaelisCity.add(m);
+}, undefined, () => {
+  const s = new THREE.Mesh(new THREE.SphereGeometry(1.6, 48, 32), new THREE.MeshStandardMaterial({ color: 0x15171f, metalness: 1, roughness: 0.3 })); kaelisCity.add(s);
+});
+
+// =================================================================== SCREENS (canvas UI drawn from live state)
+const FONT = "JetBrains Mono, monospace";
+function screenFrame(g, w, h, title, color) {
+  g.fillStyle = "#070614"; g.fillRect(0, 0, w, h);
+  g.fillStyle = color; g.fillRect(0, 0, w, 40);
+  g.fillStyle = "#070614"; g.font = `700 18px ${FONT}`; g.textBaseline = "middle"; g.fillText(title.toUpperCase(), 16, 21);
+  g.strokeStyle = "rgba(160,150,255,0.18)"; g.lineWidth = 1;
+  for (let y = 60; y < h; y += 28) { g.beginPath(); g.moveTo(0, y); g.lineTo(w, y); g.stroke(); }
+}
+function textLines(g, lines, x, y, size = 17, gap = 27) {
+  g.font = `500 ${size}px ${FONT}`; g.textBaseline = "top";
+  lines.forEach((l, i) => { const [txt, col] = Array.isArray(l) ? l : [l, "#e9e5ff"]; g.fillStyle = col; g.fillText(txt, x, y + i * gap); });
+}
+function chart(g, x, y, w, h, color, seed, trend = 0) {
+  const r = rand(seed); let v = 0.5; g.strokeStyle = color; g.lineWidth = 2.5; g.beginPath();
+  for (let i = 0; i <= 80; i++) { v = clamp(v + (r() - 0.5) * 0.12 + trend * 0.004, 0.05, 0.95); const px = x + (i / 80) * w, py = y + h - v * h; i ? g.lineTo(px, py) : g.moveTo(px, py); }
+  g.stroke(); g.strokeStyle = "rgba(255,194,74,0.7)"; g.lineWidth = 1.5; g.beginPath(); g.moveTo(x, y + h * 0.45); g.lineTo(x + w, y + h * 0.42); g.stroke();
+}
+function drawScreens(id) {
+  const t = byId[id], [A, B, C] = roomParts.screens;
+  const ga = A.cv.getContext("2d"), gb = B.cv.getContext("2d"), gc = C.cv.getContext("2d");
+  const W = (s) => s.cv.width, H = (s) => s.cv.height;
+  const ls = state.lastScan;
+  if (id === "scanner") {
+    screenFrame(ga, W(A), H(A), "Signal scanner · rules " + (K ? K.RULES_VERSION : ""), t.color);
+    if (state.scanning) textLines(ga, [["Scanning " + state.scanning.slice(0, 6) + "…", t.color], "reading mint, pools, LP lock,", "sell route and top holders"], 18, 58);
+    else if (ls) {
+      const r = ls.result; ga.font = `700 64px ${FONT}`; ga.fillStyle = riskColor(r.score); ga.textBaseline = "top"; ga.fillText(r.score + "/100", 18, 54);
+      ga.font = `700 20px ${FONT}`; ga.fillText(bandText(r.band).toUpperCase() + "  ·  $" + ls.symbol, 20, 128);
+      textLines(ga, r.checks.slice(0, 6).map((c) => [(c.sev == null ? "n/a " : (c.sev > 0.5 ? "!!  " : c.sev > 0 ? "!   " : "ok  ")) + c.name, c.sev == null ? "#8d87ad" : c.sev > 0.5 ? "#ff4d6a" : c.sev > 0 ? "#ffc24a" : "#59e7ca"]), 20, 168, 16, 25);
+    } else textLines(ga, [["Ready.", t.color], "Paste a Solana token address in", "the panel and press the red button.", "", ["Live: real chain data, no keys needed.", "#a59fc4"]], 18, 58);
+    screenFrame(gb, W(B), H(B), "Price · last 24h", "#7d6dff");
+    if (ls && ls.data && ls.data.pairs && ls.data.pairs[0]) {
+      const p = ls.data.pairs[0], ch = (p.priceChange && p.priceChange.h24) || 0;
+      chart(gb, 14, 70, W(B) - 28, H(B) - 120, ch >= 0 ? "#59e7ca" : "#ff4d6a", ls.mint.charCodeAt(0) * 7, ch);
+      textLines(gb, [["$" + (p.priceUsd || "?") + "  " + (ch >= 0 ? "+" : "") + ch + "%", ch >= 0 ? "#59e7ca" : "#ff4d6a"]], 14, H(B) - 44, 18);
+    } else { chart(gb, 14, 70, W(B) - 28, H(B) - 120, "rgba(125,109,255,0.6)", 3); textLines(gb, [["waiting for a scan", "#8d87ad"]], 14, H(B) - 44, 16); }
+    screenFrame(gc, W(C), H(C), "Evidence", "#ff8a4d");
+    if (ls) textLines(gc, ls.result.checks.filter((c) => c.sev > 0).slice(0, 7).map((c) => [c.detail.slice(0, 44), "#ffd6c2"]).concat(ls.result.checks.some((c) => c.sev > 0) ? [] : [["No red flags found.", "#59e7ca"]]), 14, 56, 13, 22);
+    else textLines(gc, [["Every check shows its proof:", "#a59fc4"], "sell quote, pool size,", "holder share, lock %, authority", "", ["source: " + (state.server ? "Kaelis server" : "your browser"), "#8d87ad"]], 14, 56, 14, 24);
+  } else if (id === "holders") {
+    const pv = state.holdersPreview, live = !!CFG.kaelMint && state.holders;
+    screenFrame(ga, W(A), H(A), pv && !live ? "Holder tower · preview" : "Holder tower", t.color);
+    if (pv && !live) { ga.font = `700 64px ${FONT}`; ga.fillStyle = t.color; ga.textBaseline = "top"; ga.fillText(pv.count != null ? fmt(pv.count) : pv.shown + "+", 18, 60); textLines(ga, [pv.count != null ? "wallets hold this token" : "largest accounts (no Helius key)", ["top 10 hold " + (pv.top10 * 100).toFixed(1) + "%", "#a59fc4"], ["mint " + pv.mint.slice(0, 6) + "…", "#a59fc4"]], 20, 140); }
+    else if (live) { ga.font = `700 72px ${FONT}`; ga.fillStyle = t.color; ga.textBaseline = "top"; ga.fillText(fmt(state.holders.count), 18, 60); textLines(ga, ["wallets hold $KAEL", ["one lit window each", "#a59fc4"]], 20, 150); }
+    else textLines(ga, [["Goes live at launch", t.color], "$KAEL has no mint address yet.", "When it does, every holder gets", "one window, read from the chain.", "", ["Below: EXAMPLE windows", "#a59fc4"]], 18, 58);
+    screenFrame(gb, W(B), H(B), live ? "Windows" : "Windows · example", "#7d6dff");
+    const r = rand(4); for (let y = 0; y < 9; y++) for (let x = 0; x < 16; x++) { gb.fillStyle = r() < 0.55 ? "#ffc24a" : "#1d1838"; gb.fillRect(16 + x * 37, 58 + y * 34, 26, 24); }
+    screenFrame(gc, W(C), H(C), "How it works", "#ff8a4d");
+    textLines(gc, ["Buy $KAEL → window lights", "Sell all → window goes dark", "Refresh every 2 minutes", "", ["Find yours on tower.html", "#a59fc4"]], 14, 56, 14, 26);
+  } else if (id === "builders") {
+    const bl = state.builders, rows = (bl && bl.builders) || [];
+    screenFrame(ga, W(A), H(A), "Proof-of-Build · " + (bl ? bl.week : "…"), t.color);
+    if (!state.server) textLines(ga, [["Needs the Kaelis server.", t.color], "Run npm start (or the Railway", "deploy) to switch it on."], 18, 58);
+    else if (!rows.length) textLines(ga, [["No builders yet.", t.color], "Be the first: link GitHub and", "a wallet in the panel.", "", ["Merged PRs to other people's", "#a59fc4"], ["projects earn points.", "#a59fc4"]], 18, 58);
+    else textLines(ga, rows.slice(0, 7).map((b, i) => [`${String(i + 1).padStart(2, "0")}  ${b.github.slice(0, 14).padEnd(14)} ${String(b.weekPoints).padStart(4)} pts`, i === 0 ? t.color : "#e9e5ff"]), 18, 58, 17, 30);
+    screenFrame(gb, W(B), H(B), "Merged this week", "#7d6dff");
+    const prs = rows.flatMap((b) => b.prs.map((p) => [b.github, p])).sort((a, b) => b[1].points - a[1].points).slice(0, 8);
+    textLines(gb, prs.length ? prs.map(([g, p]) => [`+${p.points}  ${p.repo.slice(0, 26)}`, "#ffd6c2"]) : [["Nothing merged yet this week.", "#8d87ad"]], 14, 56, 14, 24);
+    screenFrame(gc, W(C), H(C), "Rules", "#ff8a4d");
+    textLines(gc, ["Counts: PRs merged into repos", "you don't own, merged by", "someone else, repo >= 5 stars,", ">= 10 lines. GitHub >= 30 days.", ["Points → $KAEL at launch.", "#a59fc4"]], 14, 56, 13, 24);
+  } else if (id === "watch") {
+    const w = state.watch;
+    screenFrame(ga, W(A), H(A), "Watch mode", t.color);
+    if (!ls) textLines(ga, [["Nothing to watch yet.", t.color], "Scan a token in the Scanner", "tower first. Kaelis then", "re-checks it every 60 seconds."], 18, 58);
+    else textLines(ga, [["Watching $" + ls.symbol, t.color], "Checks run: " + w.checks, "Risk now: " + ls.result.score + "/100", ["Alerts: liquidity -50%, mint or", "#a59fc4"], ["freeze back on, score moves 10", "#a59fc4"]], 18, 58);
+    screenFrame(gb, W(B), H(B), "Liquidity", "#7d6dff");
+    chart(gb, 14, 70, W(B) - 28, H(B) - 110, t.color, 33, 0);
+    screenFrame(gc, W(C), H(C), "Alerts", "#ff4d6a");
+    textLines(gc, w.log.length ? w.log.slice(-7).map((l) => [l.text.slice(0, 44), l.bad ? "#ff8aa0" : "#cfc9f0"]) : [["No alerts.", "#59e7ca"]], 14, 56, 13, 22);
+  }
+  roomParts.screens.forEach((s) => (s.tex.needsUpdate = true));
+}
+function drawClock() {
+  const { cv, tex } = roomParts.clock, g = cv.getContext("2d"), c = 128, now = new Date();
+  g.clearRect(0, 0, 256, 256);
+  g.beginPath(); g.arc(c, c, 118, 0, Math.PI * 2); g.fillStyle = "rgba(10,8,30,0.9)"; g.fill(); g.lineWidth = 8; g.strokeStyle = "#cfc6ff"; g.stroke();
+  for (let i = 0; i < 12; i++) { const a = (i / 12) * Math.PI * 2; g.fillStyle = "#cfc6ff"; g.fillRect(c + Math.sin(a) * 96 - 3, c - Math.cos(a) * 96 - 3, 6, 6); }
+  const hand = (a, len, wd) => { g.beginPath(); g.moveTo(c, c); g.lineTo(c + Math.sin(a) * len, c - Math.cos(a) * len); g.lineWidth = wd; g.strokeStyle = "#fff"; g.lineCap = "round"; g.stroke(); };
+  const m = now.getMinutes(), h = now.getHours() % 12;
+  hand(((h + m / 60) / 12) * Math.PI * 2, 58, 9); hand((m / 60) * Math.PI * 2, 86, 6);
+  tex.needsUpdate = true;
+}
+
+// =================================================================== LABELS + DOCK
+const labelEls = {};
+TOWERS.forEach((t) => {
+  const el = document.createElement("div"); el.className = "lbl"; el.style.setProperty("--c", t.color);
+  el.innerHTML = `<span class="n">${t.name}</span><span class="v">…</span><span class="s"></span>`;
+  el.addEventListener("click", () => enterTower(t.id)); $("labels").appendChild(el); labelEls[t.id] = el;
+  const b = document.createElement("button"); b.style.setProperty("--c", t.color); b.innerHTML = `<i></i>${t.name}`;
+  b.addEventListener("click", () => enterTower(t.id)); $("dock").appendChild(b);
+});
+function labelText(id) {
+  const ls = state.lastScan;
+  if (id === "scanner") return ls ? [`${ls.result.score}/100`, `$${ls.symbol} · ${bandText(ls.result.band)}`] : [state.scanning ? "Scanning…" : "Live", "paste a token inside"];
+  if (id === "holders") return CFG.kaelMint && state.holders ? [fmt(state.holders.count), "wallets · live"] : ["At launch", "no $KAEL mint yet"];
+  if (id === "builders") { const bl = state.builders; if (!state.server) return ["Offline", "needs the Kaelis server"]; if (!bl) return ["…", "loading"]; const pts = bl.builders.reduce((t, b) => t + b.weekPoints, 0); return bl.count ? [`${fmt(pts)} pts`, `${bl.count} builders · ${bl.week}`] : ["Open", "be the first builder"]; }
+  if (id === "watch") return ls ? [`$${ls.symbol}`, `${state.watch.checks} checks · ${state.watch.log.filter((l) => l.bad).length} alerts`] : ["Idle", "scan a token first"];
+}
+function refreshLabels() { TOWERS.forEach((t) => { const [v, s] = labelText(t.id); const el = labelEls[t.id]; el.querySelector(".v").textContent = v; el.querySelector(".s").textContent = s; }); }
+const proj = new THREE.Vector3();
+function placeLabels() {
+  const w = innerWidth, h = innerHeight, show = scene === city;
+  TOWERS.forEach((t) => {
+    const el = labelEls[t.id];
+    proj.copy(t.top).applyMatrix4(t.group.matrixWorld).project(camera);
+    const vis = show && proj.z < 1 && Math.abs(proj.x) < 1.1 && Math.abs(proj.y) < 1.1;
+    el.style.opacity = vis ? 1 : 0; el.style.pointerEvents = vis ? "auto" : "none";
+    if (vis) el.style.left = ((proj.x + 1) / 2) * w + "px", el.style.top = ((1 - proj.y) / 2) * h + "px";
+  });
+}
+
+// =================================================================== PANEL (inside a tower)
+let current = null;
+function panelHTML(id) {
+  const t = byId[id], ls = state.lastScan, tag = (txt, c) => `<span class="tagx" style="color:${c}">${txt}</span>`;
+  let h = `<h2>${t.name} tower</h2><p>${t.intro}</p>`;
+  if (id === "scanner") {
+    h += `<div>${tag("Live data", t.color)} ${tag(state.server ? "Kaelis server" : "In your browser", "#a59fc4")}</div>
+      <label class="sr" for="mint">Token address</label>
+      <div class="row"><input id="mint" placeholder="Token mint address" spellcheck="false" autocomplete="off" value="${ls ? esc(ls.mint) : ""}"><button class="act" id="go">Scan</button></div>
+      <div id="res">${ls ? scanSummary(ls) : `<p class="fine">Try USDC: EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v</p>`}</div>
+      <p class="fine">Kaelis reports risk. It never predicts price or promises profit.</p>`;
+  } else if (id === "holders") {
+    h += CFG.kaelMint
+      ? `<div>${tag("Live data", t.color)}</div><div class="kv"><span>Holders</span><span>${state.holders ? fmt(state.holders.count) : "loading"}</span></div><button class="act" id="go">Refresh</button>`
+      : `<div>${tag("At launch", t.color)} ${tag("Preview with any token", "#a59fc4")}</div>
+        <label class="sr" for="hMint">Token address</label>
+        <div class="row"><input id="hMint" placeholder="Any token mint" spellcheck="false" autocomplete="off" value="${state.holdersPreview ? esc(state.holdersPreview.mint) : ""}"><button class="act" id="go">Count</button></div>
+        <div id="hRes">${state.holdersPreview ? holdersSummary(state.holdersPreview) : `<p class="fine">Live chain data. Full holder counts need a Helius key on the server; without one you see the largest accounts.</p>`}</div>`;
+    h += `<a class="pill" href="tower.html" style="justify-self:start">Find your window →</a>`;
+  } else if (id === "builders") {
+    const bl = state.builders, rows = (bl && bl.builders) || [];
+    h += `<div>${tag(state.server ? "Live" : "Needs the Kaelis server", t.color)} ${bl ? tag(bl.week, "#a59fc4") : ""}</div>
+      <div class="kv">${rows.length ? rows.slice(0, 8).map((b) => `<span>${esc(b.github)}</span><span>${b.weekPoints} pts · ${b.prs.length} PR</span>`).join("") : "<span>No builders yet</span><span>be the first</span>"}</div>
+      <button class="act" id="go">Refresh</button>
+      <h2 style="font-size:17px;margin-top:6px">Join Proof-of-Build</h2>
+      <label class="sr" for="ghUser">GitHub username</label>
+      <div class="row"><input id="ghUser" placeholder="GitHub username" autocomplete="username" spellcheck="false"><button class="act" id="wConnect">Connect wallet</button></div>
+      <div id="joinStep" class="out"></div>
+      <p class="fine">${esc(bl ? bl.payout : "Points convert to $KAEL at launch. Nothing is paid before that.")}</p>`;
+  } else if (id === "watch") {
+    h += ls ? `<div>${tag("Live data", t.color)}</div><div class="kv"><span>Token</span><span>$${esc(ls.symbol)}</span><span>Checks</span><span id="wChecks">${state.watch.checks}</span><span>Risk now</span><span>${ls.result.score}/100</span></div><button class="act" id="go">Check now</button><div class="out" id="wLog">${state.watch.log.slice(-6).map((l) => esc(l.text)).join("\n") || "No alerts yet."}</div>`
+      : `<div>${tag("Idle", t.color)}</div><p>Scan a token in the Scanner tower first.</p><button class="act" id="toScan">Go to Scanner</button>`;
+  }
+  return h;
+}
+function holdersSummary(pv) {
+  return `<div class="score" style="color:var(--amber)">${pv.count != null ? fmt(pv.count) : pv.shown + "+"}<span style="font-size:16px;color:var(--mute)"> ${pv.count != null ? "holders" : "largest accounts"}</span></div>
+    <p class="fine">Top 10 hold ${(pv.top10 * 100).toFixed(1)}% · <a href="tower.html?mint=${encodeURIComponent(pv.mint)}">open the tower view</a></p>`;
+}
+function scanSummary(ls) {
+  const r = ls.result, bad = r.checks.filter((c) => c.sev > 0).slice(0, 3);
+  return `<div class="score" style="color:${riskColor(r.score)}">${r.score}<span style="font-size:16px;color:var(--mute)">/100 · ${bandText(r.band)}</span></div>
+    <div class="out">${bad.length ? bad.map((c) => "• " + esc(c.detail)).join("\n") : "No red flags in the 8 checks."}</div>
+    <p class="fine">$${esc(ls.symbol)} · scanned in ${esc(ls.source)} · <a href="scan.html?mint=${encodeURIComponent(ls.mint)}">full report</a></p>`;
+}
+function openPanel(id) {
+  const t = byId[id]; current = id;
+  $("panel").style.setProperty("--c", t.color); $("pTitle").textContent = t.name + " tower"; $("pBody").innerHTML = panelHTML(id); $("panel").hidden = false;
+  const go = $("go"), mint = $("mint"), toScan = $("toScan");
+  if (go) go.addEventListener("click", () => action(id));
+  if (mint) { mint.addEventListener("keydown", (e) => { if (e.key === "Enter") action(id); }); if (!small) mint.focus(); }
+  if (toScan) toScan.addEventListener("click", () => switchTower("scanner"));
+  const hMint = $("hMint"); if (hMint) hMint.addEventListener("keydown", (e) => { if (e.key === "Enter") action(id); });
+  const wc = $("wConnect"); if (wc) wc.addEventListener("click", joinFlow);
+}
+
+// the action behind the red button
+async function action(id) {
+  pressButton();
+  if (id === "scanner") {
+    const mint = ($("mint") && $("mint").value.trim()) || "";
+    const res = $("res"), go = $("go");
+    if (!mint) { res.innerHTML = `<p>Paste a token address first.</p>`; return; }
+    state.scanning = mint; go.disabled = true; res.innerHTML = `<p>Kaelis is reading the chain…</p>`; drawScreens(id); refreshLabels();
+    try {
+      const out = await scanMint(mint);
+      state.lastScan = { ...out, symbol: tokenSymbol(out.data, mint), at: Date.now() };
+      state.watch = { log: [{ text: "Started watching $" + state.lastScan.symbol, bad: false }], timer: state.watch.timer, prev: safePulse(out.data), checks: 1 };
+      startWatch();
+      res.innerHTML = scanSummary(state.lastScan);
+      celebrate(state.lastScan);
+    } catch (e) { res.innerHTML = `<p style="color:var(--danger)">${esc(e.message || "Could not reach Solana right now. Try again in a moment.")}</p>`; }
+    state.scanning = false; go.disabled = false; drawScreens(id); refreshLabels();
+  } else if (id === "holders") {
+    const hm = $("hMint");
+    if (hm) {
+      const out = $("hRes"), go = $("go"); go.disabled = true; out.innerHTML = "<p>Kaelis is counting wallets…</p>";
+      try { await previewHolders(hm.value); out.innerHTML = holdersSummary(state.holdersPreview); robotCheer(); }
+      catch (e) { out.innerHTML = `<p style="color:var(--danger)">${esc(e.message)}</p>`; }
+      go.disabled = false; drawScreens(id); refreshLabels();
+    } else { await loadHolders(); openPanel(id); drawScreens(id); refreshLabels(); }
+  } else if (id === "builders") {
+    await loadBuilders(); openPanel(id); drawScreens(id); refreshLabels(); robotCheer();
+  } else if (id === "watch") {
+    await watchTick(); openPanel(id); drawScreens(id);
+  }
+}
+async function joinFlow() {
+  const out = $("joinStep"), github = ($("ghUser").value || "").trim().replace(/^@/, "");
+  const say = (html) => { out.innerHTML = html; };
+  if (!state.server) return say("Proof-of-Build needs the Kaelis server (npm start or the Railway deploy).");
+  if (!/^[A-Za-z0-9-]{1,39}$/.test(github)) return say("Type your GitHub username first.");
+  const p = walletProvider();
+  if (!p) return say("No Solana wallet found in this browser. Install Phantom or Solflare, or open this page inside your wallet app's browser.");
+  try {
+    if (!state.join.wallet) { const r = await p.connect(); state.join.wallet = String((r && r.publicKey) || p.publicKey); }
+    const wallet = state.join.wallet, code = "kaelis-" + wallet.slice(0, 10);
+    say(`Wallet ${esc(wallet.slice(0, 4))}…${esc(wallet.slice(-4))} connected.\n\n1. Add this to your GitHub bio (or a public gist description):\n   ${code}\n2. Then sign below. Signing costs nothing and moves no funds.\n\n<button class="act" id="wSign">Sign & join</button>`);
+    $("wSign").addEventListener("click", async () => {
+      pressButton();
+      try {
+        const message = `Kaelis Proof-of-Build\nGitHub: ${github}\nWallet: ${wallet}\nTime: ${new Date().toISOString()}`;
+        const signed = await p.signMessage(new TextEncoder().encode(message), "utf8");
+        const sig = signed && signed.signature ? signed.signature : signed;
+        const signature = btoa(String.fromCharCode(...new Uint8Array(sig)));
+        say("Checking your GitHub and this week's merged pull requests…");
+        const r = await fetch("api/builders/register", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ github, wallet, message, signature }) });
+        const j = await r.json();
+        if (!r.ok) return say(esc(j.error || "Could not join.") + (j.code ? `\n\nCode: ${esc(j.code)}` : ""));
+        robotCheer(); await loadBuilders(); drawScreens("builders"); refreshLabels();
+        say(`You're in, ${esc(j.builder.github)}. This week: ${j.builder.weekPoints} points from ${j.builder.prs.length} merged PR(s).` + (j.builder.skipped.length ? `\n${j.builder.skipped.length} PR(s) didn't count (${esc(j.builder.skipped.map((s) => s.why).slice(0, 3).join(", "))}).` : ""));
+      } catch (e) { say(esc(e.message || "Signing was cancelled.")); }
+    });
+  } catch (e) { say(esc(e.message || "The wallet didn't connect.")); }
+}
+async function watchTick() {
+  const ls = state.lastScan; if (!ls) return;
+  try {
+    const out = await scanMint(ls.mint), now = safePulse(out.data), w = state.watch;
+    w.checks++;
+    const alerts = w.prev && now && K.compare ? K.compare(w.prev, now) : [];
+    if (Math.abs(out.result.score - ls.result.score) >= 10) alerts.push(`Risk moved ${ls.result.score} → ${out.result.score}`);
+    alerts.forEach((a) => w.log.push({ text: new Date().toTimeString().slice(0, 5) + " " + (typeof a === "string" ? a : a.text || JSON.stringify(a)), bad: true }));
+    if (!alerts.length) w.log.push({ text: new Date().toTimeString().slice(0, 5) + " check " + w.checks + ": no change", bad: false });
+    w.prev = now; state.lastScan = { ...ls, ...out, symbol: ls.symbol, at: Date.now() };
+  } catch (e) { state.watch.log.push({ text: "check failed, will retry", bad: false }); }
+  refreshLabels(); if (current === "watch") drawScreens("watch");
+}
+function startWatch() { clearInterval(state.watch.timer); state.watch.timer = setInterval(watchTick, 60000); }
+
+// =================================================================== MOVING BETWEEN CITY AND ROOM
+const CITY_VIEW = small ? { pos: new THREE.Vector3(46, 30, 56), target: new THREE.Vector3(0, 5, 0) } : { pos: new THREE.Vector3(34, 22, 40), target: new THREE.Vector3(0, 6, 0) };
+const ROOM_VIEW = small
+  ? { pos: new THREE.Vector3(1.55, 2.75, 2.75), target: new THREE.Vector3(0.0, 0.55, -0.7) } // phone: robot + screens sit above the bottom sheet
+  : { pos: new THREE.Vector3(2.75, 2.05, 1.55), target: new THREE.Vector3(0.45, 1.15, -0.9) }; // desktop: scene sits left of the panel
+function setCityControls() {
+  controls.minDistance = 22; controls.maxDistance = small ? 110 : 85; controls.minPolarAngle = 0.35; controls.maxPolarAngle = 1.38;
+  controls.autoRotate = !reduce; controls.autoRotateSpeed = 0.35;
+}
+function setRoomControls() {
+  controls.minDistance = 1.6; controls.maxDistance = 5.2; controls.minPolarAngle = 0.5; controls.maxPolarAngle = 1.5;
+  controls.minAzimuthAngle = -1.1; controls.maxAzimuthAngle = 1.1; controls.autoRotate = false;
+}
+function tween(ms, fn) {
+  if (reduce || ms <= 0) { fn(1); return Promise.resolve(); }
+  return new Promise((done) => { const t0 = performance.now(); const step = (now) => { const k = Math.min(1, (now - t0) / ms); fn(ease(k)); k < 1 ? requestAnimationFrame(step) : done(); }; requestAnimationFrame(step); });
+}
+const fade = (on) => new Promise((r) => { $("fade").classList.toggle("on", on); setTimeout(r, reduce ? 0 : 300); });
+let busy = false, savedCity = null;
+async function enterTower(id) {
+  if (busy) return; busy = true;
+  const t = byId[id];
+  if (scene === city) {
+    savedCity = { pos: camera.position.clone(), target: controls.target.clone() };
+    controls.enabled = false; controls.autoRotate = false;
+    const towerPos = t.group.position.clone(), p0 = camera.position.clone(), q0 = controls.target.clone();
+    const p1 = towerPos.clone().multiplyScalar(1.55).setY(7), q1 = towerPos.clone().setY(5);
+    const fov0 = camera.fov;
+    await tween(1100, (k) => { camera.position.lerpVectors(p0, p1, k); controls.target.lerpVectors(q0, q1, k); camera.lookAt(controls.target); camera.fov = fov0 + Math.pow(k, 3) * 38; camera.updateProjectionMatrix(); });
+  }
+  await fade(true);
+  scene = room; renderPass.scene = room; setBloom("room"); resize();
+  themeRoom(id); openPanel(id); drawScreens(id);
+  controls.minAzimuthAngle = -Infinity; controls.maxAzimuthAngle = Infinity;
+  camera.position.copy(ROOM_VIEW.pos).add(new THREE.Vector3(1.2, 0.5, 2)); controls.target.copy(ROOM_VIEW.target);
+  setRoomControls(); controls.update();
+  $("exitBtn").hidden = false; $("dock").style.display = "none"; $("hint").textContent = "Drag to look around the room";
+  await fade(false);
+  const p0 = camera.position.clone();
+  await tween(900, (k) => { camera.position.lerpVectors(p0, ROOM_VIEW.pos, k); camera.lookAt(controls.target); });
+  controls.enabled = true; busy = false;
+}
+async function switchTower(id) { await enterTower(id); }
+async function exitTower() {
+  if (busy || scene !== room) return; busy = true;
+  await fade(true);
+  scene = city; renderPass.scene = city; setBloom("city"); current = null; $("panel").hidden = true;
+  controls.minAzimuthAngle = -Infinity; controls.maxAzimuthAngle = Infinity; setCityControls();
+  camera.position.copy(savedCity ? savedCity.pos : CITY_VIEW.pos); controls.target.copy(savedCity ? savedCity.target : CITY_VIEW.target); controls.update();
+  $("exitBtn").hidden = true; $("dock").style.display = ""; $("hint").textContent = "Drag to look around · tap a tower to step inside";
+  await fade(false); busy = false;
+}
+$("exitBtn").addEventListener("click", exitTower); $("pClose").addEventListener("click", exitTower);
+addEventListener("keydown", (e) => { if (e.key === "Escape") exitTower(); });
+function themeRoom(id) {
+  const c = new THREE.Color(byId[id].color);
+  roomParts.screenLight.color.copy(c); roomParts.edge.material.color.copy(c).multiplyScalar(2.2); roomParts.lip.material.color.copy(c).multiplyScalar(2);
+}
+
+// =================================================================== ROBOT ANIMATION
+const robo = { press: 0, cheer: 0, look: 0 };
+function pressButton() { robo.press = 1; }
+function robotCheer() { robo.cheer = 1; }
+function animateRobot(t, dt) {
+  const r = robot, typing = reduce ? 0 : 1;
+  robo.press = Math.max(0, robo.press - dt * 1.4);
+  robo.cheer = Math.max(0, robo.cheer - dt * 0.6);
+  // head scans between the three monitors
+  const scan = Math.sin(t * 0.55) > 0.35 ? 0.42 : Math.sin(t * 0.55) < -0.35 ? -0.42 : 0;
+  robo.look += (scan * typing - robo.look) * Math.min(1, dt * 3);
+  r.neck.rotation.y = robo.look + (robo.cheer > 0 ? Math.sin(robo.cheer * 12) * 0.25 : 0);
+  r.neck.rotation.x = -0.12 + Math.sin(t * 1.3) * 0.02 * typing;
+  r.hips.position.y = 0.62 + Math.sin(t * 2) * 0.006 * typing;
+  // arms: typing, the right one slams the button, both go up on a cheer
+  r.arms.forEach(({ s, shoulder, elbow }) => {
+    const tap = Math.sin(t * 14 + (s > 0 ? 0 : 1.7)) * 0.06 * typing;
+    let sx = 0.95 + tap, sz = -s * 0.08, ex = 0.6;
+    if (s > 0 && robo.press > 0) { const p = Math.sin(robo.press * Math.PI); sx = lerp(sx, 1.25, p); sz = lerp(sz, 0.62, p); ex = lerp(ex, 0.25 + (robo.press < 0.35 ? -0.25 : 0), p); }
+    if (robo.cheer > 0) { const c = Math.sin(Math.min(1, robo.cheer * 1.6) * Math.PI); sx = lerp(sx, 2.8, c); sz = lerp(sz, s * 0.5, c); ex = lerp(ex, 0.2, c); }
+    if (fx.alarm > 0) { sx = 2.55; sz = -s * 0.35; ex = 1.75; }
+    shoulder.rotation.set(sx, 0, sz); elbow.rotation.set(ex, 0, 0);
+  });
+  if (fx.alarm > 0) r.neck.rotation.y = Math.sin(t * 22) * 0.35;
+  r.eyeMat.emissiveIntensity = 1.6 + (robo.press + robo.cheer) * 2.5 + Math.sin(t * 3) * 0.25;
+  roomParts.btn.position.y = 0.94 - (robo.press > 0.55 && robo.press < 0.8 ? 0.03 : 0);
+  roomParts.btn.material.emissiveIntensity = 0.6 + robo.press * 2.5;
+}
+
+
+// =================================================================== FX (the fun layer)
+const fx = { pulses: [], stars: [], lastPulse: 0, pulsedScan: 0, intro: reduce ? 1 : 0, spin: 0, alarm: 0, coin: 0, glitchAt: 0 };
+
+// --- shockwave rings from the core across the plaza
+const pulseGeo = new THREE.RingGeometry(0.92, 1, 128);
+for (let i = 0; i < 4; i++) {
+  const m = new THREE.Mesh(pulseGeo, new THREE.MeshBasicMaterial({ color: 0x59e7ca, transparent: true, opacity: 0, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide }));
+  m.rotation.x = -Math.PI / 2; m.position.y = 0.06; m.visible = false; city.add(m); fx.pulses.push({ m, age: 9 });
+}
+function cityPulse(color, strength = 1) {
+  const p = fx.pulses.reduce((a, b) => (a.age > b.age ? a : b));
+  p.age = 0; p.k = strength; p.m.material.color.set(color).multiplyScalar(1.6 * strength); p.m.visible = true;
+}
+
+// --- data packets: light pulses arcing between each tower and Kaelis
+const PK = 48;
+const packets = new THREE.InstancedMesh(new THREE.SphereGeometry(0.16, 8, 8), new THREE.MeshBasicMaterial({ color: new THREE.Color(2.2, 2.2, 2.2) }), PK);
+const pkData = Array.from({ length: PK }, (_, i) => ({ tw: TOWERS[i % TOWERS.length], ph: Math.random(), sp: 0.18 + Math.random() * 0.22, up: i % 2 === 0 }));
+pkData.forEach((d, i) => packets.setColorAt(i, new THREE.Color(d.tw.color)));
+city.add(packets);
+const _a = new THREE.Vector3(), _b = new THREE.Vector3(), _c = new THREE.Vector3(), _m4 = new THREE.Matrix4();
+
+// --- shooting stars
+for (let i = 0; i < 3; i++) {
+  const g = new THREE.BufferGeometry(); g.setAttribute("position", new THREE.BufferAttribute(new Float32Array(6), 3));
+  const l = new THREE.Line(g, new THREE.LineBasicMaterial({ color: new THREE.Color(2.4, 2.2, 3), transparent: true, opacity: 0 }));
+  l.frustumCulled = false; city.add(l); fx.stars.push({ l, age: 9, head: new THREE.Vector3(), dir: new THREE.Vector3() });
+}
+
+// --- Kaelis: orbit rings + a scanner beam sweeping the plaza
+const kRings = [];
+for (const [r, c, tilt] of [[2.7, "#59e7ca", 0.4], [3.2, "#9d8bff", -0.7]]) {
+  const ring = new THREE.Mesh(new THREE.TorusGeometry(r, 0.035, 8, 120), new THREE.MeshBasicMaterial({ color: new THREE.Color(c).multiplyScalar(2) }));
+  ring.rotation.x = Math.PI / 2 + tilt; core.add(ring); kRings.push(ring);
+}
+const sweep = new THREE.Group(); core.add(sweep);
+const SWEEP_TILT = 1.0, SWEEP_LEN = 8.2 / Math.cos(SWEEP_TILT);
+const sweepCone = new THREE.Mesh(new THREE.ConeGeometry(1.6, SWEEP_LEN, 32, 1, true), new THREE.MeshBasicMaterial({ color: new THREE.Color("#59e7ca").multiplyScalar(0.35), transparent: true, opacity: 0.55, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide }));
+sweepCone.geometry.translate(0, -SWEEP_LEN / 2, 0); sweepCone.rotation.z = SWEEP_TILT; sweep.add(sweepCone);
+const sweepSpot = new THREE.Mesh(new THREE.RingGeometry(1.2, 1.6, 48), new THREE.MeshBasicMaterial({ color: new THREE.Color("#59e7ca").multiplyScalar(1.8), transparent: true, opacity: 0.8, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide }));
+sweepSpot.rotation.x = -Math.PI / 2; city.add(sweepSpot);
+
+// --- the absurd one: a $KAEL blimp circling the city with a scrolling neon banner
+const blimp = new THREE.Group(); city.add(blimp);
+{
+  const hull = new THREE.Mesh(new THREE.SphereGeometry(1, 40, 24), new THREE.MeshStandardMaterial({ color: 0x2a1f5c, metalness: 0.5, roughness: 0.35 }));
+  hull.scale.set(7, 2.2, 2.2); blimp.add(hull);
+  const finMat = new THREE.MeshStandardMaterial({ color: 0x1a1340, metalness: 0.4, roughness: 0.4 });
+  for (const [rx] of [[0], [Math.PI / 2]]) { const f = new THREE.Mesh(new THREE.BoxGeometry(1.8, 3.2, 0.12), finMat); f.position.x = -6.4; f.rotation.x = rx; blimp.add(f); }
+  const gond = new THREE.Mesh(new THREE.BoxGeometry(2, 0.6, 0.9), finMat); gond.position.y = -2.3; blimp.add(gond);
+  const bannerCv = document.createElement("canvas"); bannerCv.width = 2048; bannerCv.height = 128;
+  const bg = bannerCv.getContext("2d"); bg.fillStyle = "#050310"; bg.fillRect(0, 0, 2048, 128);
+  bg.font = "700 74px JetBrains Mono, monospace"; bg.textBaseline = "middle"; bg.fillStyle = "#59e7ca";
+  bg.fillText("$KAEL  ·  SCAN BEFORE YOU APE  ·  FORGED BY BUILDERS  ·", 20, 66);
+  const bannerTex = srgb(new THREE.CanvasTexture(bannerCv)); bannerTex.wrapS = THREE.RepeatWrapping; bannerTex.repeat.set(0.55, 1);
+  for (const side of [1, -1]) {
+    const b = new THREE.Mesh(new THREE.PlaneGeometry(8.5, 0.9), new THREE.MeshBasicMaterial({ map: bannerTex, color: new THREE.Color(1.6, 1.6, 1.6) }));
+    b.position.set(0, 0, side * 2.23); if (side < 0) b.rotation.y = Math.PI; blimp.add(b);
+  }
+  blimp.userData.banner = bannerTex;
+  const nose = glowSprite("#ff4d6a", 2.2); nose.position.x = 7.1; blimp.add(nose); blimp.userData.nose = nose;
+  const tail = glowSprite("#59e7ca", 1.8); tail.position.x = -7.3; blimp.add(tail); blimp.userData.tail = tail;
+}
+
+// --- intro: camera swoops in, towers rise one by one, beams ignite
+TOWERS.forEach((tw) => { tw.group.scale.y = reduce ? 1 : 0.001; tw.beamMat.uniforms.uK.value = reduce ? 0.6 : 0; });
+async function intro() {
+  if (reduce) return;
+  controls.enabled = false;
+  const p1 = camera.position.clone(), q1 = controls.target.clone(), p0 = new THREE.Vector3(6, 150, 18);
+  camera.position.copy(p0);
+  const rise = tween(3200, (k) => {
+    TOWERS.forEach((tw, i) => {
+      const local = clamp((k - 0.25 - i * 0.12) / 0.4, 0, 1), back = 1 + 2.2 * Math.pow(local - 1, 3) + 1.2 * Math.pow(local - 1, 2);
+      tw.group.scale.y = Math.max(0.001, local < 1 ? back : 1);
+      tw.beamMat.uniforms.uK.value = 0.6 * clamp((k - 0.55 - i * 0.1) / 0.25, 0, 1);
+    });
+  });
+  await tween(3200, (k) => { camera.position.lerpVectors(p0, p1, k); camera.lookAt(q1); });
+  await rise; fx.intro = 1; cityPulse("#59e7ca", 1.4); controls.enabled = true;
+}
+
+// --- room extras: steam, keyboard data, holo coin, alarm beacon
+const steam = [];
+for (let i = 0; i < 10; i++) {
+  const sp = glowSprite("rgba(220,215,255,0.35)", 0.18); sp.material.opacity = 0; room.add(sp); steam.push({ sp, ph: i / 10 });
+}
+const DP = 40, dataGeo = new THREE.BufferGeometry(); dataGeo.setAttribute("position", new THREE.BufferAttribute(new Float32Array(DP * 3), 3));
+const dataPts = new THREE.Points(dataGeo, new THREE.PointsMaterial({ color: new THREE.Color(2, 2, 2), size: 0.025, transparent: true, opacity: 0.9, blending: THREE.AdditiveBlending, depthWrite: false }));
+const dpSeed = Array.from({ length: DP }, () => [Math.random(), (Math.random() - 0.5) * 0.7, Math.random() * 0.15]);
+room.add(dataPts);
+const coinCv = document.createElement("canvas"); coinCv.width = coinCv.height = 256;
+const coinTex = srgb(new THREE.CanvasTexture(coinCv));
+const coin = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.2, 0.035, 48), [
+  new THREE.MeshStandardMaterial({ color: 0x1b1340, metalness: 0.9, roughness: 0.25, emissive: 0x59e7ca, emissiveIntensity: 0.6 }),
+  new THREE.MeshBasicMaterial({ map: coinTex, transparent: true }), new THREE.MeshBasicMaterial({ map: coinTex, transparent: true })]);
+coin.rotation.x = Math.PI / 2; coin.position.set(1.0, 1.3, -0.7); coin.scale.setScalar(0.001); room.add(coin);
+const coinGlow = glowSprite("rgba(89,231,202,0.6)", 0.9); coinGlow.position.copy(coin.position); coinGlow.material.opacity = 0; room.add(coinGlow);
+function drawCoin(ls) {
+  const g = coinCv.getContext("2d"), col = riskColor(ls.result.score);
+  g.clearRect(0, 0, 256, 256); g.beginPath(); g.arc(128, 128, 120, 0, Math.PI * 2); g.fillStyle = "rgba(8,6,22,0.92)"; g.fill();
+  g.lineWidth = 10; g.strokeStyle = col; g.stroke();
+  g.fillStyle = col; g.textAlign = "center"; g.textBaseline = "middle";
+  g.font = "700 46px JetBrains Mono, monospace"; g.fillText("$" + String(ls.symbol).slice(0, 6), 128, 104);
+  g.font = "700 58px JetBrains Mono, monospace"; g.fillText(String(ls.result.score), 128, 166);
+  coinTex.needsUpdate = true; coin.material[0].emissive.set(col); coinGlow.material.color.set(col);
+}
+const alarmLight = new THREE.PointLight(0xff2d55, 0, 9, 2); alarmLight.position.set(0, 3, -0.5); room.add(alarmLight);
+const beacon = new THREE.Group(); beacon.position.set(0, 1.88, -1.38); room.add(beacon);
+beacon.add(new THREE.Mesh(new THREE.CylinderGeometry(0.07, 0.08, 0.1, 20), new THREE.MeshStandardMaterial({ color: 0x300010, emissive: 0xff2d55, emissiveIntensity: 1.5 })));
+// siren: a soft cone of red light sweeping round, like a real beacon
+const beaconBeam = new THREE.Mesh(new THREE.ConeGeometry(0.45, 2.2, 24, 1, true), new THREE.MeshBasicMaterial({ color: new THREE.Color(1.4, 0.12, 0.25), transparent: true, opacity: 0, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide }));
+beaconBeam.geometry.translate(0, -1.1, 0); beaconBeam.geometry.rotateZ(Math.PI / 2); beacon.add(beaconBeam); beacon.visible = false;
+
+// result reactions: safe -> chair spin + cheer + coin; danger -> alarm + panic + red coin
+function celebrate(ls) {
+  drawCoin(ls); fx.coin = 1;
+  if (ls.result.score >= 70) { fx.alarm = 6; } else { fx.spin = 1; robotCheer(); }
+}
+
+function updateCityFX(t, dt) {
+  const m = reduce ? 0 : 1;
+  // auto pulse every 6 s, and a big coloured one after each new scan
+  if (t - fx.lastPulse > 6 && fx.intro) { fx.lastPulse = t; cityPulse(state.lastScan ? riskColor(state.lastScan.result.score) : "#59e7ca", 0.8); }
+  if (state.lastScan && state.lastScan.at !== fx.pulsedScan && fx.intro) { fx.pulsedScan = state.lastScan.at; cityPulse(riskColor(state.lastScan.result.score), 1.6); byId.scanner.flare = 1; }
+  fx.pulses.forEach((p) => {
+    if (p.age > 3) { p.m.visible = false; return; }
+    p.age += dt; const k = p.age / 3; p.m.scale.setScalar(1 + k * 30); p.m.material.opacity = (1 - k) * 0.9 * (p.k || 1);
+  });
+  // packets along arcs tower <-> Kaelis
+  const kp = _c.set(0, kaelisCity.position.y, 0);
+  pkData.forEach((d, i) => {
+    d.ph = (d.ph + dt * d.sp * (m || 0.3)) % 1;
+    const s = d.up ? d.ph : 1 - d.ph;
+    _a.copy(d.tw.top).applyMatrix4(d.tw.group.matrixWorld); _a.y -= 2.5;
+    const mid = _b.copy(_a).add(kp).multiplyScalar(0.5); mid.y += 9;
+    const u = 1 - s, x = u * u * _a.x + 2 * u * s * mid.x + s * s * kp.x, y = u * u * _a.y + 2 * u * s * mid.y + s * s * kp.y, z = u * u * _a.z + 2 * u * s * mid.z + s * s * kp.z;
+    const sc = 0.6 + Math.sin(s * Math.PI) * 0.8;
+    _m4.makeScale(sc, sc, sc).setPosition(x, y, z); packets.setMatrixAt(i, _m4);
+  });
+  packets.instanceMatrix.needsUpdate = true;
+  // shooting stars
+  fx.stars.forEach((st) => {
+    if (st.age > 1.1) {
+      if (Math.random() < dt * 0.35 * m) {
+        st.age = 0; const a = Math.random() * Math.PI * 2;
+        st.head.set(Math.cos(a) * 160, 90 + Math.random() * 60, Math.sin(a) * 160);
+        st.dir.set(-Math.cos(a) + (Math.random() - 0.5), -0.35, -Math.sin(a) + (Math.random() - 0.5)).normalize().multiplyScalar(260);
+      } else { st.l.material.opacity = 0; return; }
+    }
+    st.age += dt; st.head.addScaledVector(st.dir, dt);
+    const pos = st.l.geometry.attributes.position, tail = _a.copy(st.head).addScaledVector(st.dir, -0.12);
+    pos.setXYZ(0, st.head.x, st.head.y, st.head.z); pos.setXYZ(1, tail.x, tail.y, tail.z); pos.needsUpdate = true;
+    st.l.material.opacity = Math.sin(Math.min(1, st.age / 1.1) * Math.PI);
+  });
+  // Kaelis rings + sweeping scanner beam
+  kRings[0].position.y = kRings[1].position.y = kaelisCity.position.y;
+  kRings[0].rotation.z += dt * 0.8 * m; kRings[1].rotation.z -= dt * 0.55 * m; kRings[1].rotation.y += dt * 0.3 * m;
+  sweep.position.y = kaelisCity.position.y; sweep.rotation.y = t * 0.55 * m;
+  const sa = sweep.rotation.y;
+  _a.set(Math.sin(SWEEP_TILT) * SWEEP_LEN, 0, 0).applyAxisAngle(new THREE.Vector3(0, 1, 0), sa); sweepSpot.position.set(_a.x, 0.08, _a.z);
+  sweepCone.material.opacity = 0.35 + Math.sin(t * 3) * 0.12;
+  // blimp
+  const ba = t * 0.045 * (m || 0.2) + 1, R = 46;
+  blimp.position.set(Math.cos(ba) * R, 27 + Math.sin(t * 0.4) * 1.2 * m, Math.sin(ba) * R);
+  const vx = -Math.sin(ba), vz = Math.cos(ba); blimp.rotation.set(Math.sin(t * 0.6) * 0.04 * m, Math.atan2(-vz, vx), 0);
+  blimp.userData.banner.offset.x = (t * 0.06 * (m || 0.2)) % 1;
+  blimp.userData.nose.material.opacity = Math.sin(t * 4) > 0 ? 1 : 0.15; blimp.userData.tail.material.opacity = Math.sin(t * 4 + 2) > 0 ? 1 : 0.15;
+  // towers: flicker, hover lift, beam flare after a scan
+  TOWERS.forEach((tw, i) => {
+    const on = hovered === tw.id;
+    tw.group.position.y = lerp(tw.group.position.y, on ? 0.6 : 0, 0.12);
+    if (fx.intro) tw.beamMat.uniforms.uK.value = lerp(tw.beamMat.uniforms.uK.value, (on ? 1.1 : 0.6) + (tw.flare || 0) * 1.6, 0.1);
+    tw.flare = Math.max(0, (tw.flare || 0) - dt * 0.5);
+    (tw.mats || []).forEach((mt, j) => { mt.emissiveIntensity = 1 + (m ? Math.sin(t * 7 + i * 3 + j) * Math.sin(t * 2.3 + j) * 0.12 : 0) + (on ? 0.35 : 0); });
+  });
+}
+
+function updateRoomFX(t, dt) {
+  const m = reduce ? 0 : 1, theme = current ? byId[current].color : "#59e7ca";
+  // steam from the mug
+  const mp = roomParts.mug.position;
+  steam.forEach((s) => { const k = (t * 0.35 + s.ph) % 1; s.sp.position.set(mp.x + Math.sin(k * 9 + s.ph * 6) * 0.03, mp.y + 0.08 + k * 0.45, mp.z); s.sp.scale.setScalar(0.1 + k * 0.22); s.sp.material.opacity = Math.sin(k * Math.PI) * 0.5 * (m || 0); });
+  // keystroke data rising from the keyboard into the main screen
+  const pos = dataGeo.attributes.position, speed = state.scanning ? 1.6 : 0.45;
+  dpSeed.forEach(([ph, x, z], i) => { const k = (ph + t * speed * (m || 0.2)) % 1; pos.setXYZ(i, x * (1 - k) + Math.sin(k * 12 + i) * 0.03, 0.9 + k * 0.5, -0.78 - k * 0.58 - z); });
+  pos.needsUpdate = true; dataPts.material.color.set(theme).multiplyScalar(2);
+  // monitor glitch while a scan runs
+  if (state.scanning && current === "scanner" && t - fx.glitchAt > 0.09) {
+    fx.glitchAt = t; drawScreens("scanner");
+    const s0 = roomParts.screens[0], g = s0.cv.getContext("2d"), W = s0.cv.width, H = s0.cv.height;
+    for (let i = 0; i < 5; i++) { const y = Math.random() * H, h = 4 + Math.random() * 18, dx = (Math.random() - 0.5) * 40; g.drawImage(s0.cv, 0, y, W, h, dx, y, W, h); }
+    g.fillStyle = "rgba(89,231,202,0.15)"; g.fillRect(0, (t * 300) % H, W, 10);
+    s0.tex.needsUpdate = true;
+  }
+  // holo coin
+  fx.coin = Math.max(0, fx.coin - dt * 0.03);
+  const show = state.lastScan && current === "scanner" ? 1 : 0;
+  const cs = lerp(coin.scale.x, show ? 1 : 0.001, 0.08);
+  coin.scale.setScalar(Math.max(0.001, cs)); coin.rotation.z = t * 1.6 * (m || 0.2); coin.position.y = 1.3 + Math.sin(t * 1.8) * 0.03 * m;
+  coinGlow.material.opacity = cs * 0.8;
+  // chair spin on a good result (robot spins with it)
+  if (fx.spin > 0) { fx.spin = Math.max(0, fx.spin - dt * 0.55); const k = ease(1 - fx.spin); roomParts.chair.rotation.y = robot.R.rotation.y = k * Math.PI * 2; }
+  else roomParts.chair.rotation.y = robot.R.rotation.y = Math.sin(t * 0.5) * 0.06 * m;
+  // alarm on a dangerous result
+  fx.alarm = Math.max(0, fx.alarm - dt);
+  beacon.visible = fx.alarm > 0; alarmLight.intensity = fx.alarm > 0 ? (8 + Math.sin(t * 14) * 6) : 0;
+  if (fx.alarm > 0) { beacon.rotation.y = t * 7; beaconBeam.material.opacity = 0.22; }
+  // antenna blink
+  robot.antTip.material.emissiveIntensity = Math.sin(t * 2.5) > 0.7 ? 5 : 1.5;
+}
+
+// =================================================================== INPUT (hover + click towers)
+const ray = new THREE.Raycaster(), pointer = new THREE.Vector2(); let hovered = null, downAt = null;
+canvas.addEventListener("pointermove", (e) => {
+  pointer.set((e.clientX / innerWidth) * 2 - 1, -(e.clientY / innerHeight) * 2 + 1);
+  if (scene !== city) return;
+  ray.setFromCamera(pointer, camera); const hit = ray.intersectObjects(towerHits)[0];
+  hovered = hit ? hit.object.userData.tower : null; canvas.style.cursor = hovered ? "pointer" : "grab";
+});
+canvas.addEventListener("pointerdown", (e) => { downAt = [e.clientX, e.clientY]; });
+canvas.addEventListener("pointerup", (e) => {
+  if (!downAt || Math.hypot(e.clientX - downAt[0], e.clientY - downAt[1]) > 6 || scene !== city) return;
+  pointer.set((e.clientX / innerWidth) * 2 - 1, -(e.clientY / innerHeight) * 2 + 1);
+  ray.setFromCamera(pointer, camera); const hit = ray.intersectObjects(towerHits)[0];
+  if (hit) enterTower(hit.object.userData.tower);
+});
+
+// =================================================================== LOOP
+function resize() {
+  const w = innerWidth, h = innerHeight;
+  renderer.setSize(w, h, false); composer.setSize(w, h);
+  bloom.resolution.set(w * (small ? 0.5 : 0.75), h * (small ? 0.5 : 0.75));
+  camera.aspect = w / h; camera.fov = w / h < 0.8 ? 58 : 40; camera.updateProjectionMatrix();
+}
+addEventListener("resize", resize); resize();
+camera.position.copy(CITY_VIEW.pos); controls.target.copy(CITY_VIEW.target); setCityControls(); controls.update();
+
+const clock = new THREE.Clock(); let lastClock = 0;
+function frame() {
+  requestAnimationFrame(frame);
+  if (document.hidden) return;
+  const dt = Math.min(0.05, clock.getDelta()), t = clock.elapsedTime, m = reduce ? 0 : 1;
+  beams.forEach((b) => (b.uniforms.uTime.value = t));
+  if (scene === city) {
+    kaelisCity.position.y = 8.2 + Math.sin(t * 1.1) * 0.35 * m;
+    kaelisCity.rotation.y += ((pointer.x * 0.8 + Math.sin(t * 0.3) * 0.3 * m) - kaelisCity.rotation.y) * 0.05;
+    kaelisCity.rotation.x += ((-pointer.y * 0.3) - kaelisCity.rotation.x) * 0.05;
+    const mtx = new THREE.Matrix4();
+    for (let i = 0; i < 30; i++) { const a = (i / 30) * Math.PI * 2 + t * 0.25 * m; mtx.makeTranslation(Math.cos(a) * 24.2, 0.62, Math.sin(a) * 24.2); runners.setMatrixAt(i, mtx); }
+    runners.instanceMatrix.needsUpdate = true;
+    TOWERS.forEach((tw) => { const on = hovered === tw.id; tw.crown.scale.setScalar(lerp(tw.crown.scale.x, on ? 1.35 : 1, 0.15)); tw.crown.rotation.z += dt * (on ? 2 : 0.4) * m; });
+    updateCityFX(t, dt);
+  } else {
+    animateRobot(t, dt);
+    updateRoomFX(t, dt);
+    if (t - lastClock > 10) { drawClock(); lastClock = t; }
+  }
+  controls.update();
+  composer.render();
+  placeLabels();
+}
+
+// =================================================================== START
+(async () => {
+  await document.fonts.ready.catch(() => {});
+  drawClock(); refreshLabels();
+  requestAnimationFrame(frame);
+  await checkHealth(); await Promise.all([loadHolders(), loadBuilders()]); refreshLabels();
+  const q = new URLSearchParams(location.search).get("tower");
+  if (q && byId[q]) { TOWERS.forEach((tw) => { tw.group.scale.y = 1; tw.beamMat.uniforms.uK.value = 0.6; }); fx.intro = 1; enterTower(q); }
+  else intro();
+})();
+</script>
+</body>
+</html>

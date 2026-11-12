@@ -1,0 +1,663 @@
+<!doctype html>
+<html lang="en">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Kaelis Film</title>
+<meta name="description" content="How Kaelis checks a token, in 48 seconds of real-time 3D.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter+Tight:wght@400;500;600&family=JetBrains+Mono:wght@400;500;700&display=swap">
+<style>
+  /* Source of the guide video (media/kaelis-agent.mp4). Everything on screen is a pure function of the
+     time t, so tools/film/capture.js can render it frame by frame. Open it in a browser to watch it live. */
+  :root { --bg: #04050a; --ink: #eef1f3; --mute: #8b93a1; --mint: #59e7ca; --amber: #ffc24a; --red: #ff4d6a;
+    --sans: "Inter Tight", "Helvetica Neue", Arial, sans-serif; --mono: "JetBrains Mono", ui-monospace, Menlo, monospace; }
+  html, body { margin: 0; height: 100%; background: var(--bg); color: var(--ink); overflow: hidden; font-family: var(--sans); }
+  canvas { position: fixed; inset: 0; width: 100%; height: 100%; display: block; }
+  .ov { position: fixed; inset: 0; pointer-events: none; }
+  .shade { background: radial-gradient(120% 90% at 60% 45%, transparent 55%, rgba(0,0,0,.55) 100%),
+    linear-gradient(to top right, rgba(4,5,10,.85) 0%, rgba(4,5,10,.35) 28%, transparent 48%); }
+  .top { position: absolute; top: 4.2vh; left: 4vw; right: 4vw; display: flex; justify-content: space-between; align-items: center;
+    font: 500 max(10px, .78vw)/1 var(--mono); letter-spacing: .16em; text-transform: uppercase; color: var(--mute); }
+  .top b { color: var(--ink); font-weight: 500; }
+  .top .r { display: flex; gap: 2.2vw; }
+  .live { color: var(--mint); }
+  .cap { position: absolute; left: 4vw; bottom: 10vh; width: min(40vw, 760px); opacity: 0; }
+  .cap .k { font: 500 max(10px, .82vw)/1 var(--mono); letter-spacing: .16em; text-transform: uppercase; color: var(--mint); display: inline-block;
+    border: 1px solid currentColor; padding: .55em .8em; }
+  .cap h2 { font-size: max(26px, 3.6vw); line-height: .98; letter-spacing: -.035em; font-weight: 500; margin: .38em 0 .3em; }
+  .cap p { font-size: max(13px, 1.22vw); line-height: 1.38; color: #b9c0ca; margin: 0; max-width: 36ch; }
+  .title { position: absolute; left: 4vw; bottom: 12vh; opacity: 0; }
+  .title .mark { font: 600 max(40px, 7.4vw)/.9 var(--sans); letter-spacing: .12em; }
+  .title .mark i { font-style: normal; display: inline-block; }
+  .title .mark i:nth-child(even) { color: transparent; -webkit-text-stroke: 2px var(--ink); }
+  .title p { font-size: max(15px, 1.7vw); margin: .7em 0 .5em; letter-spacing: -.01em; }
+  .title small { font: 500 max(10px, .8vw)/1 var(--mono); letter-spacing: .16em; text-transform: uppercase; color: var(--mute); }
+  .risk { position: absolute; right: 4vw; top: 10vh; text-align: right; opacity: 0; }
+  .risk small { font: 500 max(10px, .8vw)/1 var(--mono); letter-spacing: .16em; color: var(--mute); }
+  .risk div { font: 500 max(34px, 4.6vw)/1 var(--sans); letter-spacing: -.04em; font-variant-numeric: tabular-nums; margin-top: .15em; }
+  .end { position: absolute; left: 4vw; bottom: 12vh; opacity: 0; }
+  .end h1 { font-size: max(36px, 6.2vw); line-height: .92; letter-spacing: -.045em; font-weight: 500; margin: 0 0 .35em; }
+  .end p { font-size: max(14px, 1.45vw); color: #c7ccd4; margin: 0 0 1.4em; }
+  .end .cta { display: inline-block; font: 500 max(11px, .95vw)/1 var(--mono); letter-spacing: .14em; text-transform: uppercase;
+    background: var(--mint); color: #04130f; padding: 1em 1.4em; }
+  .end small { display: block; margin-top: 1.6em; font: 500 max(10px, .75vw)/1 var(--mono); letter-spacing: .16em; text-transform: uppercase; color: var(--mute); }
+  .bar { position: absolute; left: 4vw; right: 4vw; bottom: 5vh; height: 2px; background: rgba(255,255,255,.12); }
+  .bar i { position: absolute; left: 0; top: 0; bottom: 0; background: var(--mint); width: 0; }
+  .bar s { position: absolute; top: -4px; width: 1px; height: 10px; background: rgba(255,255,255,.35); }
+  .flash { background: #ff4d6a; mix-blend-mode: screen; opacity: 0; }
+  .black { background: #000; opacity: 1; }
+  .hint { position: absolute; right: 4vw; bottom: 7.5vh; font: 500 11px/1 var(--mono); letter-spacing: .14em; color: var(--mute); text-transform: uppercase; }
+  .capture .hint { display: none; }
+</style>
+
+<canvas id="c" aria-label="Animated film: a token goes through Kaelis, from address to score"></canvas>
+<div class="ov shade"></div>
+<div class="ov flash" id="flash"></div>
+<div class="ov" id="ui">
+  <div class="top"><span><b>KAELIS</b> · How it works</span><span class="r"><span id="chap">00 / 04</span><span>Example data</span></span></div>
+  <div class="title" id="title">
+    <div class="mark"><i>K</i><i>A</i><i>E</i><i>L</i><i>I</i><i>S</i></div>
+    <p>How Kaelis checks a token before you buy.</p>
+    <small>One token · four steps · 48 seconds</small>
+  </div>
+  <div class="risk" id="risk"><small>RUNNING RISK</small><div id="riskN">0</div></div>
+  <div class="end" id="end">
+    <h1>Scan before<br>you ape.</h1>
+    <p>Paste any Solana token. Free, read-only, no wallet needed.</p>
+    <span class="cta">Kaelis Scanner · beta</span>
+    <small>Example data in this film · Not financial advice</small>
+  </div>
+  <div class="bar" id="bar"><i id="barFill"></i></div>
+  <div class="hint" id="hint">Click to pause</div>
+</div>
+<div class="ov black" id="black"></div>
+
+<script type="importmap">
+{ "imports": {
+  "three": "https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.js",
+  "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.170.0/examples/jsm/"
+} }
+</script>
+<script type="module">
+import * as THREE from "three";
+import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
+import { MeshoptDecoder } from "three/addons/libs/meshopt_decoder.module.js";
+import { EffectComposer } from "three/addons/postprocessing/EffectComposer.js";
+import { RenderPass } from "three/addons/postprocessing/RenderPass.js";
+import { UnrealBloomPass } from "three/addons/postprocessing/UnrealBloomPass.js";
+import { OutputPass } from "three/addons/postprocessing/OutputPass.js";
+import { RoomEnvironment } from "three/addons/environments/RoomEnvironment.js";
+
+const CAPTURE = new URLSearchParams(location.search).has("capture");
+if (CAPTURE) document.documentElement.classList.add("capture");
+const DUR = 48;
+const $ = (id) => document.getElementById(id);
+
+// ---------------------------------------------------------------- timing helpers
+const clamp = (v, a = 0, b = 1) => Math.min(b, Math.max(a, v));
+const lerp = (a, b, k) => a + (b - a) * k;
+const sm = (a, b, x) => { x = clamp((x - a) / (b - a)); return x * x * (3 - 2 * x); };
+const io = (x) => (x = clamp(x), x < 0.5 ? 4 * x * x * x : 1 - Math.pow(-2 * x + 2, 3) / 2);
+const out3 = (x) => 1 - Math.pow(1 - clamp(x), 3);
+const win = (t, a, b, fi = 0.5, fo = 0.5) => sm(a, a + fi, t) * (1 - sm(b - fo, b, t));
+function rng(seed) { return () => { seed |= 0; seed = (seed + 0x6d2b79f5) | 0; let x = Math.imul(seed ^ (seed >>> 15), 1 | seed); x = (x + Math.imul(x ^ (x >>> 7), 61 | x)) ^ x; return ((x ^ (x >>> 14)) >>> 0) / 4294967296; }; }
+const V = (x, y, z) => new THREE.Vector3(x, y, z);
+const MINT = new THREE.Color(0x59e7ca), AMBER = new THREE.Color(0xffc24a), RED = new THREE.Color(0xff4d6a), EMBER = new THREE.Color(0xff8a4d);
+
+// ---------------------------------------------------------------- story data (example token, real rules and weights)
+const B58 = "123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz";
+const ADDRESS = (() => { const r = rng(4242); let s = ""; for (let i = 0; i < 40; i++) s += B58[Math.floor(r() * 58)]; return s + "pump"; })();
+const CHECKS = [
+  { n: "Mint authority", w: 10, add: 10, d: "Still set. New tokens can be printed." },
+  { n: "Freeze authority", w: 5, add: 0, d: "Revoked. No one can freeze you." },
+  { n: "Token extensions", w: 10, add: 0, d: "Standard SPL token, no hooks." },
+  { n: "Liquidity depth", w: 15, add: 12, d: "$3.2k in one pool." },
+  { n: "Top 10 holders", w: 15, add: 13, d: "10 wallets hold 74% of supply." },
+  { n: "LP locked or burned", w: 15, add: 15, d: "0% locked. The pool can be pulled." },
+  { n: "Pool age", w: 5, add: 5, d: "Oldest pool is 6 hours old." },
+  { n: "Sell test", w: 25, add: 25, d: "Buy works. Selling back fails.", hard: true },
+];
+const CHECK_T0 = 12.6, CHECK_DT = 1.05;
+const checkState = (i, t) => { const s = t - (CHECK_T0 + i * CHECK_DT); return s < 0 ? [0, 0] : s < 0.62 ? [1, s / 0.62] : [2, 1]; };
+const runningRisk = (t) => CHECKS.reduce((a, c, i) => a + (checkState(i, t)[0] === 2 ? c.add : 0), 0);
+const SUMMARY = "Selling back fails, which is how a honeypot behaves. 74% of the supply sits in ten wallets and none of the pool is locked, so the money can be pulled at any time.";
+
+// ---------------------------------------------------------------- renderer
+const canvas = $("c");
+const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, powerPreference: "high-performance" });
+renderer.setPixelRatio(CAPTURE ? 1 : Math.min(devicePixelRatio || 1, 2));
+renderer.outputColorSpace = THREE.SRGBColorSpace;
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 1.0;
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0x04050a);
+scene.fog = new THREE.FogExp2(0x04050a, 0.03);
+const pmrem = new THREE.PMREMGenerator(renderer);
+scene.environment = pmrem.fromScene(new RoomEnvironment(), 0.04).texture;
+scene.environmentIntensity = 0.32;
+const camera = new THREE.PerspectiveCamera(32, 16 / 9, 0.1, 400);
+const composer = new EffectComposer(renderer);
+composer.addPass(new RenderPass(scene, camera));
+const bloom = new UnrealBloomPass(new THREE.Vector2(512, 288), 0.55, 0.42, 0.86);
+composer.addPass(bloom);
+composer.addPass(new OutputPass());
+function resize() {
+  const w = innerWidth, h = innerHeight;
+  renderer.setSize(w, h, false); composer.setSize(w, h);
+  camera.aspect = w / h;
+  camera.fov = w / h < 1.2 ? 52 : 32;
+  camera.updateProjectionMatrix();
+}
+addEventListener("resize", resize); resize();
+
+// lights
+scene.add(new THREE.HemisphereLight(0x8fa2ff, 0x06070c, 0.35));
+const key = new THREE.DirectionalLight(0xffffff, 2.2); key.position.set(-5, 6, 7); scene.add(key);
+const rim = new THREE.PointLight(0x59e7ca, 60, 18, 2); rim.position.set(2.5, 2.5, -4); scene.add(rim);
+const eyeLight = new THREE.PointLight(0x59e7ca, 0, 9, 2); eyeLight.position.set(0, 0.1, 2.4); scene.add(eyeLight);
+const emberLight = new THREE.PointLight(0xff8a4d, 0, 7, 2); scene.add(emberLight);
+
+// ---------------------------------------------------------------- texture helpers
+const srgb = (t) => { t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = 4; return t; };
+function canvasPlane(w, h, cw, ch) {
+  const cv = document.createElement("canvas"); cv.width = cw; cv.height = ch;
+  const tex = srgb(new THREE.CanvasTexture(cv));
+  const mat = new THREE.MeshBasicMaterial({ map: tex, transparent: true, depthWrite: false, side: THREE.DoubleSide, toneMapped: false, fog: false });
+  const mesh = new THREE.Mesh(new THREE.PlaneGeometry(w, h), mat);
+  return { mesh, mat, tex, cv, g: cv.getContext("2d"), key: "" };
+}
+const dot = (() => { const c = document.createElement("canvas"); c.width = c.height = 64; const g = c.getContext("2d");
+  const r = g.createRadialGradient(32, 32, 0, 32, 32, 32); r.addColorStop(0, "rgba(255,255,255,1)"); r.addColorStop(0.22, "rgba(255,255,255,.85)"); r.addColorStop(1, "rgba(255,255,255,0)");
+  g.fillStyle = r; g.fillRect(0, 0, 64, 64); return new THREE.CanvasTexture(c); })();
+function points(n, size) {
+  const geo = new THREE.BufferGeometry();
+  geo.setAttribute("position", new THREE.BufferAttribute(new Float32Array(n * 3), 3));
+  geo.setAttribute("color", new THREE.BufferAttribute(new Float32Array(n * 3), 3));
+  const p = new THREE.Points(geo, new THREE.PointsMaterial({ size, map: dot, vertexColors: true, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, sizeAttenuation: true }));
+  p.frustumCulled = false; scene.add(p);
+  const P = geo.attributes.position.array, C = geo.attributes.color.array;
+  return { n, set(i, v, c, k = 1) { P[i * 3] = v.x; P[i * 3 + 1] = v.y; P[i * 3 + 2] = v.z; C[i * 3] = c.r * k; C[i * 3 + 1] = c.g * k; C[i * 3 + 2] = c.b * k; },
+    off(i) { C[i * 3] = C[i * 3 + 1] = C[i * 3 + 2] = 0; }, done() { geo.attributes.position.needsUpdate = true; geo.attributes.color.needsUpdate = true; } };
+}
+const bez = (a, c, b, u, out) => out.set(0, 0, 0).addScaledVector(a, (1 - u) * (1 - u)).addScaledVector(c, 2 * (1 - u) * u).addScaledVector(b, u * u);
+
+// ---------------------------------------------------------------- floor: dark metal + glowing grid with shockwaves
+const FLOOR_Y = -2.2;
+const floor = new THREE.Mesh(new THREE.CircleGeometry(60, 64), new THREE.MeshStandardMaterial({ color: 0x07080d, metalness: 0.4, roughness: 0.82, envMapIntensity: 0.06 }));
+floor.rotation.x = -Math.PI / 2; floor.position.y = FLOOR_Y; scene.add(floor);
+const gridU = { uWave: { value: new THREE.Vector4(0, 0, 0, 0) }, uWaveC: { value: new THREE.Color() } };
+const grid = new THREE.Mesh(new THREE.PlaneGeometry(120, 120), new THREE.ShaderMaterial({
+  uniforms: gridU, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending,
+  vertexShader: `varying vec3 vW; void main(){ vec4 w = modelMatrix * vec4(position,1.); vW = w.xyz; gl_Position = projectionMatrix * viewMatrix * w; }`,
+  fragmentShader: `varying vec3 vW; uniform vec4 uWave; uniform vec3 uWaveC;
+    void main(){ vec2 q = vW.xz * .9; vec2 g = abs(fract(q - .5) - .5) / fwidth(q); float l = 1. - min(min(g.x, g.y), 1.);
+      float d = length(vW.xz); float fade = exp(-d * .075);
+      float ring = exp(-pow((d - uWave.x) * 2.2, 2.)) * uWave.y;
+      vec3 c = vec3(.25,.75,.68) * l * .22 * fade + uWaveC * ring * (l * 1.6 + .25) * exp(-d * .03);
+      gl_FragColor = vec4(c, 1.); }`,
+}));
+grid.rotation.x = -Math.PI / 2; grid.position.y = FLOOR_Y + 0.005; scene.add(grid);
+const WAVES = [[2.3, MINT, 1.0], [20.95, RED, 1.3], [26.2, RED, 1.6], [43.0, MINT, 1.1]];
+
+// ---------------------------------------------------------------- Kaelis
+const K = new THREE.Group(); scene.add(K);
+const glowMats = []; let eyeLocal = V(0, 0, 1.5);
+const meterU = { uP: { value: 0 }, uO: { value: 0 } };
+const meter = new THREE.Mesh(new THREE.RingGeometry(2.08, 2.2, 160, 1), new THREE.ShaderMaterial({
+  uniforms: meterU, transparent: true, depthWrite: false, side: THREE.DoubleSide, toneMapped: false,
+  vertexShader: `varying vec3 vP; void main(){ vP = position; gl_Position = projectionMatrix * modelViewMatrix * vec4(position,1.); }`,
+  fragmentShader: `varying vec3 vP; uniform float uP, uO;
+    void main(){ float a = fract(atan(vP.x, vP.y) / 6.2831853 + 1.);
+      vec3 c = a < .4 ? vec3(.35,.91,.79) : a < .7 ? vec3(1.,.76,.29) : vec3(1.,.3,.42);
+      float tick = step(abs(a - .4), .002) + step(abs(a - .7), .002);
+      float on = step(a, uP);
+      gl_FragColor = vec4(mix(vec3(.5), c * 1.8, on) + tick, (on * .95 + .1 + tick) * uO); }`,
+}));
+meter.position.z = 0.15; scene.add(meter);
+const orbitMat = new THREE.MeshBasicMaterial({ color: MINT.clone().multiplyScalar(1.6), transparent: true, opacity: 0.5, blending: THREE.AdditiveBlending, depthWrite: false });
+const orbits = [0, 1].map((i) => { const o = new THREE.Mesh(new THREE.TorusGeometry(2.45 + i * 0.35, 0.006, 6, 180), orbitMat); scene.add(o); return o; });
+const sweep = new THREE.Mesh(new THREE.TorusGeometry(1.75, 0.012, 8, 160), new THREE.MeshBasicMaterial({ color: MINT.clone().multiplyScalar(3), transparent: true, opacity: 0, blending: THREE.AdditiveBlending, depthWrite: false }));
+sweep.rotation.x = Math.PI / 2; scene.add(sweep);
+const beam = new THREE.Mesh(new THREE.CylinderGeometry(0.012, 0.03, 1, 8, 1, true), new THREE.MeshBasicMaterial({ color: MINT.clone().multiplyScalar(3), transparent: true, opacity: 0, blending: THREE.AdditiveBlending, depthWrite: false }));
+scene.add(beam);
+
+const loader = new GLTFLoader().setMeshoptDecoder(MeshoptDecoder);
+const loadGLB = (url) => new Promise((res) => loader.load(url, (g) => res(g.scene), undefined, () => res(null)));
+function fit(m, size) {
+  const box = new THREE.Box3().setFromObject(m), s = box.getSize(new THREE.Vector3()), k = size / Math.max(s.x, s.y, s.z);
+  m.scale.setScalar(k); m.position.sub(box.getCenter(new THREE.Vector3()).multiplyScalar(k)); return m;
+}
+const ready = [];
+ready.push(loadGLB("models/kaelis.glb").then((m) => {
+  if (!m) { m = new THREE.Mesh(new THREE.SphereGeometry(1.6, 64, 48), new THREE.MeshStandardMaterial({ color: 0x15171f, metalness: 1, roughness: 0.3 })); K.add(m); return; }
+  K.add(fit(m, 3.2));
+  K.updateMatrixWorld(true);
+  m.traverse((o) => {
+    if (!o.isMesh) return;
+    const mt = o.material, e = mt.emissive;
+    if (e && Math.max(e.r, e.g, e.b) > 0.2) { mt.userData.base = e.clone(); mt.userData.bi = Math.min(mt.emissiveIntensity, 1.6); glowMats.push(mt); }
+    if (/iris/i.test(mt.name)) eyeLocal = new THREE.Box3().setFromObject(o).getCenter(new THREE.Vector3());
+  });
+}));
+
+// ---------------------------------------------------------------- city silhouettes + holder windows
+const towerMat = new THREE.MeshStandardMaterial({ color: 0x0b0e15, metalness: 0.8, roughness: 0.42, envMapIntensity: 0.25 });
+const crownCols = [MINT, AMBER, EMBER, new THREE.Color(0x9d8bff)];
+const towers = []; const winSpots = [];
+{
+  const r = rng(77);
+  for (let i = 0; i < 13; i++) {
+    let a = (i / 13) * Math.PI * 2 + (r() - 0.5) * 0.3;
+    if (Math.abs(Math.atan2(Math.sin(a), Math.cos(a))) < 0.55) a += 0.9;
+    const R = 12.5 + r() * 5, w = 1.4 + r() * 1.2, h = 3.5 + r() * 7, d = w * (0.8 + r() * 0.3);
+    const x = Math.sin(a) * R, z = Math.cos(a) * R;
+    const m = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), towerMat); m.position.set(x, FLOOR_Y + h / 2, z); m.rotation.y = a; scene.add(m);
+    const cr = new THREE.Mesh(new THREE.BoxGeometry(w * 1.02, 0.06, d * 1.02), new THREE.MeshBasicMaterial({ color: crownCols[i % 4].clone().multiplyScalar(2.2) }));
+    cr.position.set(x, FLOOR_Y + h + 0.03, z); cr.rotation.y = a; scene.add(cr);
+    towers.push(m);
+    // windows on the face that looks at the plaza and both sides
+    const q = new THREE.Quaternion().setFromEuler(new THREE.Euler(0, a, 0));
+    for (const [nx, nz, span] of [[0, -1, w], [1, 0, d], [-1, 0, d]]) {
+      const n = V(nx, 0, nz).applyQuaternion(q), tg = V(-nz, 0, nx).applyQuaternion(q);
+      const half = nx ? w / 2 : d / 2, cols = Math.floor((span - 0.3) / 0.34), rows = Math.floor((h - 0.7) / 0.42);
+      const fq = new THREE.Quaternion().setFromUnitVectors(V(0, 0, 1), n);
+      for (let cI = 0; cI < cols; cI++) for (let rI = 0; rI < rows; rI++) {
+        const p = V(x, FLOOR_Y + 0.5 + rI * 0.42, z).addScaledVector(n, half + 0.006).addScaledVector(tg, (cI - (cols - 1) / 2) * 0.34);
+        winSpots.push({ p, q: fq, h: r(), c: r() < 0.7 ? AMBER : MINT });
+      }
+    }
+  }
+}
+const winMesh = new THREE.InstancedMesh(new THREE.PlaneGeometry(0.17, 0.24), new THREE.MeshBasicMaterial({ color: 0xffffff }), winSpots.length);
+{ const M = new THREE.Matrix4(), one = V(1, 1, 1); winSpots.forEach((w, i) => { winMesh.setMatrixAt(i, M.compose(w.p, w.q, one)); winMesh.setColorAt(i, new THREE.Color(0x0d1018)); }); }
+scene.add(winMesh);
+const DARK_WIN = new THREE.Color(0x0d1018), tmpC = new THREE.Color();
+
+// ---------------------------------------------------------------- READ: address strip, data sources, streams
+const addr = canvasPlane(3.7, 0.55, 1400, 206);
+addr.mesh.position.set(-2.75, 1.55, 2.4); addr.mesh.rotation.y = 0.38; scene.add(addr.mesh);
+function drawAddr(chars, pasted) {
+  const k = chars + "|" + pasted; if (addr.key === k) return; addr.key = k;
+  const g = addr.g, W = 1400, H = 206; g.clearRect(0, 0, W, H);
+  g.fillStyle = "rgba(6,10,16,.86)"; g.fillRect(0, 0, W, H);
+  g.strokeStyle = pasted ? "#59e7ca" : "rgba(160,170,190,.5)"; g.lineWidth = 3; g.strokeRect(1.5, 1.5, W - 3, H - 3);
+  g.fillStyle = "#8b93a1"; g.font = "500 30px JetBrains Mono"; g.textBaseline = "top"; g.fillText("EXAMPLE TOKEN  ·  $DEMO  ·  PASTE ADDRESS", 34, 30);
+  g.fillStyle = "#d8dde3"; g.font = "500 52px JetBrains Mono"; g.fillText(ADDRESS.slice(0, chars), 34, 98);
+  if (!pasted) { const w = g.measureText(ADDRESS.slice(0, chars)).width; g.fillStyle = "#59e7ca"; g.fillRect(40 + w, 98, 26, 56); }
+  else { g.fillStyle = "#59e7ca"; g.font = "700 30px JetBrains Mono"; const s = "SCAN ↵"; g.fillText(s, W - 34 - g.measureText(s).width, 30); }
+  addr.tex.needsUpdate = true;
+}
+const SOURCES = [["SOLANA RPC", V(-2.7, 2.6, -1.2)], ["DEXSCREENER", V(2.3, 2.3, -1.2)], ["RUGCHECK", V(-3.1, -1.1, -1.6)], ["JUPITER", V(2.5, -1.2, -1.4)]];
+const srcNodes = SOURCES.map(([name, p]) => {
+  const node = new THREE.Mesh(new THREE.OctahedronGeometry(0.16), new THREE.MeshBasicMaterial({ color: MINT.clone().multiplyScalar(2.5), transparent: true, opacity: 0 }));
+  node.position.copy(p); scene.add(node);
+  const cv = document.createElement("canvas"); cv.width = 512; cv.height = 96; const g = cv.getContext("2d");
+  g.fillStyle = "rgba(6,10,16,.85)"; g.fillRect(0, 0, 512, 96); g.strokeStyle = "#59e7ca"; g.lineWidth = 3; g.strokeRect(1.5, 1.5, 509, 93);
+  g.fillStyle = "#d8dde3"; g.font = "500 40px JetBrains Mono"; g.textBaseline = "middle"; g.fillText(name, 26, 50);
+  const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: srgb(new THREE.CanvasTexture(cv)), transparent: true, opacity: 0, toneMapped: false, depthWrite: false, fog: false }));
+  sp.scale.set(1.35, 0.25, 1); sp.position.copy(p).add(V(0, 0.38, 0)); scene.add(sp);
+  return { node, sp, p };
+});
+const addrStream = points(520, 0.07), srcStream = points(4 * 90, 0.06), dust = points(500, 0.035), sparks = points(3 * 110, 0.05);
+const addrSeeds = (() => { const r = rng(9); return Array.from({ length: addrStream.n }, () => [r(), r(), r(), r()]); })();
+const dustSeeds = (() => { const r = rng(31); return Array.from({ length: dust.n }, () => [(r() - 0.5) * 30, r() * 11 - 2, (r() - 0.5) * 26, r()]); })();
+
+// ---------------------------------------------------------------- CHECK: eight holo panels around Kaelis
+const PANEL_R = 3.7;
+const panels = CHECKS.map((c, i) => {
+  const P = canvasPlane(1.95, 1.14, 600, 350); P.mat.side = THREE.FrontSide;
+  const a = (i / 8) * Math.PI * 2;
+  P.a = a; P.home = V(Math.sin(a) * PANEL_R, 0.15, Math.cos(a) * PANEL_R);
+  P.mesh.position.copy(P.home); P.mesh.rotation.y = a; scene.add(P.mesh);
+  P.frame = new THREE.LineSegments(new THREE.EdgesGeometry(new THREE.PlaneGeometry(1.95, 1.14)), new THREE.LineBasicMaterial({ color: 0xffffff, transparent: true, toneMapped: false, fog: false }));
+  P.mesh.add(P.frame);
+  return P;
+});
+function wrap(g, text, x, y, maxW, lh) {
+  const words = text.split(" "); let line = "", yy = y;
+  for (const w of words) { const t = line ? line + " " + w : w; if (g.measureText(t).width > maxW && line) { g.fillText(line, x, yy); line = w; yy += lh; } else line = t; }
+  if (line) g.fillText(line, x, yy); return yy + lh;
+}
+function drawPanel(P, i, st, prog) {
+  const k = st + "|" + (st === 1 ? Math.floor(prog * 20) : 0); if (P.key === k) return; P.key = k;
+  const c = CHECKS[i], g = P.g, W = 600, H = 350; g.clearRect(0, 0, W, H);
+  const col = st < 2 ? "#59e7ca" : c.add === 0 ? "#59e7ca" : c.add <= 5 ? "#ffc24a" : "#ff4d6a";
+  g.fillStyle = "rgba(6,10,16,.88)"; g.fillRect(0, 0, W, H);
+  g.fillStyle = st === 0 ? "rgba(120,130,150,.25)" : col; g.fillRect(0, 0, W, 54);
+  g.fillStyle = st === 0 ? "#8b93a1" : "#05070b"; g.font = "700 22px JetBrains Mono"; g.textBaseline = "middle";
+  g.fillText(`CHECK 0${i + 1} / 08`, 22, 28); const wt = `WEIGHT ${c.w}`; g.fillText(wt, W - 22 - g.measureText(wt).width, 28);
+  g.textBaseline = "top"; g.fillStyle = st === 0 ? "#6b7380" : "#e6eaee"; g.font = "500 46px 'Inter Tight'"; g.fillText(c.n, 22, 80);
+  g.font = "400 27px 'Inter Tight'"; g.fillStyle = "#aab2bd";
+  if (st === 0) g.fillText("Waiting…", 22, 150);
+  else if (st === 1) {
+    g.fillText("Reading the chain…", 22, 150);
+    g.fillStyle = "rgba(89,231,202,.18)"; g.fillRect(22, 290, W - 44, 14); g.fillStyle = "#59e7ca"; g.fillRect(22, 290, (W - 44) * prog, 14);
+  } else {
+    wrap(g, c.d, 22, 150, W - 44, 36);
+    const chip = c.add === 0 ? "PASS" : c.hard ? "HARD FLAG" : `FLAG +${c.add}`;
+    g.font = "700 26px JetBrains Mono"; const cw = g.measureText(chip).width + 36;
+    g.fillStyle = col; g.fillRect(22, 272, cw, 50); g.fillStyle = "#05070b"; g.textBaseline = "middle"; g.fillText(chip, 40, 298);
+  }
+  P.tex.needsUpdate = true;
+  P.frame.material.color.set(col).multiplyScalar(st === 0 ? 0.4 : 2.2);
+}
+
+// sell test: a coin goes out to Jupiter and bounces off on the way back
+const coin = new THREE.Mesh(new THREE.CylinderGeometry(0.16, 0.16, 0.04, 40), new THREE.MeshStandardMaterial({ color: 0xffc24a, metalness: 1, roughness: 0.25, emissive: 0xffc24a, emissiveIntensity: 0.6 }));
+coin.rotation.x = Math.PI / 2; scene.add(coin);
+const xMark = new THREE.Group();
+for (const s of [1, -1]) { const b = new THREE.Mesh(new THREE.BoxGeometry(0.62, 0.08, 0.08), new THREE.MeshBasicMaterial({ color: RED.clone().multiplyScalar(3), transparent: true })); b.rotation.z = s * Math.PI / 4; xMark.add(b); }
+scene.add(xMark);
+
+// ---------------------------------------------------------------- SCORE + EXPLAIN plate, lock
+const plate = canvasPlane(3.1, 2.1, 1100, 745);
+plate.mesh.position.set(4.05, 0.25, 0.4); plate.mesh.rotation.y = -0.32; scene.add(plate.mesh);
+plate.frame = new THREE.LineSegments(new THREE.EdgesGeometry(new THREE.PlaneGeometry(3.1, 2.1)), new THREE.LineBasicMaterial({ color: 0xffffff, transparent: true, toneMapped: false, fog: false }));
+plate.mesh.add(plate.frame);
+const scoreAt = (t) => t < 25.9 ? Math.round(80 * io(sm(22.8, 25.4, t))) : t < 26.2 ? 80 : 85;
+function drawPlate(t) {
+  const score = scoreAt(t), hard = t >= 26.2, typed = Math.floor(clamp((t - 29.9) / 3.4) * SUMMARY.length), locked = t >= 31.9;
+  const k = score + "|" + hard + "|" + typed + "|" + locked; if (plate.key === k) return; plate.key = k;
+  const g = plate.g, W = 1100, H = 745; g.clearRect(0, 0, W, H);
+  const col = score >= 70 ? "#ff4d6a" : score >= 40 ? "#ffc24a" : "#59e7ca";
+  g.fillStyle = "rgba(6,10,16,.9)"; g.fillRect(0, 0, W, H);
+  g.fillStyle = "#8b93a1"; g.font = "500 26px JetBrains Mono"; g.textBaseline = "top"; g.fillText("KAELIS SCORE  ·  RULES v1.1.1", 40, 36);
+  g.fillStyle = col; g.font = "500 250px 'Inter Tight'"; g.fillText(String(score), 32, 64);
+  const nw = g.measureText(String(score)).width;
+  g.fillStyle = "#6b7380"; g.font = "500 64px 'Inter Tight'"; g.fillText("/ 100", 52 + nw, 228);
+  const band = score >= 70 ? "DANGEROUS" : score >= 40 ? "SUSPICIOUS" : "LOW RISK";
+  g.font = "700 30px JetBrains Mono"; const bw = g.measureText(band).width + 40;
+  g.strokeStyle = col; g.lineWidth = 3; g.strokeRect(42, 330, bw, 56); g.fillStyle = col; g.textBaseline = "middle"; g.fillText(band, 62, 359);
+  if (hard) { g.fillStyle = "#ff4d6a"; g.font = "500 26px JetBrains Mono"; g.fillText("HARD FLAG: SELL TEST FAILED → AT LEAST 85", 64 + bw, 359); }
+  // scale bar
+  const y = 418, x0 = 42, x1 = W - 42, w = x1 - x0;
+  g.fillStyle = "#2f8f5b"; g.fillRect(x0, y, w * 0.4, 12); g.fillStyle = "#c88a12"; g.fillRect(x0 + w * 0.4, y, w * 0.3, 12); g.fillStyle = "#c4452c"; g.fillRect(x0 + w * 0.7, y, w * 0.3, 12);
+  g.fillStyle = "#e6eaee"; g.fillRect(x0 + w * score / 100 - 3, y - 12, 6, 36);
+  if (typed > 0) {
+    g.textBaseline = "top"; g.fillStyle = "#59e7ca"; g.font = "500 24px JetBrains Mono"; g.fillText("AI SUMMARY  ·  READ-ONLY", 42, 484);
+    g.fillStyle = "#d8dde3"; g.font = "400 33px 'Inter Tight'";
+    const endY = wrap(g, SUMMARY.slice(0, typed), 42, 528, W - 84, 44);
+    if (typed < SUMMARY.length) { g.fillStyle = "#59e7ca"; g.fillRect(42, endY - 4, 16, 4); }
+  }
+  plate.tex.needsUpdate = true;
+  plate.frame.material.color.set(col).multiplyScalar(1.8);
+}
+const lock = new THREE.Group();
+{
+  const metal = new THREE.MeshStandardMaterial({ color: 0x1a1d24, metalness: 1, roughness: 0.28 });
+  const body = new THREE.Mesh(new THREE.BoxGeometry(0.46, 0.36, 0.14), metal); lock.add(body);
+  const glow = new THREE.Mesh(new THREE.BoxGeometry(0.48, 0.03, 0.15), new THREE.MeshBasicMaterial({ color: MINT.clone().multiplyScalar(2.6) })); glow.position.y = 0.02; lock.add(glow);
+  const hole = new THREE.Mesh(new THREE.CylinderGeometry(0.035, 0.035, 0.16, 16), new THREE.MeshBasicMaterial({ color: MINT.clone().multiplyScalar(2.6) })); hole.rotation.x = Math.PI / 2; hole.position.y = -0.07; lock.add(hole);
+  const sh = new THREE.Mesh(new THREE.TorusGeometry(0.15, 0.035, 12, 32, Math.PI), metal); sh.position.y = 0.18; lock.add(sh); lock.userData.sh = sh;
+  for (const s of [-1, 1]) { const leg = new THREE.Mesh(new THREE.CylinderGeometry(0.035, 0.035, 0.12, 12), metal); leg.position.set(s * 0.15, 0.13, 0); sh.add(leg); leg.position.set(s * 0.15, -0.05, 0); }
+  scene.add(lock);
+}
+
+// ---------------------------------------------------------------- BUILD: anvil, hammer, growing tower
+const F = V(-6.6, FLOOR_Y, 3.4);
+const anvil = new THREE.Group(); anvil.position.copy(F); scene.add(anvil);
+const anvilMetal = new THREE.MeshStandardMaterial({ color: 0x15171d, metalness: 1, roughness: 0.32 });
+{ const base = new THREE.Mesh(new THREE.BoxGeometry(0.7, 0.55, 0.6), anvilMetal); base.position.y = 0.275; anvil.add(base);
+  const top = new THREE.Mesh(new THREE.BoxGeometry(1.25, 0.28, 0.62), anvilMetal); top.position.y = 0.69; anvil.add(top);
+  const horn = new THREE.Mesh(new THREE.ConeGeometry(0.2, 0.6, 24), anvilMetal); horn.rotation.z = Math.PI / 2; horn.position.set(0.9, 0.72, 0); anvil.add(horn); }
+const ANVIL_TOP = F.y + 0.83;
+const ingot = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.1, 0.24), new THREE.MeshStandardMaterial({ color: 0x331206, emissive: 0xff8a4d, emissiveIntensity: 1.2, roughness: 0.6 }));
+ingot.position.set(F.x, ANVIL_TOP + 0.05, F.z); scene.add(ingot);
+const hammerPivot = new THREE.Group(); hammerPivot.position.set(F.x + 1.45, ANVIL_TOP + 0.16, F.z); scene.add(hammerPivot);
+ready.push(loadGLB("models/hammer.glb").then((m) => {
+  if (!m) { m = new THREE.Group(); const h = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.26, 0.26), anvilMetal); h.position.y = 1.4; m.add(h); const s = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.04, 1.4), anvilMetal); s.position.y = 0.7; m.add(s); hammerPivot.add(m); return; }
+  fit(m, 1.55);
+  const box = new THREE.Box3().setFromObject(m); m.position.y -= box.min.y; // pivot at the end of the handle
+  m.traverse((o) => { if (o.isMesh && o.material.emissiveIntensity > 1) o.material.emissiveIntensity = Math.min(o.material.emissiveIntensity, 3); });
+  hammerPivot.add(m);
+}));
+const STRIKES = [36.0, 36.95, 37.9];
+const BT = V(-8.7, FLOOR_Y, 1.0);
+const floors = [];
+{
+  const bm = new THREE.MeshStandardMaterial({ color: 0x0d1018, metalness: 0.8, roughness: 0.4 });
+  for (let i = 0; i < 7; i++) {
+    const f = new THREE.Group(); f.position.set(BT.x, BT.y + i * 0.62, BT.z);
+    const b = new THREE.Mesh(new THREE.BoxGeometry(1.5, 0.56, 1.5), bm); b.position.y = 0.28; f.add(b);
+    const band = new THREE.Mesh(new THREE.BoxGeometry(1.54, 0.05, 1.54), new THREE.MeshBasicMaterial({ color: EMBER.clone().multiplyScalar(2.4) })); band.position.y = 0.585; f.add(band); band.material.color.multiplyScalar(0.55);
+    scene.add(f); floors.push(f);
+  }
+}
+const ptsChip = canvasPlane(1.7, 0.36, 620, 132);
+ptsChip.mesh.position.set(BT.x + 0.2, 0, BT.z + 1.2); scene.add(ptsChip.mesh);
+function drawChip(n) {
+  if (ptsChip.key === String(n)) return; ptsChip.key = String(n);
+  const g = ptsChip.g; g.clearRect(0, 0, 620, 132); g.fillStyle = "#ff8a4d"; g.fillRect(0, 0, 620, 132);
+  g.fillStyle = "#140802"; g.font = "700 46px JetBrains Mono"; g.textBaseline = "middle"; g.fillText(`PR MERGED  +${[0, 24, 41, 59][n]} PTS`, 30, 68);
+  ptsChip.tex.needsUpdate = true;
+}
+
+// ---------------------------------------------------------------- camera shots
+const shots = [
+  [0, (t) => [V(0.4, 0.3 + 0.2 * io(t / 5), lerp(15, 7.6, io(t / 5.3))), V(-1.7, 0.05, 0)]],
+  [5.3, (t) => { const k = io((t - 5.3) / 5.7); return [V(lerp(-0.4, -1.0, k), lerp(0.8, 0.5, k), lerp(10.6, 9.8, k)), V(-1.1, 0.55, 0.3)]; }],
+  [11.0, (t) => {
+    const f = clamp((t - CHECK_T0) / CHECK_DT, -0.6, 7.6), i = Math.floor(f), fr = f - i;
+    const th = (i + sm(0.7, 1, fr)) * (Math.PI / 4), R = 8.4, y = lerp(1.9, 1.3, sm(11, 20, t)), c = th - 0.5;
+    return [V(Math.sin(c) * R, y, Math.cos(c) * R), V(Math.sin(th) * 1.9, 0.15, Math.cos(th) * 1.9)];
+  }],
+  [22.3, (t) => { const k = io((t - 22.3) / 6.7); return [V(lerp(2.6, 2.2, k), lerp(0.9, 0.55, k), lerp(10.4, 9.6, k)), V(1.25, 0.55, 0.3)]; }],
+  [29.0, (t) => { const k = io((t - 29) / 6); return [V(lerp(2.9, 3.4, k), lerp(0.6, 0.45, k), lerp(7.6, 6.6, k)), V(lerp(2.6, 3.0, k), 0.45, 0.4)]; }],
+  [35.0, (t) => { const k = io((t - 35) / 3.8); return [V(lerp(-4.1, -4.5, k), lerp(-0.9, -0.55, k), lerp(8.4, 7.9, k)), V(-8.2, -1.0, 2.2)]; }],
+  [38.8, (t) => { const k = io((t - 38.8) / 3.8); return [V(lerp(-1.5, 2.0, k), lerp(2.0, 7.2, k), lerp(13, 19.5, k)), V(-0.6, lerp(0.2, 1.4, k), 0)]; }],
+  [42.6, (t) => { const k = io((t - 42.6) / 5.4); return [V(lerp(1.0, 0.6, k), lerp(1.6, 0.9, k), lerp(13.5, 10.8, k)), V(-2.4, 0.5, 0)]; }],
+];
+const BLEND = 1.3;
+function camAt(t) {
+  let k = 0; for (let i = 0; i < shots.length; i++) if (t >= shots[i][0]) k = i;
+  let [p, q] = shots[k][1](t);
+  if (k > 0 && t < shots[k][0] + BLEND) {
+    const [p0, q0] = shots[k - 1][1](t), b = io((t - shots[k][0]) / BLEND);
+    p = p0.lerp(p, b); q = q0.lerp(q, b);
+  }
+  camera.position.copy(p); camera.lookAt(q);
+}
+
+// ---------------------------------------------------------------- DOM captions
+const CAPS = [
+  [5.4, 11.0, "01 · Read", "Paste a token address.", "Kaelis reads public data from Solana RPC, DexScreener, RugCheck and Jupiter. Never your keys."],
+  [11.2, 22.1, "02 · Check", "Eight fixed rules.", "Authorities, liquidity, holders, LP lock, pool age, extensions, and a real sell test."],
+  [22.3, 29.0, "03 · Score", "One score, 0 to 100.", "The weights add up to 100. A failed sell test is a hard flag: at least 85."],
+  [29.2, 35.0, "04 · Explain", "AI explains it. It can't change it.", "The number comes only from the open rules. Same data, same score, every time."],
+  [35.2, 38.9, "Builders", "Ship code, earn points.", "Merged pull requests to other people's repos. Each one grows your tower."],
+  [39.1, 42.5, "Holders", "Hold $KAEL, light a window.", "Read from the chain once $KAEL launches. Sell everything and it goes dark."],
+].map(([a, b, k, h, p]) => { const el = document.createElement("div"); el.className = "cap"; el.innerHTML = `<span class="k">${k}</span><h2>${h}</h2><p>${p}</p>`; $("ui").appendChild(el); return { a, b, el }; });
+const CHAPS = [[0, "00"], [5.3, "01"], [11, "02"], [22.3, "03"], [29, "04"], [35, "04"], [42.6, "04"]];
+[5.3, 11, 22.3, 29, 35, 42.6].forEach((s) => { const m = document.createElement("s"); m.style.left = (s / DUR) * 100 + "%"; $("bar").appendChild(m); });
+function reveal(el, v, dy = 24) { el.style.opacity = v.toFixed(3); el.style.transform = `translateY(${((1 - v) * dy).toFixed(1)}px)`; }
+
+// ---------------------------------------------------------------- the frame function
+const tv = new THREE.Vector3(), tv2 = new THREE.Vector3(), tv3 = new THREE.Vector3(), eyeW = new THREE.Vector3();
+const M4 = new THREE.Matrix4();
+function frame(t) {
+  t = clamp(t, 0, DUR);
+  // ---- Kaelis pose: faces the active check, then back to camera
+  const f = clamp((t - CHECK_T0) / CHECK_DT, 0, 7), fi = Math.floor(f), ffr = f - fi;
+  const face = (fi + sm(0.72, 1, ffr)) * (Math.PI / 4);
+  const inChecks = sm(11.4, 12.6, t) * (1 - sm(21.4, 22.6, t));
+  K.rotation.y = face * inChecks + Math.sin(t * 0.5) * 0.06 * (1 - inChecks) - 0.18 * sm(22.4, 23.4, t) * (1 - sm(42.5, 43.5, t));
+  K.position.y = Math.sin(t * 0.9) * 0.07;
+  K.rotation.x = Math.sin(t * 0.63) * 0.03;
+  K.updateMatrixWorld(true);
+  eyeW.copy(eyeLocal).applyMatrix4(K.matrixWorld);
+
+  // eye: ignite, then mint, red when dangerous, mint again at the end
+  const ignite = sm(1.0, 2.4, t) * (t < 2.4 ? (0.55 + 0.45 * Math.abs(Math.sin(t * 23))) : 1);
+  const danger = Math.max(sm(20.95, 21.3, t) * (1 - sm(21.6, 22.4, t)) * 0.8, sm(26.1, 26.4, t) * (1 - sm(34.6, 35.6, t)));
+  const pulse = 1 + 0.25 * Math.sin(t * 3.2) + (t > 6.9 && t < 9.4 ? 0.6 : 0) * sm(6.9, 7.3, t) + danger * 0.4 * Math.abs(Math.sin(t * 6));
+  tmpC.copy(MINT).lerp(RED, danger);
+  for (const m of glowMats) { m.emissive.copy(m.userData.base).lerp(m.userData.base.r > m.userData.base.g ? m.userData.base : RED, danger); m.emissiveIntensity = m.userData.bi * ignite * pulse; }
+  eyeLight.color.copy(tmpC); eyeLight.intensity = 5 * ignite * pulse; eyeLight.position.copy(eyeW).add(V(0, 0, 0.6).applyQuaternion(K.quaternion));
+  rim.color.copy(MINT).lerp(RED, danger);
+
+  // orbit rings + meter
+  orbits.forEach((o, i) => { o.rotation.set(1.15 + Math.sin(t * 0.3 + i) * 0.2, t * (0.25 + i * 0.13), 0.3 * i); o.position.copy(K.position); });
+  orbitMat.opacity = 0.45 * sm(1.6, 3.2, t) * (1 - 0.7 * sm(22.3, 23, t) * (1 - sm(34.5, 35.5, t)));
+  meterU.uO.value = sm(22.4, 23.0, t) * (1 - sm(34.6, 35.4, t));
+  meterU.uP.value = scoreAt(t) / 100;
+  meter.position.y = K.position.y; meter.rotation.y = K.rotation.y;
+
+  // ---- READ
+  const typedN = Math.floor(clamp((t - 5.7) / 1.0) * ADDRESS.length);
+  drawAddr(typedN, t >= 6.75);
+  addr.mat.opacity = win(t, 5.4, 9.0, 0.4, 1.2);
+  addr.mesh.position.y = 1.5 + 0.03 * Math.sin(t * 1.3);
+  const A0 = addr.mesh.position;
+  for (let i = 0; i < addrStream.n; i++) {
+    const [s1, s2, s3, s4] = addrSeeds[i], st = 6.9 + s1 * 1.6, u = (t - st) / (0.9 + s2 * 0.5);
+    if (u <= 0 || u >= 1) { addrStream.off(i); continue; }
+    tv.set((s3 - 0.5) * 3.4, (s4 - 0.5) * 0.4, 0).applyEuler(addr.mesh.rotation).add(A0);
+    tv2.copy(tv).lerp(eyeW, 0.5).add(V(0, 1.2 + s2, 1.0 + s4));
+    bez(tv, tv2, eyeW, io(u), tv3);
+    addrStream.set(i, tv3, MINT, 1.6 * Math.sin(u * Math.PI));
+  }
+  addrStream.done();
+  srcNodes.forEach((s, j) => {
+    const v = win(t, 8.2 + j * 0.15, 11.0, 0.5, 0.6);
+    s.node.material.opacity = v; s.sp.material.opacity = v; s.node.rotation.y = t * 1.5; s.node.scale.setScalar(0.4 + 0.6 * out3((t - 8.2 - j * 0.15) / 0.5));
+    for (let i = 0; i < 90; i++) {
+      const idx = j * 90 + i, u = ((t * 0.7 + i / 90) % 1);
+      if (v < 0.05) { srcStream.off(idx); continue; }
+      tv.copy(s.p).lerp(eyeW, 0.5).add(V(0, 0.6, 0.6));
+      bez(s.p, tv, eyeW, u, tv3);
+      srcStream.set(idx, tv3, MINT, v * Math.sin(u * Math.PI) * 1.3);
+    }
+  });
+  srcStream.done();
+
+  // ---- CHECK
+  const panelsIn = (i) => out3((t - 11.3 - i * 0.09) / 0.7) * (1 - io((t - 22.0 - i * 0.04) / 0.9));
+  panels.forEach((P, i) => {
+    const [st, prog] = checkState(i, t);
+    drawPanel(P, i, st, prog);
+    const v = panelsIn(i), collapse = io((t - 22.0 - i * 0.04) / 0.9);
+    const focus = i === clamp(Math.floor((t - CHECK_T0) / CHECK_DT), 0, 7) || t > 21.2 ? 1 : 0.32;
+    P.mat.opacity = v * (st === 0 ? 0.5 : focus); P.frame.material.opacity = v * focus;
+    P.mesh.scale.setScalar(Math.max(0.001, v * (st === 1 ? 1.06 : 1)));
+    P.mesh.position.copy(P.home).multiplyScalar(1 - collapse * 0.9); P.mesh.position.y = 0.15 + Math.sin(t * 1.1 + i) * 0.06;
+    P.mesh.visible = v > 0.002;
+  });
+  // scanning beam from the eye to the active panel
+  const active = clamp(Math.floor((t - CHECK_T0) / CHECK_DT), 0, 7), [ast] = checkState(active, t);
+  const beamOn = t > CHECK_T0 && t < 21.4 && ast === 1 ? 1 : 0;
+  tv.copy(panels[active].mesh.position); beam.position.copy(eyeW).lerp(tv, 0.5);
+  beam.scale.set(1, eyeW.distanceTo(tv), 1); beam.quaternion.setFromUnitVectors(V(0, 1, 0), tv2.copy(tv).sub(eyeW).normalize());
+  beam.material.opacity = beamOn * (0.6 + 0.4 * Math.sin(t * 40));
+  sweep.material.opacity = 0.8 * win(t, 12.2, 21.6, 0.4, 0.5);
+  sweep.position.y = K.position.y + Math.sin(t * 2.4) * 1.35; sweep.scale.setScalar(Math.sqrt(Math.max(0.05, 1 - (sweep.position.y / 1.6) ** 2)));
+  // sell test coin: out to Jupiter, back, blocked
+  const ts = t - (CHECK_T0 + 7 * CHECK_DT);
+  const jup = V(Math.sin(7 * Math.PI / 4) * 6.2, 0.9, Math.cos(7 * Math.PI / 4) * 6.2);
+  coin.visible = ts > 0 && ts < 1.1;
+  if (coin.visible) {
+    const go = ts < 0.45 ? io(ts / 0.45) : ts < 0.9 ? 1 - 0.55 * io((ts - 0.45) / 0.45) : 0.45;
+    coin.position.copy(eyeW).lerp(jup, go); coin.rotation.z = t * 9;
+  }
+  const xv = ts > 0.85 ? win(ts, 0.85, 1.9, 0.08, 0.5) : 0;
+  xMark.position.copy(eyeW).lerp(jup, 0.45); xMark.lookAt(camera.position); xMark.scale.setScalar(0.6 + 0.6 * out3((ts - 0.85) / 0.2));
+  xMark.children.forEach((b) => (b.material.opacity = xv)); xMark.visible = xv > 0.01;
+
+  // ---- SCORE / EXPLAIN
+  drawPlate(t);
+  const pv = out3((t - 22.5) / 0.8) * (1 - sm(34.6, 35.4, t));
+  plate.mat.opacity = pv; plate.frame.material.opacity = pv; plate.mesh.visible = pv > 0.003;
+  plate.mesh.scale.setScalar(0.85 + 0.15 * pv); plate.mesh.position.y = 0.25 + Math.sin(t * 0.8) * 0.04;
+  const lk = t - 31.0;
+  lock.visible = lk > 0 && t < 35.4;
+  if (lock.visible) {
+    const drop = lk < 0.5 ? 1 - (1 - io(lk / 0.5)) : 1, bounce = lk > 0.5 && lk < 0.8 ? Math.sin(((lk - 0.5) / 0.3) * Math.PI) * 0.06 : 0;
+    tv.set(1.22, 0.78, 0.12).applyEuler(plate.mesh.rotation).multiplyScalar(plate.mesh.scale.x).add(plate.mesh.position);
+    lock.position.copy(tv).add(V(0, (1 - drop) * 2.2 + bounce, 0)); lock.rotation.y = plate.mesh.rotation.y;
+    lock.userData.sh.position.y = 0.18 + 0.1 * (1 - sm(0.85, 1.0, lk));
+    lock.scale.setScalar(1 - sm(34.6, 35.4, t) * 0.99);
+  }
+
+  // ---- BUILD
+  let hammerA = -0.55, heat = 0, built = 0;
+  STRIKES.forEach((s, j) => {
+    const d = t - s;
+    if (d > -0.55 && d < 0) hammerA = lerp(-0.55, -0.9, sm(-0.55, -0.2, d)) + (Math.PI / 2 + 0.9) * Math.pow(sm(-0.2, 0, d), 2.2);
+    else if (d >= 0 && d < 0.4) hammerA = Math.PI / 2 - (Math.PI / 2 + 0.55) * io(d / 0.4);
+    if (d >= 0) { heat = Math.max(heat, Math.exp(-d * 4)); built = j + 1; }
+  });
+  hammerPivot.rotation.z = hammerA;
+  const forgeOn = t > 33.6 && t < 47; anvil.visible = ingot.visible = hammerPivot.visible = forgeOn;
+  ingot.material.emissiveIntensity = 1.0 + heat * 4;
+  emberLight.position.set(F.x, ANVIL_TOP + 0.4, F.z + 0.4); emberLight.intensity = (12 + heat * 40) * win(t, 34.5, 39.5, 0.5, 0.6);
+  floors.forEach((fl, i) => {
+    if (i < 4) { fl.scale.y = 1; return; }
+    const s = STRIKES[i - 4], g = out3((t - s - 0.05) / 0.35); fl.scale.set(1, Math.max(0.001, g), 1); fl.visible = g > 0.002;
+  });
+  drawChip(built);
+  const cv = built ? win(t, STRIKES[0] + 0.05, 39.4, 0.2, 0.5) : 0;
+  ptsChip.mat.opacity = cv; ptsChip.mesh.visible = cv > 0.01;
+  ptsChip.mesh.position.set(BT.x + 0.3, BT.y + (4 + built) * 0.62 + 0.45 + Math.sin(t * 2) * 0.03, BT.z + 1.0); ptsChip.mesh.lookAt(camera.position);
+  // sparks per strike: ballistic, deterministic
+  STRIKES.forEach((s, j) => {
+    const r = rng(500 + j), d = t - s;
+    for (let i = 0; i < 110; i++) {
+      const vx = (r() - 0.5) * 5, vy = 1.5 + r() * 4, vz = (r() - 0.5) * 5, life = 0.5 + r() * 0.7, idx = j * 110 + i;
+      if (d < 0 || d > life) { sparks.off(idx); continue; }
+      tv.set(F.x + vx * d, Math.max(FLOOR_Y + 0.02, ANVIL_TOP + 0.1 + vy * d - 6 * d * d), F.z + vz * d);
+      sparks.set(idx, tv, EMBER, 3 * (1 - d / life));
+    }
+  });
+  sparks.done();
+
+  // ---- HOLD: windows light in a hashed order
+  const lit = sm(39.4, 42.2, t) * 0.78 + 0.08;
+  for (let i = 0; i < winSpots.length; i++) {
+    const w = winSpots[i];
+    if (w.h < lit) { const k = clamp((lit - w.h) * 30); tmpC.copy(DARK_WIN).lerp(w.c, k).multiplyScalar(1 + k * 1.6); winMesh.setColorAt(i, tmpC); }
+    else winMesh.setColorAt(i, DARK_WIN);
+  }
+  winMesh.instanceColor.needsUpdate = true;
+
+  // ---- ambience: dust + floor shockwaves
+  for (let i = 0; i < dust.n; i++) {
+    const [x, y, z, s] = dustSeeds[i];
+    tv.set(x + Math.sin(t * 0.2 + s * 9) * 0.4, ((y + t * (0.08 + s * 0.1) + 2) % 11) - 2, z + Math.cos(t * 0.17 + s * 7) * 0.4);
+    dust.set(i, tv, MINT, 0.25 + 0.25 * Math.sin(t * 2 + s * 20));
+  }
+  dust.done();
+  let wv = null; for (const w of WAVES) if (t >= w[0] && t - w[0] < 3) wv = w;
+  if (wv) { const d = t - wv[0]; gridU.uWave.value.set(d * 9, wv[2] * (1 - d / 3), 0, 0); gridU.uWaveC.value.copy(wv[1]); } else gridU.uWave.value.set(0, 0, 0, 0);
+  bloom.strength = 0.55 + 0.25 * danger;
+
+  camAt(t);
+
+  // ---- DOM
+  reveal($("title"), win(t, 0.6, 5.0, 0.9, 0.6));
+  CAPS.forEach((c) => reveal(c.el, win(t, c.a, c.b, 0.55, 0.45)));
+  reveal($("risk"), win(t, 12.4, 22.2, 0.4, 0.4), 12);
+  $("riskN").textContent = runningRisk(t); $("riskN").style.color = runningRisk(t) >= 70 ? "#ff4d6a" : runningRisk(t) >= 40 ? "#ffc24a" : "#eef1f3";
+  reveal($("end"), sm(43.0, 44.0, t), 30);
+  let ch = "00"; for (const [s, c] of CHAPS) if (t >= s) ch = c; $("chap").textContent = `${ch} / 04`;
+  $("barFill").style.width = (t / DUR) * 100 + "%";
+  $("flash").style.opacity = (Math.max(win(t, 20.95, 21.5, 0.04, 0.5), win(t, 26.2, 26.9, 0.04, 0.65)) * 0.28).toFixed(3);
+  $("black").style.opacity = Math.max(1 - sm(0.0, 1.1, t), sm(47.1, 48, t)).toFixed(3);
+
+  composer.render();
+}
+
+// ---------------------------------------------------------------- playback / capture
+const fontsReady = Promise.all([document.fonts.load("500 40px 'Inter Tight'"), document.fonts.load("400 40px 'Inter Tight'"), document.fonts.load("500 40px 'JetBrains Mono'"), document.fonts.load("700 40px 'JetBrains Mono'")]).catch(() => {});
+window.__ready = Promise.all([...ready, fontsReady]).then(() => { [addr, plate, ptsChip, ...panels].forEach((p) => (p.key = "")); frame(0); return DUR; });
+window.__seek = (t) => { frame(t); return true; };
+if (!CAPTURE) {
+  let playing = true, t0 = 0, last = 0;
+  addEventListener("click", () => { playing = !playing; $("hint").textContent = playing ? "Click to pause" : "Click to play"; });
+  window.__ready.then(() => {
+    let prev = performance.now();
+    const loop = (now) => { if (playing) { last = (last + (now - prev) / 1000) % DUR; frame(last); } prev = now; requestAnimationFrame(loop); };
+    requestAnimationFrame(loop);
+  });
+}
+</script>
+</html>

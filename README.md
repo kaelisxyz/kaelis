@@ -9,13 +9,13 @@ Kaelis is an AI agent born from the blockchain. Developers ("Forgers") build a n
 | Path | What it is |
 | --- | --- |
 | `site/index.html` | Home page: 3D scroll story (particle KAELIS logo → first block → chain → city → Kaelis with hologram panels → join), then token info |
-| `site/city.html` | Forge City app: builder towers, token scam scanner, holders' tower. Linked from the home page |
+| `site/city.html` | Forge City: neon plaza with four towers (Scanner, Holders, Builders, Watch). Step inside a tower to see Kaelis at its desk; the Scanner tower runs real scans |
 | `site/scan.html` | **Live** token scanner: sell test, 8 checks, wallet links, watch mode |
 | `site/tower.html` | **Live** holder tower: one window per $KAEL holder (switches on with `kaelMint`) |
 | `site/guide.html` | How to use Kaelis, plus the full tech details |
 | `site/js/kaelis-core.js` | The rules engine. One file used by the site and the API |
 | `site/js/kaelis-config.js` | The one file to edit at launch (`kaelMint`) |
-| `api/` | API handlers: `/api/scan`, `/api/holders`, `/api/health`, and `/mcp` (MCP server for AI agents) |
+| `api/` | API handlers: `/api/scan`, `/api/holders`, `/api/health`, `/api/builders` (Proof-of-Build: leaderboard, register, refresh) and `/mcp` (MCP server for AI agents) |
 | `server.js` | Node server that serves `site/` and the API (Railway runs it) |
 | `tests/` | `npm test`, runs offline with mocked data |
 | `site/clay-alt.html` | Alternative minimal clay-style design (not chosen) |

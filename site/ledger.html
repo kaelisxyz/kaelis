@@ -1,0 +1,193 @@
+<!doctype html>
+<html lang="en">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Kaelis Ledger</title>
+<meta name="description" content="Every Kaelis call on record. Each scan is a public, hash-chained call on whether a token gets rugged within 7 days. Kaelis grades itself in public.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter+Tight:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap">
+<style>
+  /* The Ledger: Kaelis's public track record. Same paper look as the guide and the scanner. */
+  :root {
+    --paper: #ffffff; --ink: #0b0b0c; --mute: #7a7a7a; --rule: #d6d6d6; --grid: rgba(0,0,0,.06); --tint: #f4f4f1;
+    --ok: #2f8f5b; --warn: #c88a12; --bad: #c4452c; --mint: #59e7ca;
+    --f-sans: "Inter Tight", "Helvetica Neue", Arial, system-ui, sans-serif;
+    --f-mono: "JetBrains Mono", ui-monospace, Menlo, monospace;
+    --gut: max(16px, env(safe-area-inset-left, 0px));
+    color-scheme: light;
+  }
+  * { box-sizing: border-box; }
+  html, body { background: var(--paper); color: var(--ink); }
+  body { margin: 0; font-family: var(--f-sans); font-size: 17px; line-height: 1.5;
+    background-image: linear-gradient(var(--grid) 1px, transparent 1px), linear-gradient(90deg, var(--grid) 1px, transparent 1px);
+    background-size: 100% 240px, 25% 100%; }
+  a { color: inherit; }
+  .tag { font-family: var(--f-mono); font-size: 11px; letter-spacing: .1em; text-transform: uppercase; }
+  .wrap { max-width: 1180px; margin: 0 auto; padding: 0 var(--gut); }
+  header { position: sticky; top: 0; z-index: 5; background: rgba(255,255,255,.92); backdrop-filter: blur(6px); border-bottom: 1px solid var(--rule); }
+  header .wrap { display: flex; align-items: center; justify-content: space-between; gap: 12px; height: 60px; }
+  .logo { display: flex; align-items: baseline; gap: 10px; text-decoration: none; font-weight: 600; letter-spacing: .14em; font-size: 15px; }
+  .mark { display: flex; } .mark i { font-style: normal; }
+  .mark i:nth-child(even) { color: var(--paper); -webkit-text-stroke: 1px var(--ink); paint-order: stroke fill; }
+  .pill { display: inline-flex; align-items: center; border: 1px solid var(--ink); border-radius: 999px; padding: 8px 14px; text-decoration: none; background: var(--ink); color: var(--paper); }
+  .pill.ghost { background: var(--paper); color: var(--ink); }
+  section { padding: 56px 0; border-bottom: 1px solid var(--rule); }
+  .label { display: inline-block; background: var(--ink); color: var(--paper); padding: 6px 10px; }
+  h1 { font-size: clamp(44px, 8vw, 112px); line-height: .92; letter-spacing: -.035em; font-weight: 500; margin: 18px 0 20px; }
+  h2 { font-size: clamp(28px, 4vw, 44px); line-height: 1; letter-spacing: -.03em; font-weight: 500; margin: 8px 0 18px; }
+  .lead { font-size: clamp(18px, 2vw, 23px); line-height: 1.35; max-width: 44ch; margin: 0 0 22px; }
+  .note { font-size: 14px; color: var(--mute); max-width: 72ch; }
+
+  .stats { display: grid; grid-template-columns: 1.4fr repeat(5, 1fr); border-top: 1px solid var(--ink); border-left: 1px solid var(--ink); }
+  .stats > div { padding: 16px 18px; border-right: 1px solid var(--ink); border-bottom: 1px solid var(--ink); background: var(--paper); }
+  .stats span { display: block; font-family: var(--f-mono); font-size: 10.5px; letter-spacing: .1em; text-transform: uppercase; color: var(--mute); }
+  .stats b { display: block; font-size: 40px; font-weight: 500; letter-spacing: -.03em; font-variant-numeric: tabular-nums; line-height: 1.1; margin-top: 6px; }
+  .stats .iq { background: var(--ink); color: var(--paper); }
+  .stats .iq span { color: #a9a9a9; }
+  .stats .iq b { font-size: 64px; }
+  .stats .iq small { display: block; font-family: var(--f-mono); font-size: 11px; color: #a9a9a9; letter-spacing: .04em; }
+  @media (max-width: 900px) { .stats { grid-template-columns: 1fr 1fr; } .stats .iq { grid-column: 1 / -1; } }
+
+  .chain { display: flex; flex-wrap: wrap; gap: 8px 18px; align-items: center; font-family: var(--f-mono); font-size: 12px; margin-top: 18px; border: 1px dashed var(--ink); padding: 10px 12px; background: var(--paper); }
+  .chain code { word-break: break-all; }
+  .dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 6px; vertical-align: 1px; }
+
+  .tbl { width: 100%; border-collapse: collapse; font-size: 14.5px; background: var(--paper); }
+  .tbl th, .tbl td { text-align: left; padding: 10px 8px; border-bottom: 1px solid var(--rule); vertical-align: middle; }
+  .tbl th { font-family: var(--f-mono); font-size: 10px; letter-spacing: .1em; text-transform: uppercase; color: var(--mute); font-weight: 400; border-bottom-color: var(--ink); }
+  .tbl td.m { font-family: var(--f-mono); font-size: 12.5px; }
+  .tbl .g { font-family: var(--f-mono); font-weight: 500; }
+  .st { font-family: var(--f-mono); font-size: 10.5px; letter-spacing: .1em; text-transform: uppercase; padding: 3px 7px; border: 1px solid currentColor; white-space: nowrap; }
+  .st.open { color: var(--mute); } .st.rug { color: var(--bad); } .st.held { color: var(--ok); }
+  .empty { padding: 28px 0; color: var(--mute); }
+  @media (max-width: 700px) { .tbl .hide-sm { display: none; } }
+
+  .road { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); border-top: 1px solid var(--ink); }
+  .road > div { padding: 14px 16px 14px 0; display: grid; gap: 6px; align-content: start; border-right: 1px dashed var(--rule); padding-left: 14px; }
+  .road > div:first-child { padding-left: 0; }
+  .road .s { font-family: var(--f-mono); font-size: 10px; letter-spacing: .1em; text-transform: uppercase; color: var(--mute); }
+  .road .s.now { color: var(--ink); }
+  .road .s.now::before { content: ""; display: inline-block; width: 7px; height: 7px; border-radius: 50%; background: var(--mint); margin-right: 6px; box-shadow: 0 0 8px var(--mint); }
+  .road b { font-weight: 500; font-size: 17px; } .road p { margin: 0; font-size: 14px; }
+  @media (max-width: 899px) { .road > div { border-right: 0; border-bottom: 1px dashed var(--rule); padding-left: 0; } }
+  .kv { display: grid; grid-template-columns: 11rem 1fr; gap: 12px; padding: 10px 0; border-bottom: 1px dashed var(--rule); font-size: 15px; }
+  .kv span:first-child { font-family: var(--f-mono); font-size: 10.5px; letter-spacing: .08em; text-transform: uppercase; color: var(--mute); padding-top: 3px; }
+  @media (max-width: 640px) { .kv { grid-template-columns: 1fr; gap: 2px; } }
+  footer { padding: 32px 0 56px; }
+  footer .wrap { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 12px; }
+</style>
+
+<header>
+  <div class="wrap">
+    <a class="logo" href="index.html"><b class="mark" aria-label="KAELIS"><i>K</i><i>A</i><i>E</i><i>L</i><i>I</i><i>S</i></b><span class="tag" style="color:var(--mute)">Ledger</span></a>
+    <span style="display:flex;gap:8px"><a class="pill" href="filings.html" style="background:#fff;color:#0b0b0c">Filings</a><a class="pill" href="markets.html" style="background:#fff;color:#0b0b0c">Markets</a><a class="pill" href="evolution.html" style="background:#fff;color:#0b0b0c">Evolution</a><a class="pill" href="scan.html">Scan a token</a></span>
+  </div>
+</header>
+
+<main>
+  <section>
+    <div class="wrap">
+      <span class="tag label">[ The Ledger · live ]</span>
+      <h1>Every call on record.</h1>
+      <p class="lead">Each time Kaelis scans a traded token, it makes a call: the chance that token is rugged within 7 days. Seven days later it checks what really happened and grades itself, in public.</p>
+      <p class="note" style="margin:0">Superintelligence isn't claimed. It's scored. Calls are hash-chained, so none can be edited or deleted later.</p>
+    </div>
+  </section>
+
+  <section>
+    <div class="wrap">
+      <div class="stats" aria-live="polite">
+        <div class="iq"><span>Kaelis IQ · calibration</span><b id="iq">–</b><small id="iqNote">loading…</small></div>
+        <div><span>Calls</span><b id="sCalls">–</b></div>
+        <div><span>Open</span><b id="sOpen">–</b></div>
+        <div><span>Resolved</span><b id="sRes">–</b></div>
+        <div><span>Rugs called</span><b id="sRugs">–</b></div>
+        <div><span>Hit rate</span><b id="sAcc">–</b></div>
+      </div>
+      <div class="chain"><span><i class="dot" id="chainDot" style="background:var(--mute)"></i><b id="chainState">Checking chain…</b></span><span>Head <code id="head">–</code></span><span id="anchor">On-chain anchoring: –</span></div>
+    </div>
+  </section>
+
+  <section>
+    <div class="wrap">
+      <span class="tag">Calls</span>
+      <h2>Latest calls.</h2>
+      <table class="tbl">
+        <thead><tr><th>#</th><th>Token</th><th>Grade</th><th class="hide-sm">Score</th><th>Rug chance</th><th class="hide-sm">Called</th><th>Result</th><th class="hide-sm">Hash</th></tr></thead>
+        <tbody id="rows"><tr><td colspan="8" class="empty">Loading…</td></tr></tbody>
+      </table>
+      <p class="note" id="rule"></p>
+    </div>
+  </section>
+
+  <section>
+    <div class="wrap">
+      <span class="tag">How it works</span>
+      <h2>How Kaelis grades itself.</h2>
+      <div class="kv"><span>The call</span><span>Rug chance comes from the rule score through one fixed, published curve. A failed sell test is always 85% or more. One open call per token.</span></div>
+      <div class="kv"><span>The check</span><span>Seven days later Kaelis reads DexScreener again. Rugged means no pool left, liquidity down by half or more, or price down 90% or more.</span></div>
+      <div class="kv"><span>Kaelis IQ</span><span>A calibration score from 0 to 100, from the Brier score of all resolved calls. 100 is perfect. 0 is no better than saying 50% every time. Shown after 10 resolved calls.</span></div>
+      <div class="kv"><span>Tamper-proof</span><span>Each call's hash covers the one before it. Changing any old call breaks every hash after it, and the page checks the whole chain on every visit.</span></div>
+      <div class="kv"><span>On-chain</span><span>Next: the chain head gets posted to Solana as a memo, so anyone can prove when each call was made.</span></div>
+      <div class="kv"><span>Not advice</span><span>A call is a risk estimate, never a buy or sell signal.</span></div>
+    </div>
+  </section>
+
+  <section>
+    <div class="wrap">
+      <span class="tag">Where this goes</span>
+      <h2>The AI rating agency for memecoins.</h2>
+      <p class="lead" style="max-width:56ch">Stocks get ratings, reports and an index. Memecoins get nothing. Kaelis brings the stock-market toolkit to memecoins, run by one AI that has to prove itself.</p>
+      <div class="road">
+        <div><span class="s now">Live</span><b>Kaelis Rating</b><p>AAA to D, from the open rules, on every scan.</p></div>
+        <div><span class="s now">Live</span><b>The Ledger</b><p>Hash-chained calls, graded after 7 days, Kaelis IQ.</p></div>
+        <div><span class="s now">Live</span><b>Patrol + Genome</b><p>Kaelis scans new tokens by itself and evolves its rules every night. <a href="evolution.html">Evolution →</a></p></div>
+        <div><span class="s">Next</span><b>On-chain anchor</b><p>The Ledger head posted to Solana once the Kaelis wallet is set.</p></div>
+        <div><span class="s">Next</span><b>Listing reports</b><p>A one-page report, like an IPO prospectus, for every token that graduates.</p></div>
+        <div><span class="s">Planned</span><b>K-20 Index</b><p>The 20 best-rated memecoins as a weekly benchmark. Not an investable product.</p></div>
+        <div><span class="s">Planned</span><b>Tokenized stocks</b><p>The same rating for tokenized stocks on Solana, side by side with memecoins.</p></div>
+      </div>
+    </div>
+  </section>
+</main>
+
+<footer>
+  <div class="wrap tag">
+    <span>Kaelis Ledger · Not financial advice</span>
+    <a href="docs.html">Docs →</a>
+  </div>
+</footer>
+
+<script>
+(function () {
+  const $ = (id) => document.getElementById(id);
+  const esc = (s) => String(s == null ? "" : s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+  const day = (iso) => iso ? iso.slice(0, 10) : "–";
+  fetch("api/ledger").then((r) => r.ok ? r.json() : Promise.reject(r.status)).then((j) => {
+    const s = j.stats;
+    $("iq").textContent = s.iq == null ? "–" : s.iq;
+    $("iqNote").textContent = s.iq == null ? `Shown after ${s.iqNeeds} more resolved call${s.iqNeeds === 1 ? "" : "s"}` : `Brier ${s.brier} over ${s.resolved} calls`;
+    $("sCalls").textContent = s.calls; $("sOpen").textContent = s.open; $("sRes").textContent = s.resolved;
+    $("sRugs").textContent = s.rugsCaught; $("sAcc").textContent = s.accuracy == null ? "–" : s.accuracy + "%";
+    const ok = j.chain && j.chain.ok;
+    $("chainDot").style.background = ok ? "var(--ok)" : "var(--bad)";
+    $("chainState").textContent = ok ? `Chain verified · ${j.chain.length} call${j.chain.length === 1 ? "" : "s"}` : "Chain check failed";
+    $("head").textContent = j.head.slice(0, 16) + "…";
+    $("anchor").textContent = "On-chain anchoring: " + (j.anchoring === "on" ? "on" : "starts when the Kaelis wallet is set");
+    $("rule").textContent = j.rule;
+    $("rows").innerHTML = j.calls.length ? j.calls.map((c) => {
+      const res = !c.resolvedAt ? `<span class="st open">Open until ${day(c.resolveAt)}</span>` : c.rugged ? `<span class="st rug" title="${esc(c.why)}">Rugged</span>` : `<span class="st held" title="${esc(c.why)}">Held</span>`;
+      const g = c.finalGrade || c.grade;
+      return `<tr><td class="m">${c.n}</td><td><a href="scan.html?mint=${esc(c.mint)}">${esc(c.symbol ? "$" + c.symbol : c.mint.slice(0, 6) + "…")}</a></td>
+        <td class="g">${esc(g)}</td><td class="m hide-sm">${c.score}</td><td class="m">${Math.round(c.p * 100)}%</td>
+        <td class="m hide-sm">${day(c.openedAt)}</td><td>${res}</td><td class="m hide-sm" title="${esc(c.hash)}">${esc(c.hash.slice(0, 10))}…</td></tr>`;
+    }).join("") : `<tr><td colspan="8" class="empty">No calls yet. <a href="scan.html">Scan a traded token</a> to make the first call.</td></tr>`;
+  }).catch(() => {
+    $("iqNote").textContent = "The Ledger runs on the Kaelis server.";
+    $("rows").innerHTML = `<tr><td colspan="8" class="empty">The Ledger needs the Kaelis server. It is not available in this preview.</td></tr>`;
+    $("chainState").textContent = "Offline";
+  });
+})();
+</script>
+</html>

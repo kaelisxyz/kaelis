@@ -1,3 +1,20 @@
 node_modules/
-.env
 .vercel/
+
+# Env files (rahasia), kecuali template
+.env
+.env.*
+!.env.example
+
+# 3D work files (rebuild with tools/3d/kaelis_models.py)
+tools/3d/*.blend
+tools/3d/*.blend1
+tools/3d/*.src.glb
+tools/3d/assets/
+tools/3d/previews/
+
+# reference videos and images (not shipped)
+ref/
+
+# Proof-of-Build ledger (local)
+data/

@@ -1,0 +1,160 @@
+<!doctype html>
+<html lang="en">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Kaelis Filings</title>
+<meta name="description" content="Kaelis Filings: SEC-style disclosures for memecoins. When an insider sells, liquidity is pulled or an authority comes back on, Kaelis files it, hash-chained.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter+Tight:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap">
+<style>
+  /* Filings: SEC-style disclosures for memecoins. Same paper look as the Ledger. */
+  :root {
+    --paper: #ffffff; --ink: #0b0b0c; --mute: #7a7a7a; --rule: #d6d6d6; --grid: rgba(0,0,0,.06); --tint: #f4f4f1;
+    --ok: #2f8f5b; --warn: #c88a12; --bad: #c4452c; --mint: #59e7ca;
+    --f-sans: "Inter Tight", "Helvetica Neue", Arial, system-ui, sans-serif;
+    --f-mono: "JetBrains Mono", ui-monospace, Menlo, monospace;
+    --gut: max(16px, env(safe-area-inset-left, 0px));
+    color-scheme: light;
+  }
+  * { box-sizing: border-box; }
+  html, body { background: var(--paper); color: var(--ink); }
+  body { margin: 0; font-family: var(--f-sans); font-size: 17px; line-height: 1.5;
+    background-image: linear-gradient(var(--grid) 1px, transparent 1px), linear-gradient(90deg, var(--grid) 1px, transparent 1px);
+    background-size: 100% 240px, 25% 100%; }
+  a { color: inherit; }
+  .tag { font-family: var(--f-mono); font-size: 11px; letter-spacing: .1em; text-transform: uppercase; }
+  .wrap { max-width: 1180px; margin: 0 auto; padding: 0 var(--gut); }
+  header { position: sticky; top: 0; z-index: 5; background: rgba(255,255,255,.92); backdrop-filter: blur(6px); border-bottom: 1px solid var(--rule); }
+  header .wrap { display: flex; align-items: center; justify-content: space-between; gap: 12px; height: 60px; }
+  .logo { display: flex; align-items: baseline; gap: 10px; text-decoration: none; font-weight: 600; letter-spacing: .14em; font-size: 15px; }
+  .mark { display: flex; } .mark i { font-style: normal; }
+  .mark i:nth-child(even) { color: var(--paper); -webkit-text-stroke: 1px var(--ink); paint-order: stroke fill; }
+  .pill { display: inline-flex; align-items: center; border: 1px solid var(--ink); border-radius: 999px; padding: 8px 14px; text-decoration: none; background: var(--ink); color: var(--paper); }
+  .pill.ghost { background: var(--paper); color: var(--ink); }
+  section { padding: 56px 0; border-bottom: 1px solid var(--rule); }
+  .label { display: inline-block; background: var(--ink); color: var(--paper); padding: 6px 10px; }
+  h1 { font-size: clamp(44px, 8vw, 112px); line-height: .92; letter-spacing: -.035em; font-weight: 500; margin: 18px 0 20px; }
+  h2 { font-size: clamp(28px, 4vw, 44px); line-height: 1; letter-spacing: -.03em; font-weight: 500; margin: 8px 0 18px; }
+  .lead { font-size: clamp(18px, 2vw, 23px); line-height: 1.35; max-width: 44ch; margin: 0 0 22px; }
+  .note { font-size: 14px; color: var(--mute); max-width: 72ch; }
+
+  .stats { display: grid; grid-template-columns: 1.4fr repeat(5, 1fr); border-top: 1px solid var(--ink); border-left: 1px solid var(--ink); }
+  .stats > div { padding: 16px 18px; border-right: 1px solid var(--ink); border-bottom: 1px solid var(--ink); background: var(--paper); }
+  .stats span { display: block; font-family: var(--f-mono); font-size: 10.5px; letter-spacing: .1em; text-transform: uppercase; color: var(--mute); }
+  .stats b { display: block; font-size: 40px; font-weight: 500; letter-spacing: -.03em; font-variant-numeric: tabular-nums; line-height: 1.1; margin-top: 6px; }
+  .stats .iq { background: var(--ink); color: var(--paper); }
+  .stats .iq span { color: #a9a9a9; }
+  .stats .iq b { font-size: 64px; }
+  .stats .iq small { display: block; font-family: var(--f-mono); font-size: 11px; color: #a9a9a9; letter-spacing: .04em; }
+  @media (max-width: 900px) { .stats { grid-template-columns: 1fr 1fr; } .stats .iq { grid-column: 1 / -1; } }
+
+  .chain { display: flex; flex-wrap: wrap; gap: 8px 18px; align-items: center; font-family: var(--f-mono); font-size: 12px; margin-top: 18px; border: 1px dashed var(--ink); padding: 10px 12px; background: var(--paper); }
+  .chain code { word-break: break-all; }
+  .dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 6px; vertical-align: 1px; }
+
+  .tbl { width: 100%; border-collapse: collapse; font-size: 14.5px; background: var(--paper); }
+  .tbl th, .tbl td { text-align: left; padding: 10px 8px; border-bottom: 1px solid var(--rule); vertical-align: middle; }
+  .tbl th { font-family: var(--f-mono); font-size: 10px; letter-spacing: .1em; text-transform: uppercase; color: var(--mute); font-weight: 400; border-bottom-color: var(--ink); }
+  .tbl td.m { font-family: var(--f-mono); font-size: 12.5px; }
+  .tbl .g { font-family: var(--f-mono); font-weight: 500; }
+  .st { font-family: var(--f-mono); font-size: 10.5px; letter-spacing: .1em; text-transform: uppercase; padding: 3px 7px; border: 1px solid currentColor; white-space: nowrap; }
+  .st.open { color: var(--mute); } .st.rug { color: var(--bad); } .st.held { color: var(--ok); }
+  .empty { padding: 28px 0; color: var(--mute); }
+  @media (max-width: 700px) { .tbl .hide-sm { display: none; } }
+
+  .road { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); border-top: 1px solid var(--ink); }
+  .road > div { padding: 14px 16px 14px 0; display: grid; gap: 6px; align-content: start; border-right: 1px dashed var(--rule); padding-left: 14px; }
+  .road > div:first-child { padding-left: 0; }
+  .road .s { font-family: var(--f-mono); font-size: 10px; letter-spacing: .1em; text-transform: uppercase; color: var(--mute); }
+  .road .s.now { color: var(--ink); }
+  .road .s.now::before { content: ""; display: inline-block; width: 7px; height: 7px; border-radius: 50%; background: var(--mint); margin-right: 6px; box-shadow: 0 0 8px var(--mint); }
+  .road b { font-weight: 500; font-size: 17px; } .road p { margin: 0; font-size: 14px; }
+  @media (max-width: 899px) { .road > div { border-right: 0; border-bottom: 1px dashed var(--rule); padding-left: 0; } }
+  .kv { display: grid; grid-template-columns: 11rem 1fr; gap: 12px; padding: 10px 0; border-bottom: 1px dashed var(--rule); font-size: 15px; }
+  .kv span:first-child { font-family: var(--f-mono); font-size: 10.5px; letter-spacing: .08em; text-transform: uppercase; color: var(--mute); padding-top: 3px; }
+  @media (max-width: 640px) { .kv { grid-template-columns: 1fr; gap: 2px; } }
+  footer { padding: 32px 0 56px; }
+  footer .wrap { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 12px; }
+  .form { display: inline-block; font-family: var(--f-mono); font-size: 11px; font-weight: 700; letter-spacing: .06em; padding: 3px 7px; border: 1px solid currentColor; white-space: nowrap; }
+  .form.k4 { color: var(--bad); } .form.k8 { color: var(--bad); } .form.k3 { color: var(--warn); }
+  .forms { display: grid; grid-template-columns: repeat(3, 1fr); border-top: 1px solid var(--ink); border-left: 1px solid var(--ink); margin-top: 8px; }
+  .forms div { padding: 16px; border-right: 1px solid var(--ink); border-bottom: 1px solid var(--ink); background: var(--paper); }
+  .forms b { display: block; font-size: 19px; font-weight: 500; margin: 8px 0 4px; } .forms p { margin: 0; font-size: 14.5px; }
+  @media (max-width: 760px) { .forms { grid-template-columns: 1fr; } }
+</style>
+
+<header>
+  <div class="wrap">
+    <a class="logo" href="index.html"><b class="mark" aria-label="KAELIS"><i>K</i><i>A</i><i>E</i><i>L</i><i>I</i><i>S</i></b><span class="tag" style="color:var(--mute)">Filings</span></a>
+    <span style="display:flex;gap:8px"><a class="pill" href="ledger.html" style="background:#fff;color:#0b0b0c">Ledger</a><a class="pill" href="index.html">Forge City</a></span>
+  </div>
+</header>
+
+<main>
+  <section>
+    <div class="wrap">
+      <span class="tag label">[ Kaelis Filings · live ]</span>
+      <h1>The SEC for memecoins.</h1>
+      <p class="lead">Company insiders must report when they sell. Memecoin insiders never do. So Kaelis files it for them: every token it calls gets its insiders recorded, and every sale, pulled pool or authority switched back on becomes a public filing.</p>
+      <div class="forms">
+        <div><span class="form k4">K-4</span><b>Insider sale</b><p>One of the 10 largest non-pool wallets sold at least 20% of its bag and at least 0.5% of the supply.</p></div>
+        <div><span class="form k8">K-8</span><b>Liquidity pulled</b><p>The token's pools lost half their money or more since Kaelis made its call.</p></div>
+        <div><span class="form k3">K-3</span><b>Authority back on</b><p>Mint or freeze authority was switched back on after the call.</p></div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <div class="wrap">
+      <div class="stats" aria-live="polite" style="grid-template-columns: 1.4fr repeat(4, 1fr)">
+        <div class="iq"><span>Filings on record</span><b id="filed">–</b><small id="filedNote">loading…</small></div>
+        <div><span>Insider sales</span><b id="k4">–</b></div>
+        <div><span>Pools pulled</span><b id="k8">–</b></div>
+        <div><span>Authority back</span><b id="k3">–</b></div>
+        <div><span>Tokens watched</span><b id="tracked">–</b></div>
+      </div>
+      <div class="chain"><span><i class="dot" id="chainDot" style="background:var(--mute)"></i><b id="chainState">Checking chain…</b></span><span>Head <code id="head">–</code></span><span>Checked every 30 minutes by Patrol</span></div>
+    </div>
+  </section>
+
+  <section>
+    <div class="wrap">
+      <span class="tag">Feed</span>
+      <h2>Latest filings.</h2>
+      <table class="tbl">
+        <thead><tr><th>#</th><th>Form</th><th>Token</th><th>What happened</th><th class="hide-sm">Filed</th><th></th></tr></thead>
+        <tbody id="rows"><tr><td colspan="6" class="empty">Loading…</td></tr></tbody>
+      </table>
+      <p class="note">Insiders are recorded when Kaelis makes its call and watched for 7 days, until the call is graded on the <a href="ledger.html">Ledger</a>. Each filing's hash covers the one before it. A filing reports what happened on chain; it is not advice.</p>
+    </div>
+  </section>
+</main>
+
+<footer>
+  <div class="wrap tag">
+    <span>Kaelis Filings · Not financial advice</span>
+    <span style="display:flex;gap:16px"><a href="ledger.html">Ledger →</a><a href="docs.html">Docs →</a></span>
+  </div>
+</footer>
+
+<script>
+(function () {
+  const $ = (id) => document.getElementById(id);
+  const esc = (s) => String(s == null ? "" : s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+  const when = (iso) => iso ? iso.slice(0, 16).replace("T", " ") : "–";
+  fetch("api/filings").then((r) => r.ok ? r.json() : Promise.reject(r.status)).then((j) => {
+    $("filed").textContent = j.filed; $("filedNote").textContent = j.filed ? "hash-chained, newest first below" : "none yet: insiders are being watched";
+    $("k4").textContent = j.byForm["K-4"] || 0; $("k8").textContent = j.byForm["K-8"] || 0; $("k3").textContent = j.byForm["K-3"] || 0; $("tracked").textContent = j.tracked;
+    const ok = j.chain && j.chain.ok; $("chainDot").style.background = ok ? "var(--ok)" : "var(--bad)";
+    $("chainState").textContent = ok ? `Chain verified · ${j.chain.length} filing${j.chain.length === 1 ? "" : "s"}` : "Chain check failed";
+    $("head").textContent = j.head.slice(0, 16) + "…";
+    $("rows").innerHTML = j.filings.length ? j.filings.map((f) => `<tr><td class="m">${f.n}</td><td><span class="form ${f.form === "K-4" ? "k4" : f.form === "K-8" ? "k8" : "k3"}">${esc(f.form)}</span></td>
+      <td><a href="scan.html?mint=${esc(f.mint)}">${esc(f.symbol ? "$" + f.symbol : f.mint.slice(0, 6) + "…")}</a></td>
+      <td>${esc(f.detail)}${f.owner ? ` <a class="m" href="https://solscan.io/account/${esc(f.owner)}" target="_blank" rel="noopener">wallet ↗</a>` : ""}</td>
+      <td class="m hide-sm">${when(f.at)}</td><td class="m hide-sm" title="${esc(f.hash)}">${esc(f.hash.slice(0, 8))}…</td></tr>`).join("")
+      : `<tr><td colspan="6" class="empty">No filings yet. Kaelis is watching ${j.tracked} token${j.tracked === 1 ? "" : "s"}; the first filing appears when an insider sells or a pool is pulled.</td></tr>`;
+  }).catch(() => { $("rows").innerHTML = `<tr><td colspan="6" class="empty">Filings run on the Kaelis server. Not available in this preview.</td></tr>`; $("chainState").textContent = "Offline"; });
+})();
+</script>
+</html>
