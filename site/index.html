@@ -844,36 +844,37 @@ const LAB_GAIN = 1 / 0.6;
 }
 
 // ---------------------------------------------------------------- the ghosts (one per room, the staff of Kaelis Labs)
-// The sheet is real cloth: draped over a mannequin with Blender's cloth solver (tools/3d/ghost_cloth.py),
-// ambient occlusion baked into its vertex colours. Here it gets its eyes (cut per pixel), a frayed hem,
-// a rim of light and a slow sway. Each room dresses it differently (dressGhost).
+// Four characters, four bodies. Each sheet is real cloth draped over its own mannequin with Blender's cloth solver
+// (tools/3d/ghost_cloth.py prints `head` and `edge` for each), ambient occlusion baked into the vertex colours.
+// Here each gets its eyes (cut per pixel around its head), a frayed hem, a faint rim of light, a slow sway, and its kit.
 const GHOSTS = {
-  scanner:  { name: "The Assayer",   body: "#e6dfcf", glow: "#9fe0cf", k: 0.55, eye: "#59e7ca", line: null },
-  watch:    { name: "The Archivist", body: "#c9b48d", glow: "#e0a04a", k: 0.6,  eye: "#ffb347", line: "Everything I tested is still here." },
-  markets:  { name: "The Broker",    body: "#d6d2c8", glow: "#f2cf7a", k: 0.5,  eye: "#f2cf7a", line: "Stocks get the same test." },
-  builders: { name: "The Smith",     body: "#57483f", glow: "#ff7a33", k: 1.5,  eye: "#ff8a4d", line: "Show me what you built." },
+  scanner:  { name: "The Assayer",   file: "assayer",   head: [0, 1.70, -0.10], hs: 0.977, edge: 1.62, body: "#f3f2ee", glow: "#59e7ca", k: 0.22, eye: "#59e7ca", line: null },
+  watch:    { name: "The Archivist", file: "archivist", head: [0, 1.26, -0.20], hs: 1.023, edge: 1.34, body: "#e6dfcd", glow: "#ffc98a", k: 0.18, eye: "#ffb347", line: "Everything I tested is still here." },
+  markets:  { name: "The Broker",    file: "broker",    head: [0, 1.56, 0.0],   hs: 1.0,   edge: 1.50, body: "#dfe4ec", glow: "#9cc8ff", k: 0.2,  eye: "#7fd6ff", line: "Stocks get the same test." },
+  builders: { name: "The Smith",     file: "smith",     head: [0, 1.62, 0.0],   hs: 1.07,  edge: 1.66, body: "#4f545b", glow: "#ff7a33", k: 0.55, eye: "#ff8a4d", line: "Show me what you built." },
 };
 const robot = (() => {
-  const U = { uQ: { value: new THREE.Matrix4() }, uS: { value: 1 }, uT: { value: 0 }, uGlow: { value: new THREE.Color("#9fe0cf") }, uRim: { value: 0.55 } };
-  const sheet = new THREE.MeshPhysicalMaterial({ color: 0xe6dfcf, roughness: 0.84, sheen: 1, sheenRoughness: 0.5, sheenColor: new THREE.Color(0xfff0d8), side: THREE.DoubleSide, vertexColors: true, alphaHash: true });
+  const U = { uQ: { value: new THREE.Matrix4() }, uS: { value: 1 }, uT: { value: 0 }, uGlow: { value: new THREE.Color("#59e7ca") }, uRim: { value: 0.22 }, uHead: { value: new THREE.Vector3(0, 1.7, -0.1) }, uEdge: { value: 1.62 } };
+  const sheet = new THREE.MeshPhysicalMaterial({ color: 0xf3f2ee, roughness: 0.84, sheen: 1, sheenRoughness: 0.5, sheenColor: new THREE.Color(0xffffff), side: THREE.DoubleSide, vertexColors: true, alphaHash: true });
   sheet.onBeforeCompile = (sh) => {
     Object.assign(sh.uniforms, U);
-    sh.vertexShader = "uniform float uT, uS; uniform mat4 uQ; varying vec3 vObj; varying vec2 vSheet;\n" + sh.vertexShader.replace("#include <begin_vertex>", `#include <begin_vertex>
-      vec3 gp = (uQ * vec4(position, 1.0)).xyz; vObj = gp; vSheet = uv; // metres, floor at 0
-      float gw = smoothstep(1.2, 0.3, gp.y); gw *= gw;                  // only the hanging part moves
+    sh.vertexShader = "uniform float uT, uS; uniform mat4 uQ; uniform vec3 uHead; varying vec3 vObj; varying vec2 vSheet;\n" + sh.vertexShader.replace("#include <begin_vertex>", `#include <begin_vertex>
+      vec3 gp = (uQ * vec4(position, 1.0)).xyz; vObj = gp; vSheet = uv;  // the model is quantized; work in metres, floor at 0
+      float gw = 1.0 - smoothstep(uHead.y - 1.25, uHead.y - 0.35, gp.y); gw *= gw; // only the hanging part moves
       float ga = atan(gp.z, gp.x);
       transformed += vec3(sin(uT * 1.7 + gp.y * 5.0 + ga * 2.0) * 0.05, sin(uT * 2.3 + ga * 5.0) * 0.02, cos(uT * 1.3 + gp.y * 4.0 + ga * 3.0) * 0.05) * gw / uS;`);
-    sh.fragmentShader = `uniform vec3 uGlow; uniform float uRim; varying vec3 vObj; varying vec2 vSheet;
+    sh.fragmentShader = `uniform vec3 uGlow, uHead; uniform float uRim, uEdge; varying vec3 vObj; varying vec2 vSheet;
       float gh(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }
       float gn(vec2 p){ vec2 i = floor(p), f = fract(p); f = f * f * (3. - 2. * f); return mix(mix(gh(i), gh(i + vec2(1, 0)), f.x), mix(gh(i + vec2(0, 1)), gh(i + vec2(1, 1)), f.x), f.y); }
       ` + sh.fragmentShader
       .replace("#include <alphahash_fragment>", `
-        { vec2 sc = vSheet - 0.5; float rr = length(sc) * 3.1, an = atan(sc.y, sc.x);       // the flat cloth was 3.1 m across
+        { vec2 sc = vSheet - 0.5; float rr = length(sc) * 3.4, an = atan(sc.y, sc.x);        // the flat cloth was 3.4 m across
           float fray = gn(vec2(an * 16., rr * 9.)) * 0.2 + gn(vec2(an * 46., rr * 30.)) * 0.07; // worn, uneven hem
-          diffuseColor.a *= smoothstep(1.52, 1.3, rr + fray);
-          if (vObj.z < -0.06) {                                                              // the face: two eyes and a mouth are holes
-            float eye = length(vec2(abs(vObj.x) - 0.072, vObj.y - 1.55) / vec2(0.036, 0.052));
-            float mo = length(vec2(vObj.x, vObj.y - 1.43) / vec2(0.028, 0.044));
+          diffuseColor.a *= smoothstep(uEdge + 0.02, uEdge - 0.2, rr + fray);
+          vec3 hp = vObj - uHead;
+          if (hp.z < -0.06 && abs(hp.y) < 0.2) {                                              // the face: two eyes and a mouth are holes
+            float eye = length(vec2(abs(hp.x) - 0.072, hp.y - 0.05) / vec2(0.036, 0.052));
+            float mo = length(vec2(hp.x, hp.y + 0.07) / vec2(0.028, 0.044));
             if (min(eye, mo) < 1.0) discard;
           } }
         #include <alphahash_fragment>`)
@@ -882,70 +883,90 @@ const robot = (() => {
   };
   const hollow = new THREE.MeshBasicMaterial({ color: 0x020202 });
   const eyeMat = new THREE.MeshStandardMaterial({ color: 0x0a1a16, emissive: 0x59e7ca, emissiveIntensity: 1.6 });
-  const brass = new THREE.MeshStandardMaterial({ color: 0x8a6f3c, roughness: 0.35, metalness: 0.85 });
-  const cloth = new THREE.MeshStandardMaterial({ color: 0x2a1d12, roughness: 0.95, side: THREE.DoubleSide });
-  const black = new THREE.MeshStandardMaterial({ color: 0x0b0a09, roughness: 0.6 });
-  const R = new THREE.Group(); R.position.set(0, 0, -0.22); // faces -Z (the desk)
+  const steel = new THREE.MeshStandardMaterial({ color: 0xb6bbc0, roughness: 0.25, metalness: 1 });
+  const dark = new THREE.MeshStandardMaterial({ color: 0x17191c, roughness: 0.45 });
+  const white = new THREE.MeshStandardMaterial({ color: 0xf4f5f6, roughness: 0.4 });
+  const lens = new THREE.MeshStandardMaterial({ color: 0xcfeee8, transparent: true, opacity: 0.28, roughness: 0.05, metalness: 0.3, depthWrite: false });
+  const R = new THREE.Group(); R.position.set(0, 0, -0.22); // faces -Z (the bench)
   const hips = new THREE.Group(); R.add(hips);              // everything floats and turns with this
-  new GLTFLoader().setMeshoptDecoder(MeshoptDecoder).load("models/ghost.glb", (g) => {
-    g.scene.updateMatrixWorld(true);
-    g.scene.traverse((o) => { if (o.isMesh) { o.material = sheet; o.frustumCulled = false; U.uQ.value.copy(o.matrixWorld); U.uS.value = o.matrixWorld.getMaxScaleOnAxis(); } });
-    hips.add(g.scene);
-  });
-  // behind the holes: nothing, and two small lights that are its eyes
-  const voidHead = new THREE.Mesh(new THREE.SphereGeometry(0.17, 24, 16), hollow); voidHead.position.set(0, 1.5, 0); voidHead.scale.set(1, 1.08, 1.1); hips.add(voidHead);
-  for (const s of [-1, 1]) { const pupil = new THREE.Mesh(new THREE.SphereGeometry(0.013, 12, 10), eyeMat); pupil.position.set(s * 0.07, 1.55, -0.19); hips.add(pupil); }
-  const inner = new THREE.PointLight(0x9fe0cf, 0.7, 3, 2); inner.position.set(0, 1.1, -0.5); hips.add(inner);
-  const head = new THREE.Group(); head.position.set(0, 1.52, 0); head.scale.setScalar(0.9); hips.add(head); // what it wears sits here
+  const models = {};                                        // one sheet per character, loaded when its room is first entered
+  // inside the head: nothing, and two small lights that are its eyes; what it wears hangs on the same group
+  const head = new THREE.Group(); hips.add(head);
+  const voidHead = new THREE.Mesh(new THREE.SphereGeometry(0.17, 24, 16), hollow); voidHead.scale.set(1, 1.08, 1.1); head.add(voidHead);
+  for (const s of [-1, 1]) { const pupil = new THREE.Mesh(new THREE.SphereGeometry(0.013, 12, 10), eyeMat); pupil.position.set(s * 0.07, 0.05, -0.19); head.add(pupil); }
+  const inner = new THREE.PointLight(0x59e7ca, 0.5, 3, 2); inner.position.set(0, -0.4, -0.5); head.add(inner);
   const neck = new THREE.Object3D();                        // the old rig turned a neck; the sheet turns as one
-  const antTip = new THREE.Mesh(new THREE.SphereGeometry(0.022, 12, 12), new THREE.MeshStandardMaterial({ color: 0x2a0f05, emissive: 0xff8a4d, emissiveIntensity: 2.5 }));
-  head.add(antTip); // a small ember that follows it around
+  const antTip = new THREE.Mesh(new THREE.SphereGeometry(0.01, 6, 6), new THREE.MeshStandardMaterial({ color: 0x2a0f05, emissive: 0xff8a4d, emissiveIntensity: 2.5 })); antTip.visible = false; head.add(antTip);
 
+  const FZ = -0.243; // the face of the cloth, in front of the head centre
+  const badge = (stripe) => { const g = new THREE.Group(), c = canvasTex(128, 180, (x, w, h) => { x.fillStyle = "#f6f7f8"; x.fillRect(0, 0, w, h); x.fillStyle = stripe; x.fillRect(0, 0, w, 34); x.fillStyle = "#0b0b0c"; x.font = "700 20px monospace"; x.fillText("KAELIS", 12, 24); x.fillStyle = "#c9cdd1"; x.fillRect(34, 52, 60, 62); x.fillStyle = "#8b9096"; for (let i = 0; i < 3; i++) x.fillRect(16, 130 + i * 14, 96 - i * 20, 6); });
+    const card = new THREE.Mesh(new THREE.PlaneGeometry(0.075, 0.105), new THREE.MeshBasicMaterial({ map: c, side: THREE.DoubleSide })); card.rotation.y = Math.PI; g.add(card);
+    const clip = new THREE.Mesh(new THREE.BoxGeometry(0.02, 0.014, 0.006), steel); clip.position.y = 0.058; g.add(clip);
+    for (const s of [-1, 1]) { const cord = new THREE.Mesh(new THREE.CylinderGeometry(0.0035, 0.0035, 0.3, 6), dark); cord.position.set(s * 0.06, 0.2, 0.02); cord.rotation.z = s * 0.4; cord.rotation.x = -0.25; g.add(cord); }
+    return g; };
   const acc = {};
-  { // The Assayer: brass goggles
+  { // The Assayer: clear safety goggles and an ID badge
     const h = new THREE.Group(); acc.scanner = [h]; head.add(h);
-    for (const s of [-1, 1]) { const rim = new THREE.Mesh(new THREE.TorusGeometry(0.07, 0.014, 10, 36), brass); rim.position.set(s * 0.082, 0.03, -0.243); rim.rotation.y = s * 0.28; h.add(rim); }
-    const strap = new THREE.Mesh(new THREE.TorusGeometry(0.243, 0.013, 8, 48), cloth); strap.rotation.x = Math.PI / 2; strap.scale.set(0.93, 1.05, 1); strap.position.y = 0.035; h.add(strap);
+    for (const s of [-1, 1]) { const rim = new THREE.Mesh(new THREE.TorusGeometry(0.068, 0.011, 10, 36), dark); rim.position.set(s * 0.08, 0.05, FZ); rim.rotation.y = s * 0.28; h.add(rim);
+      const gl = new THREE.Mesh(new THREE.CircleGeometry(0.066, 28), lens); gl.position.set(s * 0.08, 0.05, FZ - 0.004); gl.rotation.y = Math.PI + s * 0.28; h.add(gl); }
+    const strap = new THREE.Mesh(new THREE.TorusGeometry(0.243, 0.012, 8, 48), dark); strap.rotation.x = Math.PI / 2; strap.scale.set(0.93, 1.05, 1); strap.position.y = 0.055; h.add(strap);
+    const b = badge("#59e7ca"); b.position.set(0.02, -0.5, -0.27); b.rotation.x = 0.12; h.add(b);
   }
-  { // The Archivist: a deep hood, and a lantern that floats beside it
-    const h = new THREE.Group(), b = new THREE.Group(); acc.watch = [h, b]; head.add(h); hips.add(b);
-    const hood = new THREE.Mesh(new THREE.SphereGeometry(0.29, 36, 20, 0, Math.PI * 2, 0, Math.PI * 0.6), cloth); hood.rotation.x = 0.5; hood.scale.set(0.95, 1, 1.05); hood.position.set(0, 0.0, 0.04); h.add(hood);
-    const cage = new THREE.Mesh(new THREE.CylinderGeometry(0.055, 0.055, 0.14, 6, 1, true), new THREE.MeshStandardMaterial({ color: 0x8a6f3c, metalness: 0.85, roughness: 0.35, wireframe: true }));
-    const flame = new THREE.Mesh(new THREE.SphereGeometry(0.03, 12, 10), new THREE.MeshBasicMaterial({ color: new THREE.Color("#ffb347").multiplyScalar(3) }));
-    const cap = new THREE.Mesh(new THREE.ConeGeometry(0.07, 0.05, 6), brass); cap.position.y = 0.095;
-    const lamp = new THREE.PointLight(0xffa850, 2.6, 3.5, 2);
-    const lan = new THREE.Group(); lan.add(cage, flame, cap, lamp); lan.position.set(0.55, 1.2, -0.3); b.add(lan); acc.lantern = lan;
+  { // The Archivist: thin reading glasses low on the face, and a clipboard held out in front
+    const h = new THREE.Group(); acc.watch = [h]; head.add(h);
+    for (const s of [-1, 1]) { const rim = new THREE.Mesh(new THREE.TorusGeometry(0.05, 0.005, 8, 32), steel); rim.position.set(s * 0.072, 0.03, FZ - 0.01); rim.rotation.y = s * 0.25; h.add(rim);
+      const arm = new THREE.Mesh(new THREE.CylinderGeometry(0.003, 0.003, 0.26, 6), steel); arm.rotation.x = Math.PI / 2; arm.position.set(s * 0.19, 0.035, FZ + 0.12); h.add(arm); }
+    const bridge = new THREE.Mesh(new THREE.CylinderGeometry(0.004, 0.004, 0.05, 6), steel); bridge.rotation.z = Math.PI / 2; bridge.position.set(0, 0.04, FZ - 0.012); h.add(bridge);
+    const clipb = new THREE.Group(); clipb.position.set(0.02, -0.42, -0.5); clipb.rotation.x = -0.75; h.add(clipb);
+    clipb.add(new THREE.Mesh(new THREE.BoxGeometry(0.24, 0.33, 0.008), new THREE.MeshStandardMaterial({ color: 0x5b4a3a, roughness: 0.6 })));
+    const paper = new THREE.Mesh(new THREE.PlaneGeometry(0.21, 0.29), new THREE.MeshBasicMaterial({ map: canvasTex(210, 290, (x, w, hh) => { x.fillStyle = "#fbfbf8"; x.fillRect(0, 0, w, hh); x.fillStyle = "#0b0b0c"; x.font = "700 15px monospace"; x.fillText("LEDGER", 14, 28); x.fillStyle = "#9aa1a8"; const r = rand(3); for (let i = 0; i < 15; i++) x.fillRect(14, 46 + i * 15, 60 + r() * 120, 4); }) }));
+    paper.position.z = -0.005; paper.rotation.y = Math.PI; clipb.add(paper);
+    const cl = new THREE.Mesh(new THREE.BoxGeometry(0.09, 0.03, 0.016), steel); cl.position.set(0, 0.155, -0.006); clipb.add(cl);
   }
-  { // The Broker: top hat and monocle
+  { // The Broker: a headset with a boom mic, and a dark tie
     const h = new THREE.Group(); acc.markets = [h]; head.add(h);
-    const hat = new THREE.Group(); hat.rotation.z = -0.1; hat.position.y = 0.02; h.add(hat);
-    const brim = new THREE.Mesh(new THREE.CylinderGeometry(0.27, 0.27, 0.02, 36), black); brim.position.y = 0.2; hat.add(brim);
-    const crown = new THREE.Mesh(new THREE.CylinderGeometry(0.165, 0.155, 0.27, 36), black); crown.position.y = 0.34; hat.add(crown);
-    const band = new THREE.Mesh(new THREE.CylinderGeometry(0.162, 0.16, 0.045, 36), brass); band.position.y = 0.235; hat.add(band);
-    const mono = new THREE.Mesh(new THREE.TorusGeometry(0.066, 0.011, 10, 36), brass); mono.position.set(0.082, 0.03, -0.243); mono.rotation.y = 0.28; h.add(mono);
+    const band = new THREE.Mesh(new THREE.TorusGeometry(0.245, 0.012, 8, 40, Math.PI), dark); band.position.y = 0.02; h.add(band);
+    for (const s of [-1, 1]) { const cup = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.06, 0.04, 24), dark); cup.rotation.z = Math.PI / 2; cup.position.set(s * 0.235, 0.02, 0); h.add(cup);
+      const pad = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.05, 0.045, 24), steel); pad.rotation.z = Math.PI / 2; pad.position.set(s * 0.238, 0.02, 0); h.add(pad); }
+    const boom = new THREE.Mesh(new THREE.CylinderGeometry(0.005, 0.005, 0.24, 6), dark); boom.position.set(0.2, -0.05, -0.12); boom.rotation.set(1.1, 0, 0.35); h.add(boom);
+    const mic = new THREE.Mesh(new THREE.SphereGeometry(0.016, 10, 8), dark); mic.position.set(0.13, -0.085, -0.225); h.add(mic);
+    const tie = new THREE.Group(); tie.position.set(0, -0.34, -0.2); tie.rotation.x = 0.2; h.add(tie);
+    const knot = new THREE.Mesh(new THREE.BoxGeometry(0.045, 0.04, 0.02), new THREE.MeshStandardMaterial({ color: 0x1b2a44, roughness: 0.6 })); tie.add(knot);
+    const blade = new THREE.Mesh(new THREE.ConeGeometry(0.038, 0.34, 4), knot.material); blade.rotation.set(Math.PI, Math.PI / 4, 0); blade.scale.z = 0.25; blade.position.y = -0.19; tie.add(blade);
   }
-  { // The Smith: a welding visor pushed up, and the cloth itself glows like a coal
+  { // The Smith: welding goggles pushed up on the forehead, and heavy gloves hanging at the belt
     const h = new THREE.Group(); acc.builders = [h]; head.add(h);
-    const leather = new THREE.MeshStandardMaterial({ color: 0x3b2413, roughness: 0.8, side: THREE.DoubleSide });
-    const visor = new THREE.Mesh(new THREE.SphereGeometry(0.262, 30, 12, Math.PI * 1.15, Math.PI * 0.7, Math.PI * 0.2, Math.PI * 0.15), black); visor.scale.set(0.95, 1, 1.06); h.add(visor);
-    const strap = new THREE.Mesh(new THREE.TorusGeometry(0.245, 0.016, 8, 48), leather); strap.rotation.x = Math.PI / 2 - 0.25; strap.scale.set(0.93, 1.05, 1); strap.position.y = 0.13; h.add(strap);
+    for (const s of [-1, 1]) { const cup = new THREE.Mesh(new THREE.CylinderGeometry(0.058, 0.064, 0.05, 24), dark); cup.rotation.x = Math.PI / 2 - 0.5; cup.position.set(s * 0.078, 0.175, FZ + 0.05); h.add(cup);
+      const gl = new THREE.Mesh(new THREE.CircleGeometry(0.05, 24), new THREE.MeshStandardMaterial({ color: 0x0c2a1c, roughness: 0.08, metalness: 0.6 })); gl.rotation.set(-0.5, Math.PI, 0); gl.position.set(s * 0.078, 0.188, FZ + 0.028); h.add(gl); }
+    const strap = new THREE.Mesh(new THREE.TorusGeometry(0.245, 0.018, 8, 48), new THREE.MeshStandardMaterial({ color: 0x4a3524, roughness: 0.8 })); strap.rotation.x = Math.PI / 2 - 0.3; strap.scale.set(0.95, 1.06, 1); strap.position.y = 0.14; h.add(strap);
+    const b = badge("#ff8a4d"); b.position.set(-0.05, -0.56, -0.3); b.rotation.x = 0.1; h.add(b);
   }
   room.add(R);
-  return { R, hips, head, neck, arms: [], eyeMat, antTip, sheet, inner, acc, U };
+  return { R, hips, head, neck, arms: [], eyeMat, antTip, sheet, inner, acc, U, models };
 })();
 function dressGhost(id) {
   const key = GHOSTS[id] ? id : "scanner", g = GHOSTS[key], r = robot;
-  r.sheet.color.set(g.body); r.U.uGlow.value.set(g.glow); r.U.uRim.value = g.k; r.inner.color.set(g.glow);
-  r.eyeMat.emissive.set(g.eye);
-  for (const k of Object.keys(GHOSTS)) (r.acc[k] || []).forEach((o) => (o.visible = k === key));
+  r.sheet.color.set(g.body); r.sheet.sheenColor.set(g.body); r.U.uGlow.value.set(g.glow); r.U.uRim.value = g.k; r.inner.color.set(g.glow);
+  r.U.uHead.value.set(...g.head); r.U.uEdge.value = g.edge; r.head.position.set(...g.head); r.head.scale.setScalar(g.hs);
+  r.eyeMat.emissive.set(g.eye); r.now = key;
+  for (const k of Object.keys(GHOSTS)) { (r.acc[k] || []).forEach((o) => (o.visible = k === key)); if (r.models[k]) r.models[k].visible = k === key; }
+  if (!r.models[key]) { r.models[key] = new THREE.Group(); r.hips.add(r.models[key]);
+    new GLTFLoader().setMeshoptDecoder(MeshoptDecoder).load("models/ghost-" + g.file + ".glb", (m) => {
+      m.scene.updateMatrixWorld(true);
+      m.scene.traverse((o) => { if (o.isMesh) { o.material = r.sheet; o.frustumCulled = false; o.userData.q = o.matrixWorld.clone(); } });
+      r.models[key].add(m.scene); useGhost(key);
+    }); }
+  useGhost(key);
   roomParts.chair.visible = false; // ghosts do not sit
-  r.R.position.set(...(key === "watch" ? [-0.5, small ? 1.5 : 0.7, small ? -1.7 : -1.3] : key === "markets" ? [-0.4, small ? 1.4 : 0.55, small ? -1.7 : -1.2] : [0, 0, -0.22])); // by the shelf, by the board, or at the desk
+  r.R.position.set(...(key === "watch" ? [-0.5, small ? 1.2 : 0.75, small ? -1.7 : -1.3] : key === "markets" ? [-0.4, small ? 1.2 : 0.8, small ? -1.7 : -1.2] : [0, 0, -0.22])); // by the shelf, by the board, or at the bench
+}
+function useGhost(key) { // each model is quantized on its own: hand the shader that model's scale
+  if (robot.now !== key || !robot.models[key]) return;
+  robot.models[key].traverse((o) => { if (o.isMesh && o.userData.q) { robot.U.uQ.value.copy(o.userData.q); robot.U.uS.value = o.userData.q.getMaxScaleOnAxis(); } });
 }
 function swayGhost(t) {
   const m = reduce ? 0.25 : 1;
   robot.U.uT.value = t * m; roomParts.blob.position.x = robot.R.position.x; roomParts.blob.position.z = robot.R.position.z; roomParts.blob.material.opacity = 0.5 / (1 + robot.R.position.y * 1.5);
-  if (robot.acc.lantern) robot.acc.lantern.position.y = 1.2 + Math.sin(t * 1.7) * 0.04 * m;
-  robot.antTip.position.set(Math.cos(t * 0.9) * 0.42, 0.22 + Math.sin(t * 1.9) * 0.07, Math.sin(t * 0.9) * 0.42);
 }
 
 // Kaelis core model (same GLB as the home page) for the plaza
