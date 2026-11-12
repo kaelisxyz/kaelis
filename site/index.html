@@ -20,7 +20,7 @@
     color-scheme: dark;
   }
   * { box-sizing: border-box; }
-  html, body { margin: 0; height: 100%; background: var(--night); color: var(--text); overflow: hidden; }
+  html, body { margin: 0; height: 100%; background: radial-gradient(circle at 50% 60%, #3a2412 0%, #17100a 70%); color: var(--text); overflow: hidden; }
   body { font-family: var(--f-sans); -webkit-font-smoothing: antialiased; }
   canvas#c { position: fixed; inset: 0; width: 100%; height: 100%; display: block; touch-action: none; }
   a { color: inherit; }
@@ -147,7 +147,7 @@
   .score { font: 700 40px var(--f-mono); letter-spacing: -.02em; }
   .fine { font-size: 11px !important; }
 
-  .fade { position: fixed; inset: 0; background: #05030c; opacity: 0; pointer-events: none; z-index: 8; transition: opacity .28s ease; }
+  .fade { position: fixed; inset: 0; background: radial-gradient(circle at 50% 52%, #fff3dc 0%, #f3bd76 34%, #a8621f 72%, #3a1c08 100%); opacity: 0; pointer-events: none; z-index: 8; transition: opacity .42s ease; }
   .fade.on { opacity: 1; }
   .nogl { position: fixed; inset: 0; z-index: 9; display: grid; place-content: center; gap: 12px; text-align: center; padding: 24px; background: var(--night); }
   .nogl[hidden] { display: none; }
@@ -815,107 +815,108 @@ const roomParts = {};
 }
 
 // ---------------------------------------------------------------- the ghosts (one per room, the staff of Kaelis Labs)
-// A sheet ghost floating at the desk: scalloped hem that sways, hollow eyes with a lit pupil, sleeves that end in wisps.
-// Each room dresses it differently (dressGhost): goggles, hood and lantern, top hat and monocle, apron and visor.
+// The sheet is real cloth: draped over a mannequin with Blender's cloth solver (tools/3d/ghost_cloth.py),
+// ambient occlusion baked into its vertex colours. Here it gets its eyes (cut per pixel), a frayed hem,
+// a rim of light and a slow sway. Each room dresses it differently (dressGhost).
 const GHOSTS = {
-  scanner:  { name: "The Assayer",   body: "#e9e2d0", glow: "#bfe6d8", k: 0.32, eye: "#59e7ca", line: null },
-  watch:    { name: "The Archivist", body: "#cdbb98", glow: "#b08a50", k: 0.36, eye: "#ffb347", line: "Everything I tested is still here." },
-  markets:  { name: "The Broker",    body: "#d9d6cd", glow: "#9a8f7a", k: 0.3,  eye: "#f2cf7a", line: "Stocks get the same test." },
-  builders: { name: "The Smith",     body: "#6f5c4e", glow: "#ff7a33", k: 0.7,  eye: "#ff8a4d", line: "Show me what you built." },
+  scanner:  { name: "The Assayer",   body: "#e6dfcf", glow: "#9fe0cf", k: 0.55, eye: "#59e7ca", line: null },
+  watch:    { name: "The Archivist", body: "#c9b48d", glow: "#e0a04a", k: 0.6,  eye: "#ffb347", line: "Everything I tested is still here." },
+  markets:  { name: "The Broker",    body: "#d6d2c8", glow: "#f2cf7a", k: 0.5,  eye: "#f2cf7a", line: "Stocks get the same test." },
+  builders: { name: "The Smith",     body: "#57483f", glow: "#ff7a33", k: 1.5,  eye: "#ff8a4d", line: "Show me what you built." },
 };
 const robot = (() => {
-  const sheet = new THREE.MeshStandardMaterial({ color: 0xe9e2d0, emissive: 0xbfe6d8, emissiveIntensity: 0.32, roughness: 0.85, transparent: true, opacity: 0.88, side: THREE.DoubleSide });
-  const hollow = new THREE.MeshBasicMaterial({ color: 0x050403 });
+  const U = { uQ: { value: new THREE.Matrix4() }, uS: { value: 1 }, uT: { value: 0 }, uGlow: { value: new THREE.Color("#9fe0cf") }, uRim: { value: 0.55 } };
+  const sheet = new THREE.MeshPhysicalMaterial({ color: 0xe6dfcf, roughness: 0.84, sheen: 1, sheenRoughness: 0.5, sheenColor: new THREE.Color(0xfff0d8), side: THREE.DoubleSide, vertexColors: true, alphaHash: true });
+  sheet.onBeforeCompile = (sh) => {
+    Object.assign(sh.uniforms, U);
+    sh.vertexShader = "uniform float uT, uS; uniform mat4 uQ; varying vec3 vObj; varying vec2 vSheet;\n" + sh.vertexShader.replace("#include <begin_vertex>", `#include <begin_vertex>
+      vec3 gp = (uQ * vec4(position, 1.0)).xyz; vObj = gp; vSheet = uv; // metres, floor at 0
+      float gw = smoothstep(1.2, 0.3, gp.y); gw *= gw;                  // only the hanging part moves
+      float ga = atan(gp.z, gp.x);
+      transformed += vec3(sin(uT * 1.7 + gp.y * 5.0 + ga * 2.0) * 0.05, sin(uT * 2.3 + ga * 5.0) * 0.02, cos(uT * 1.3 + gp.y * 4.0 + ga * 3.0) * 0.05) * gw / uS;`);
+    sh.fragmentShader = `uniform vec3 uGlow; uniform float uRim; varying vec3 vObj; varying vec2 vSheet;
+      float gh(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }
+      float gn(vec2 p){ vec2 i = floor(p), f = fract(p); f = f * f * (3. - 2. * f); return mix(mix(gh(i), gh(i + vec2(1, 0)), f.x), mix(gh(i + vec2(0, 1)), gh(i + vec2(1, 1)), f.x), f.y); }
+      ` + sh.fragmentShader
+      .replace("#include <alphahash_fragment>", `
+        { vec2 sc = vSheet - 0.5; float rr = length(sc) * 3.1, an = atan(sc.y, sc.x);       // the flat cloth was 3.1 m across
+          float fray = gn(vec2(an * 16., rr * 9.)) * 0.2 + gn(vec2(an * 46., rr * 30.)) * 0.07; // worn, uneven hem
+          diffuseColor.a *= smoothstep(1.52, 1.3, rr + fray);
+          if (vObj.z < -0.06) {                                                              // the face: two eyes and a mouth are holes
+            float eye = length(vec2(abs(vObj.x) - 0.072, vObj.y - 1.55) / vec2(0.036, 0.052));
+            float mo = length(vec2(vObj.x, vObj.y - 1.43) / vec2(0.028, 0.044));
+            if (min(eye, mo) < 1.0) discard;
+          } }
+        #include <alphahash_fragment>`)
+      .replace("#include <emissivemap_fragment>", `#include <emissivemap_fragment>
+        totalEmissiveRadiance += uGlow * uRim * pow(1.0 - abs(dot(normalize(vNormal), normalize(vViewPosition))), 2.6);`);
+  };
+  const hollow = new THREE.MeshBasicMaterial({ color: 0x020202 });
   const eyeMat = new THREE.MeshStandardMaterial({ color: 0x0a1a16, emissive: 0x59e7ca, emissiveIntensity: 1.6 });
   const brass = new THREE.MeshStandardMaterial({ color: 0x8a6f3c, roughness: 0.35, metalness: 0.85 });
   const cloth = new THREE.MeshStandardMaterial({ color: 0x2a1d12, roughness: 0.95, side: THREE.DoubleSide });
   const black = new THREE.MeshStandardMaterial({ color: 0x0b0a09, roughness: 0.6 });
   const R = new THREE.Group(); R.position.set(0, 0, -0.22); // faces -Z (the desk)
-  const hips = new THREE.Group(); hips.position.y = 0.7; R.add(hips);
-
-  // the sheet: a lathe with a scalloped hem; the lower half sways on the CPU (a few hundred vertices)
-  const SEG = 40, prof = [[0.37, -0.5], [0.34, -0.36], [0.31, -0.18], [0.3, 0.02], [0.29, 0.24], [0.25, 0.42], [0.19, 0.55], [0.12, 0.64]].map(([r, y]) => new THREE.Vector2(r, y));
-  const sg = new THREE.LatheGeometry(prof, SEG), sp = sg.attributes.position;
-  for (let i = 0; i < sp.count; i++) { const y = sp.getY(i), a = Math.atan2(sp.getZ(i), sp.getX(i)), w = clamp((0.05 - y) / 0.55, 0, 1); sp.setY(i, y + Math.sin(a * 7) * 0.07 * w * w); }
-  const base = sp.array.slice(); sg.computeVertexNormals();
-  const shroud = new THREE.Mesh(sg, sheet); hips.add(shroud);
-  const inner = new THREE.PointLight(0xbfe6d8, 0.9, 3.2, 2); inner.position.y = 0.2; hips.add(inner);
-
-  const neck = new THREE.Group(); neck.position.y = 0.62; hips.add(neck);
-  const head = new THREE.Group(); head.position.y = 0.2; neck.add(head);
-  const skull = new THREE.Mesh(new THREE.SphereGeometry(0.24, 40, 28), sheet); skull.scale.set(1.05, 1, 1); head.add(skull);
-  for (const s of [-1, 1]) {
-    const socket = new THREE.Mesh(new THREE.SphereGeometry(0.058, 20, 14), hollow); socket.scale.set(0.85, 1.25, 0.3); socket.position.set(s * 0.088, 0.03, -0.218); socket.rotation.y = s * 0.3; head.add(socket);
-    const pupil = new THREE.Mesh(new THREE.SphereGeometry(0.02, 14, 10), eyeMat); pupil.position.set(s * 0.09, 0.02, -0.235); head.add(pupil);
-  }
-  const mouth = new THREE.Mesh(new THREE.SphereGeometry(0.035, 16, 12), hollow); mouth.scale.set(0.9, 1.3, 0.3); mouth.position.set(0, -0.1, -0.228); head.add(mouth);
+  const hips = new THREE.Group(); R.add(hips);              // everything floats and turns with this
+  new GLTFLoader().setMeshoptDecoder(MeshoptDecoder).load("models/ghost.glb", (g) => {
+    g.scene.updateMatrixWorld(true);
+    g.scene.traverse((o) => { if (o.isMesh) { o.material = sheet; o.frustumCulled = false; U.uQ.value.copy(o.matrixWorld); U.uS.value = o.matrixWorld.getMaxScaleOnAxis(); } });
+    hips.add(g.scene);
+  });
+  // behind the holes: nothing, and two small lights that are its eyes
+  const voidHead = new THREE.Mesh(new THREE.SphereGeometry(0.17, 24, 16), hollow); voidHead.position.set(0, 1.5, 0); voidHead.scale.set(1, 1.08, 1.1); hips.add(voidHead);
+  for (const s of [-1, 1]) { const pupil = new THREE.Mesh(new THREE.SphereGeometry(0.013, 12, 10), eyeMat); pupil.position.set(s * 0.07, 1.55, -0.19); hips.add(pupil); }
+  const inner = new THREE.PointLight(0x9fe0cf, 0.7, 3, 2); inner.position.set(0, 1.1, -0.5); hips.add(inner);
+  const head = new THREE.Group(); head.position.set(0, 1.52, 0); head.scale.setScalar(0.9); hips.add(head); // what it wears sits here
+  const neck = new THREE.Object3D();                        // the old rig turned a neck; the sheet turns as one
   const antTip = new THREE.Mesh(new THREE.SphereGeometry(0.022, 12, 12), new THREE.MeshStandardMaterial({ color: 0x2a0f05, emissive: 0xff8a4d, emissiveIntensity: 2.5 }));
-  antTip.position.set(0.3, 0.3, 0.05); head.add(antTip); // a small ember that follows it around
+  head.add(antTip); // a small ember that follows it around
 
-  // sleeves: shoulder -> elbow -> a wisp instead of a hand
-  const arms = [];
-  for (const s of [-1, 1]) {
-    const shoulder = new THREE.Group(); shoulder.position.set(s * 0.25, 0.47, 0); hips.add(shoulder);
-    const upper = new THREE.Mesh(new THREE.CapsuleGeometry(0.065, 0.18, 6, 12), sheet); upper.position.y = -0.14; shoulder.add(upper);
-    const elbow = new THREE.Group(); elbow.position.y = -0.28; shoulder.add(elbow);
-    const fore = new THREE.Mesh(new THREE.ConeGeometry(0.075, 0.4, 16), sheet); fore.rotation.x = Math.PI; fore.position.y = -0.17; elbow.add(fore);
-    arms.push({ s, shoulder, elbow });
-  }
-
-  // what each one wears
   const acc = {};
   { // The Assayer: brass goggles
     const h = new THREE.Group(); acc.scanner = [h]; head.add(h);
-    for (const s of [-1, 1]) { const rim = new THREE.Mesh(new THREE.TorusGeometry(0.078, 0.016, 10, 36), brass); rim.position.set(s * 0.09, 0.03, -0.232); rim.rotation.y = s * 0.3; h.add(rim); }
-    const strap = new THREE.Mesh(new THREE.TorusGeometry(0.25, 0.014, 8, 48), cloth); strap.rotation.x = Math.PI / 2; strap.position.y = 0.03; h.add(strap);
+    for (const s of [-1, 1]) { const rim = new THREE.Mesh(new THREE.TorusGeometry(0.07, 0.014, 10, 36), brass); rim.position.set(s * 0.082, 0.03, -0.243); rim.rotation.y = s * 0.28; h.add(rim); }
+    const strap = new THREE.Mesh(new THREE.TorusGeometry(0.243, 0.013, 8, 48), cloth); strap.rotation.x = Math.PI / 2; strap.scale.set(0.93, 1.05, 1); strap.position.y = 0.035; h.add(strap);
   }
-  { // The Archivist: a deep hood and a hand lantern
+  { // The Archivist: a deep hood, and a lantern that floats beside it
     const h = new THREE.Group(), b = new THREE.Group(); acc.watch = [h, b]; head.add(h); hips.add(b);
-    const hood = new THREE.Mesh(new THREE.SphereGeometry(0.285, 36, 20, 0, Math.PI * 2, 0, Math.PI * 0.62), cloth); hood.rotation.x = 0.55; hood.position.set(0, 0.02, 0.03); h.add(hood);
-    const peak = new THREE.Mesh(new THREE.ConeGeometry(0.13, 0.3, 20), cloth); peak.position.set(0, 0.27, 0.2); peak.rotation.x = 0.9; h.add(peak);
+    const hood = new THREE.Mesh(new THREE.SphereGeometry(0.29, 36, 20, 0, Math.PI * 2, 0, Math.PI * 0.6), cloth); hood.rotation.x = 0.5; hood.scale.set(0.95, 1, 1.05); hood.position.set(0, 0.0, 0.04); h.add(hood);
     const cage = new THREE.Mesh(new THREE.CylinderGeometry(0.055, 0.055, 0.14, 6, 1, true), new THREE.MeshStandardMaterial({ color: 0x8a6f3c, metalness: 0.85, roughness: 0.35, wireframe: true }));
     const flame = new THREE.Mesh(new THREE.SphereGeometry(0.03, 12, 10), new THREE.MeshBasicMaterial({ color: new THREE.Color("#ffb347").multiplyScalar(3) }));
     const cap = new THREE.Mesh(new THREE.ConeGeometry(0.07, 0.05, 6), brass); cap.position.y = 0.095;
-    const lamp = new THREE.PointLight(0xffa850, 2.2, 3.5, 2);
-    const lan = new THREE.Group(); lan.add(cage, flame, cap, lamp); lan.position.set(0.5, 0.42, -0.2); b.add(lan); acc.lantern = lan;
+    const lamp = new THREE.PointLight(0xffa850, 2.6, 3.5, 2);
+    const lan = new THREE.Group(); lan.add(cage, flame, cap, lamp); lan.position.set(0.55, 1.2, -0.3); b.add(lan); acc.lantern = lan;
   }
-  { // The Broker: top hat, monocle, bow tie
-    const h = new THREE.Group(), b = new THREE.Group(); acc.markets = [h, b]; head.add(h); hips.add(b);
-    const hat = new THREE.Group(); hat.rotation.z = -0.1; h.add(hat);
+  { // The Broker: top hat and monocle
+    const h = new THREE.Group(); acc.markets = [h]; head.add(h);
+    const hat = new THREE.Group(); hat.rotation.z = -0.1; hat.position.y = 0.02; h.add(hat);
     const brim = new THREE.Mesh(new THREE.CylinderGeometry(0.27, 0.27, 0.02, 36), black); brim.position.y = 0.2; hat.add(brim);
     const crown = new THREE.Mesh(new THREE.CylinderGeometry(0.165, 0.155, 0.27, 36), black); crown.position.y = 0.34; hat.add(crown);
     const band = new THREE.Mesh(new THREE.CylinderGeometry(0.162, 0.16, 0.045, 36), brass); band.position.y = 0.235; hat.add(band);
-    const mono = new THREE.Mesh(new THREE.TorusGeometry(0.075, 0.012, 10, 36), brass); mono.position.set(0.09, 0.03, -0.236); mono.rotation.y = 0.3; h.add(mono);
-    for (const s of [-1, 1]) { const wing = new THREE.Mesh(new THREE.ConeGeometry(0.055, 0.12, 4), black); wing.rotation.z = s * Math.PI / 2; wing.position.set(s * 0.06, 0.6, -0.2); wing.scale.z = 0.4; b.add(wing); }
+    const mono = new THREE.Mesh(new THREE.TorusGeometry(0.066, 0.011, 10, 36), brass); mono.position.set(0.082, 0.03, -0.243); mono.rotation.y = 0.28; h.add(mono);
   }
-  { // The Smith: leather apron, visor pushed up
-    const h = new THREE.Group(), b = new THREE.Group(); acc.builders = [h, b]; head.add(h); hips.add(b);
+  { // The Smith: a welding visor pushed up, and the cloth itself glows like a coal
+    const h = new THREE.Group(); acc.builders = [h]; head.add(h);
     const leather = new THREE.MeshStandardMaterial({ color: 0x3b2413, roughness: 0.8, side: THREE.DoubleSide });
-    const apron = new THREE.Mesh(new THREE.CylinderGeometry(0.3, 0.335, 0.62, 24, 1, true, Math.PI - 0.95, 1.9), leather); apron.position.y = 0.1; b.add(apron);
-    const bib = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.3, 0.2, 20, 1, true, Math.PI - 0.6, 1.2), leather); bib.position.y = 0.5; b.add(bib);
-    const visor = new THREE.Mesh(new THREE.SphereGeometry(0.255, 30, 12, Math.PI * 1.15, Math.PI * 0.7, Math.PI * 0.2, Math.PI * 0.16), black); visor.scale.set(1.06, 1, 1.02); h.add(visor);
-    const strap = new THREE.Mesh(new THREE.TorusGeometry(0.25, 0.016, 8, 48), leather); strap.rotation.x = Math.PI / 2 - 0.25; strap.position.y = 0.13; h.add(strap);
+    const visor = new THREE.Mesh(new THREE.SphereGeometry(0.262, 30, 12, Math.PI * 1.15, Math.PI * 0.7, Math.PI * 0.2, Math.PI * 0.15), black); visor.scale.set(0.95, 1, 1.06); h.add(visor);
+    const strap = new THREE.Mesh(new THREE.TorusGeometry(0.245, 0.016, 8, 48), leather); strap.rotation.x = Math.PI / 2 - 0.25; strap.scale.set(0.93, 1.05, 1); strap.position.y = 0.13; h.add(strap);
   }
   room.add(R);
-  return { R, hips, head, neck, arms, eyeMat, antTip, sheet, inner, acc, sp, base };
+  return { R, hips, head, neck, arms: [], eyeMat, antTip, sheet, inner, acc, U };
 })();
 function dressGhost(id) {
   const key = GHOSTS[id] ? id : "scanner", g = GHOSTS[key], r = robot;
-  r.sheet.color.set(g.body); r.sheet.emissive.set(g.glow); r.sheet.emissiveIntensity = g.k; r.inner.color.set(g.glow);
+  r.sheet.color.set(g.body); r.U.uGlow.value.set(g.glow); r.U.uRim.value = g.k; r.inner.color.set(g.glow);
   r.eyeMat.emissive.set(g.eye);
   for (const k of Object.keys(GHOSTS)) (r.acc[k] || []).forEach((o) => (o.visible = k === key));
   roomParts.chair.visible = false; // ghosts do not sit
-  r.R.position.set(...(key === "watch" ? [0.5, 0.95, -1.5] : key === "markets" ? [0.6, 0.8, -1.5] : [0, 0, -0.22])); // by the shelf, by the board, or at the desk
+  r.R.position.set(...(key === "watch" ? [-0.5, small ? 1.5 : 0.7, small ? -1.7 : -1.3] : key === "markets" ? [-0.4, small ? 1.4 : 0.55, small ? -1.7 : -1.2] : [0, 0, -0.22])); // by the shelf, by the board, or at the desk
 }
 function swayGhost(t) {
-  const { sp, base } = robot, m = reduce ? 0.25 : 1;
-  for (let i = 0; i < sp.count; i++) {
-    const x = base[i * 3], y = base[i * 3 + 1], z = base[i * 3 + 2], w = clamp((0.25 - y) / 0.75, 0, 1), a = Math.atan2(z, x), k = 1 + Math.sin(t * 2.1 + a * 3 + y * 6) * 0.09 * w * w * m;
-    sp.setXYZ(i, x * k, y + Math.sin(t * 2.6 + a * 5) * 0.03 * w * w * m, z * k + Math.sin(t * 1.3 + y * 4) * 0.05 * w * w * m);
-  }
-  sp.needsUpdate = true;
-  if (robot.acc.lantern) robot.acc.lantern.position.y = 0.42 + Math.sin(t * 1.7) * 0.03 * m;
-  robot.antTip.position.set(Math.cos(t * 0.9) * 0.34, 0.26 + Math.sin(t * 1.9) * 0.06, Math.sin(t * 0.9) * 0.34);
+  const m = reduce ? 0.25 : 1;
+  robot.U.uT.value = t * m;
+  if (robot.acc.lantern) robot.acc.lantern.position.y = 1.2 + Math.sin(t * 1.7) * 0.04 * m;
+  robot.antTip.position.set(Math.cos(t * 0.9) * 0.42, 0.22 + Math.sin(t * 1.9) * 0.07, Math.sin(t * 0.9) * 0.42);
 }
 
 // Kaelis core model (same GLB as the home page) for the plaza
@@ -1145,7 +1146,7 @@ function openPanel(id) {
 
 // the action behind the red button
 async function action(id) {
-  pressButton();
+  pressButton(); greetS.target = 0;
   if (id === "scanner") {
     const mint = ($("mint") && $("mint").value.trim()) || "";
     const res = $("res"), go = $("go");
@@ -1157,7 +1158,7 @@ async function action(id) {
       state.watch = { log: [{ text: "Started watching $" + state.lastScan.symbol, bad: false }], timer: state.watch.timer, prev: safePulse(out.data), checks: 1 };
       startWatch();
       res.innerHTML = scanSummary(state.lastScan);
-      celebrate(state.lastScan); loadShelf();
+      celebrate(state.lastScan); loadShelf(); greetS.target = 1;
     } catch (e) { res.innerHTML = `<p style="color:var(--danger)">${esc(e.message || "Could not reach Solana right now. Try again in a moment.")}</p>`; }
     state.scanning = false; go.disabled = false; drawScreens(id); refreshLabels();
   } else if (id === "holders") {
@@ -1236,14 +1237,14 @@ function tween(ms, fn) {
   if (reduce || ms <= 0) { fn(1); return Promise.resolve(); }
   return new Promise((done) => { const t0 = performance.now(); const step = (now) => { const k = Math.min(1, (now - t0) / ms); fn(ease(k)); k < 1 ? requestAnimationFrame(step) : done(); }; requestAnimationFrame(step); });
 }
-const fade = (on) => new Promise((r) => { $("fade").classList.toggle("on", on); setTimeout(r, reduce ? 0 : 300); });
+const fade = (on) => new Promise((r) => { $("fade").classList.toggle("on", on); setTimeout(r, reduce ? 0 : 440); });
 // ---------------------------------------------------------------- THE CORRIDOR (one building, four rooms)
 // Dark old-laboratory hallway: plank walls, stone floor, brass lamps. Each door has a lit window that
 // hints at the room behind it and a brass plaque with its number.
 const hall = new THREE.Scene();
 const DOORS = { scanner: { x: -1, z: -3.6 }, watch: { x: 1, z: -3.6 }, markets: { x: -1, z: -8.8 }, builders: { x: 1, z: -8.8 } };
-const doorHits = [], doorGlow = {};
-const hc = { x: 0, z: 2.6, lx: 0, lz: -6 }; // corridor camera: position and look offset
+const doorHits = [], doorGlow = {}, doorPiv = {};
+const hc = { x: 0, z: 2.6, lx: 0, lz: -6, walk: 0 }; // corridor camera: position and look offset
 const HALL_FROM = 2.6, HALL_REST = -0.3;
 {
   hall.background = new THREE.Color(0x060504);
@@ -1278,9 +1279,13 @@ const HALL_FROM = 2.6, HALL_REST = -0.3;
     const glass = new THREE.Mesh(new THREE.PlaneGeometry(1.5, 1.1), new THREE.MeshBasicMaterial({ map: tex, color: new THREE.Color(0.9, 0.9, 0.9) }));
     glass.position.set(wx, 1.7, d.z - 1.5); glass.rotation.y = -s * Math.PI / 2; hall.add(glass); doorGlow[id] = glass;
     for (const [w, h, dy, dz] of [[1.62, 0.07, 0.58, 0], [1.62, 0.07, -0.58, 0], [0.07, 1.2, 0, 0.78], [0.07, 1.2, 0, -0.78], [0.04, 1.1, 0, 0]]) { const f = new THREE.Mesh(new THREE.BoxGeometry(0.06, h, w === 0.07 || w === 0.04 ? w : w), iron); f.geometry = new THREE.BoxGeometry(0.06, h, w); f.position.set(wx - s * 0.02, 1.7 + dy, d.z - 1.5 + dz); hall.add(f); }
+    const n0 = hall.children.length;
     const door = new THREE.Mesh(new THREE.BoxGeometry(0.08, 2.25, 1.05), new THREE.MeshStandardMaterial({ color: 0x241a11, roughness: 0.7, metalness: 0.15 })); door.position.set(wx - s * 0.03, 1.125, d.z); hall.add(door);
     for (const dy of [0.35, 1.9]) { const band = new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.07, 1.07), brass); band.position.set(wx - s * 0.035, dy, d.z); hall.add(band); }
     const knob = new THREE.Mesh(new THREE.SphereGeometry(0.05, 14, 10), brass); knob.position.set(wx - s * 0.1, 1.05, d.z - 0.38); hall.add(knob);
+    const piv = new THREE.Group(); piv.position.set(wx - s * 0.03, 0, d.z + 0.525); piv.userData.s = s; hall.add(piv); // hinge on the near edge; it swings into the room
+    hall.children.slice(n0, -1).forEach((o) => piv.attach(o)); doorPiv[id] = piv;
+    const slab = new THREE.Mesh(new THREE.PlaneGeometry(1.0, 2.2), new THREE.MeshBasicMaterial({ color: new THREE.Color(2.6, 1.7, 0.85), fog: false })); slab.position.set(wx - s * 0.004, 1.1, d.z); slab.rotation.y = -s * Math.PI / 2; hall.add(slab); // the room's light, hidden until the door moves
     const ptex = canvasTex(512, 160, (g, w, h) => { g.fillStyle = "#8a6a45"; g.fillRect(0, 0, w, h); g.strokeStyle = "#3a2a18"; g.lineWidth = 6; g.strokeRect(8, 8, w - 16, h - 16); g.fillStyle = "#1a1109"; g.textAlign = "center"; g.textBaseline = "middle"; g.font = "600 64px Georgia, serif"; g.fillText(ROMAN[id], w / 2, 58); g.font = "500 30px Georgia, serif"; g.fillText(byId[id].name.toUpperCase(), w / 2, 118); });
     const plaque = new THREE.Mesh(new THREE.PlaneGeometry(0.92, 0.29), new THREE.MeshBasicMaterial({ map: ptex, color: new THREE.Color(0.7, 0.7, 0.7) })); plaque.position.set(s * (W / 2 - 0.5), 2.62, d.z + 0.62); hall.add(plaque); // a blade sign, facing down the corridor
     const arm = new THREE.Mesh(new THREE.BoxGeometry(0.98, 0.025, 0.025), iron); arm.position.set(s * (W / 2 - 0.5), 2.79, d.z + 0.62); hall.add(arm);
@@ -1295,7 +1300,7 @@ const HALL_FROM = 2.6, HALL_REST = -0.3;
 }
 function updateHall(t) {
   const m = reduce ? 0 : 1;
-  camera.position.set(hc.x + pointer.x * 0.18 * m, 1.62 + Math.sin(t * 1.4) * 0.012 * m, hc.z);
+  camera.position.set(hc.x + pointer.x * 0.18 * m * (1 - hc.walk) + Math.sin(t * 4.6) * 0.025 * hc.walk * m, 1.62 + Math.sin(t * 1.4) * 0.012 * m + Math.abs(Math.sin(t * 4.6)) * 0.045 * hc.walk * m, hc.z); // footsteps while walking
   camera.lookAt(hc.x + hc.lx + pointer.x * 0.6 * m, 1.55 + pointer.y * 0.25 * m, hc.z + hc.lz);
   for (const id of ROOMS) doorGlow[id].material.color.setScalar((hoverDoor === id ? 1.25 : 0.86) + Math.sin(t * 2.3 + DOORS[id].z) * 0.04 * m);
   hall.userData.pupil.position.x = pointer.x * 0.12; hall.userData.pupil.position.y = 1.75 + pointer.y * 0.08;
@@ -1513,7 +1518,6 @@ async function greet() {
   } else { greetS.target = 1; say(state.lastScan ? "Back again." : "What did you bring?", 4200); await wait(450); if (!live()) return; }
   tank.target = Math.max(tank.target, 0.45); openPanel("scanner"); greetS.on = false;
   try { localStorage.setItem("kaelis.met", "1"); } catch (e) { /* private mode */ }
-  setTimeout(() => { if (run === greetS.run) greetS.target = 0; }, 2800);
 }
 
 // ---------------------------------------------------------------- moving: city -> corridor -> room
@@ -1539,25 +1543,36 @@ async function enterLab() {
   Object.assign(hc, { x: 0, z: HALL_FROM, lx: 0, lz: -6 }); updateHall(0);
   await fade(false);
   const first = !met();
-  await tween(first ? 2600 : 1400, (k) => { hc.z = lerp(HALL_FROM, HALL_REST, k); });
-  busy = false;
+  await tween(first ? 2600 : 1600, (k) => { hc.z = lerp(HALL_FROM, HALL_REST, k); hc.walk = Math.sin(k * Math.PI); });
+  hc.walk = 0; busy = false;
   if (first) enterRoom("scanner"); // first visit: straight through the first door
 }
 async function enterRoom(id) {
   if (busy || !byId[id]) return; busy = true;
   if (scene === city) { savedCity = { pos: camera.position.clone(), target: controls.target.clone() }; controls.enabled = false; controls.autoRotate = false; }
-  if (scene === hall) { const d = DOORS[id], a = { ...hc }; await tween(850, (k) => { hc.x = lerp(a.x, d.x * 0.35, k); hc.z = lerp(a.z, d.z + 1.5, k); hc.lx = lerp(a.lx, d.x * 4, k); hc.lz = lerp(a.lz, -1.7, k); }); }
+  const walked = scene === hall && !reduce;
+  if (scene === hall) {
+    const d = DOORS[id], a = { ...hc }, piv = doorPiv[id];
+    await tween(1300, (k) => { hc.x = lerp(a.x, d.x * 0.1, k); hc.z = lerp(a.z, d.z + 2.0, k); hc.lx = lerp(a.lx, d.x * 3, k); hc.lz = lerp(a.lz, -2.0, k); hc.walk = Math.sin(k * Math.PI); }); // walk up to the door
+    await tween(800, (k) => { piv.rotation.y = -piv.userData.s * 1.5 * k; });                                                                                                        // it opens; light comes out
+    const b = { ...hc }; let lit = false;
+    await tween(1200, (k) => { hc.x = lerp(b.x, d.x * 1.2, k); hc.z = lerp(b.z, d.z + 0.1, k); hc.lx = lerp(b.lx, d.x * 4, k); hc.lz = lerp(b.lz, -0.1, k); hc.walk = Math.sin(k * Math.PI) * 0.8;
+      if (k > 0.5 && !lit) { lit = true; fade(true); } });                                                                                                                          // and you step through into it
+    hc.walk = 0;
+  }
   await fade(true);
+  for (const k of ROOMS) doorPiv[k].rotation.y = 0;
   greetS.run++; greetS.target = 0; greetS.on = false; skipGreet(); say(null);
   current = id; $("panel").hidden = true; setScene(room);
   themeRoom(id); drawScreens(id); dressRoom(id);
   const view = viewOf(id);
   controls.minAzimuthAngle = -Infinity; controls.maxAzimuthAngle = Infinity;
-  camera.position.copy(view.pos).add(new THREE.Vector3(1.2, 0.5, 2)); controls.target.copy(view.target);
+  const from = walked ? new THREE.Vector3(view.pos.x + 1.9, 1.62, view.pos.z + 4.4) : view.pos.clone().add(new THREE.Vector3(1.2, 0.5, 2)); // the doorway is behind you
+  camera.position.copy(from); controls.target.copy(view.target);
   setRoomControls(); controls.update();
   await fade(false);
   const p0 = camera.position.clone();
-  await tween(1100, (k) => { camera.position.lerpVectors(p0, view.pos, k); camera.lookAt(controls.target); });
+  await tween(walked ? 2400 : 1100, (k) => { camera.position.lerpVectors(p0, view.pos, k); if (walked) camera.position.y += Math.abs(Math.sin(k * Math.PI * 4)) * 0.05 * (1 - k); camera.lookAt(controls.target); });
   controls.enabled = true; busy = false;
   if (id === "scanner") greet(); else { openPanel(id); say(GHOSTS[id].line, 4500); greetS.target = 1; } // the others look up from their work and stay with you
 }
@@ -1596,7 +1611,7 @@ function animateRobot(t, dt) {
   robo.look += (scan * typing - robo.look) * Math.min(1, dt * 3);
   r.neck.rotation.y = robo.look * (1 - greetS.k) - greetS.k * 0.8 + (robo.cheer > 0 ? Math.sin(robo.cheer * 12) * 0.25 : 0);
   r.neck.rotation.x = -0.12 + Math.sin(t * 1.3) * 0.02 * typing;
-  r.hips.position.y = 0.7 + Math.sin(t * 1.4) * 0.04 * (reduce ? 0.2 : 1); r.hips.rotation.z = Math.sin(t * 0.9) * 0.035 * (reduce ? 0 : 1); swayGhost(t);
+  r.hips.position.y = Math.sin(t * 1.4) * 0.045 * (reduce ? 0.2 : 1) + (robo.cheer > 0 ? Math.sin(Math.min(1, robo.cheer * 1.6) * Math.PI) * 0.22 : 0); r.hips.rotation.z = Math.sin(t * 0.9) * 0.035 * (reduce ? 0 : 1); swayGhost(t);
   // arms: typing, the right one slams the button, both go up on a cheer
   r.arms.forEach(({ s, shoulder, elbow }) => {
     const tap = Math.sin(t * 14 + (s > 0 ? 0 : 1.7)) * 0.06 * typing;
@@ -1607,6 +1622,7 @@ function animateRobot(t, dt) {
     shoulder.rotation.set(sx, 0, sz); elbow.rotation.set(ex, 0, 0);
   });
   if (fx.alarm > 0) r.neck.rotation.y = Math.sin(t * 22) * 0.35;
+  r.hips.rotation.y = r.neck.rotation.y * 1.2; // the whole sheet turns where the head used to
   r.eyeMat.emissiveIntensity = 1.6 + (robo.press + robo.cheer) * 2.5 + greetS.k * 1.8 + Math.sin(t * 3) * 0.25;
   roomParts.btn.position.y = 0.94 - (robo.press > 0.55 && robo.press < 0.8 ? 0.03 : 0);
   roomParts.btn.material.emissiveIntensity = 0.6 + robo.press * 2.5;
@@ -1614,7 +1630,7 @@ function animateRobot(t, dt) {
 
 
 // =================================================================== FX (the fun layer)
-const fx = { glow: reduce ? 1 : 0, pulses: [], stars: [], lastPulse: 0, pulsedScan: 0, intro: reduce ? 1 : 0, spin: 0, alarm: 0, coin: 0, glitchAt: 0 };
+const fx = { glow: reduce ? 1 : 0.4, pulses: [], stars: [], lastPulse: 0, pulsedScan: 0, intro: reduce ? 1 : 0, spin: 0, alarm: 0, coin: 0, glitchAt: 0 };
 
 // --- shockwave rings from the core across the plaza
 const pulseGeo = new THREE.RingGeometry(0.92, 1, 128);
@@ -1699,7 +1715,7 @@ async function intro() {
   at(0); camera.lookAt(q1);
   const rise = tween(4600, (k) => {
     TOWERS[0].group.scale.y = 1;
-    fx.glow = clamp((k - 0.3) / 0.45, 0, 1);                       // the building wakes floor by floor of light
+    fx.glow = 0.4 + 0.6 * clamp((k - 0.2) / 0.5, 0, 1);                       // the building wakes floor by floor of light
     TOWERS[0].beamMat.uniforms.uK.value = 0.2 * clamp((k - 0.7) / 0.25, 0, 1);
   });
   await tween(4600, (k) => { at(k); camera.lookAt(q1); });

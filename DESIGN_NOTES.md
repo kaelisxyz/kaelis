@@ -90,3 +90,8 @@ Guideline skill: `docs/skills/crypto-web-pro/SKILL.md`.
 - The robot is gone. Each room has its own sheet ghost (`GHOSTS`, `dressGhost`, `swayGhost` in site/index.html): The Assayer (bone white, mint eyes, brass goggles), The Archivist (parchment, hood, hand lantern, floats by the shelf), The Broker (top hat, monocle, bow tie, floats by the board), The Smith (soot and ember, leather apron, visor). Same rig as before (`robot` object), so typing, cheer, alarm and greeting still work. No chair.
 - Ghosts outside the Assay Room turn to the visitor and say one line.
 - Intro: camera arcs in over the skyline (never top-down); the tower lights up via `fx.glow`; brass plaza rings and two searchlights from the crown.
+
+## Cloth ghosts, warm transitions, the walk in (2026-11-12, later)
+- Ghost sheet = real cloth: tools/3d/ghost_cloth.py drapes a round sheet over a mannequin with the Blender cloth solver, bakes AO into vertex colours, exports site/models/ghost.glb (meshopt, 0.5 MB, 83k tris). The model is quantized, so the shader converts to metres with `uQ`/`uS`.
+- In the shader (`sheet.onBeforeCompile`): eyes and mouth are cut per pixel, the hem frays through `alphaHash` using the flat-cloth UVs, a rim light in the room colour, sway on the hanging part only. Arms no longer animate; the whole sheet turns, bobs and rises on a cheer.
+- No black between places: `.fade` is a warm light wash. Corridor doors hinge (`doorPiv`), open into the room with a bright slab behind, the camera walks up, steps through, and walks into the room with a footstep bob (`hc.walk`).
