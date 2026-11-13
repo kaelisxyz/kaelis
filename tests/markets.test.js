@@ -127,9 +127,10 @@ const pair = (m, price, liq = 50000) => ({ chainId: "solana", baseToken: { addre
   await t("ledger: stocks are counted apart from the accuracy numbers", () => {
     const { stats } = require("../lib/ledger.js");
     const r = (asset, p, rugged) => ({ asset, p, rugged, resolvedAt: "2026-11-18T00:00:00Z" });
-    const s = stats([r("token", 0.9, 1), r("token", 0.1, 1), r("stock", 0.24, 0), r("stock", 0.24, 0), { asset: "stock", p: 0.2 }]);
+    const s = stats([r("token", 0.9, 1), r("token", 0.1, 1), r("stock", 0.24, 0), r("stock", 0.24, 0), { asset: "stock", p: 0.2 },
+      { asset: "token", mint: STOCKS[2].mint, p: 0.24 }]); // an early stock call sealed before the tag existed
     assert.strictEqual(s.calls, 2); assert.strictEqual(s.resolved, 2); assert.strictEqual(s.accuracy, 50); assert.strictEqual(s.rugsMissed, 1);
-    assert.deepStrictEqual([s.stocks.calls, s.stocks.open, s.stocks.resolved, s.stocks.held], [3, 1, 2, 2]);
+    assert.deepStrictEqual([s.stocks.calls, s.stocks.open, s.stocks.resolved, s.stocks.held], [4, 2, 2, 2]);
   });
   console.log(`\n${pass} markets tests passed`);
 })();
