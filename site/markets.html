@@ -110,7 +110,7 @@
         <span class="tag">Look-alikes</span>
         <h2>The copies.</h2>
         <table class="tbl"><thead><tr><th>Copies</th><th>Token</th><th class="hide-sm">Pool</th><th></th></tr></thead><tbody id="fakes"><tr><td colspan="4" class="note">Loading…</td></tr></tbody></table>
-        <p class="note">Tokens that use a stock's ticker on a mint that is not the official one. Each gets a hard flag (CC), and an AI agent that asks Kaelis before buying one gets <b>block</b>. Searched once a day.</p>
+        <p class="note">Tokens that use a stock's ticker on a mint that is not the official one get a hard flag (CC), and an AI agent that asks Kaelis before buying one gets <b>block</b>. Tokens that use the name of a company with no official token on Solana yet (Anthropic, OpenAI), "pre-IPO" wrappers included, are not that company's stock: they get a <b>warning</b>. Searched once a day.</p>
       </div>
     </div>
   </section>
@@ -237,7 +237,7 @@
       <td class="ctl">${n && n.issuer ? (n.issuer.length ? n.issuer.map((k) => CTL[k] || k).join(" · ") : "none") : "–"}</td>
       <td><a class="tag" href="scan.html?mint=${esc(s.mint)}">Scan →</a></td></tr>`; }).join("");
     $("sealedNote").textContent = old.length ? `The calls sealed on the Ledger on ${old[0].call.openedAt.slice(0, 10)} were made under rules ${old[0].call.rulesVersion}, before issuer controls were read apart, so they show a lower grade. Sealed calls are never edited; the next ones, from ${old[0].call.resolveAt.slice(0, 10)}, use the current rules. Stock calls are kept out of the Ledger's accuracy numbers.` : "Stock calls are kept out of the Ledger's accuracy numbers.";
-    $("fakes").innerHTML = j.lookalikes.length ? j.lookalikes.slice(0, 30).map((f) => `<tr><td class="m">${esc(f.copies)}</td><td><span class="flag">CC</span> ${esc(f.name || "unnamed")} <span class="note m">${esc(f.mint.slice(0, 4))}…${esc(f.mint.slice(-4))}</span></td><td class="m hide-sm">${f.liq ? usd(f.liq) : "none left"}</td><td><a class="tag" href="scan.html?mint=${esc(f.mint)}">Scan →</a></td></tr>`).join("")
+    $("fakes").innerHTML = j.lookalikes.length ? j.lookalikes.slice(0, 30).map((f) => `<tr><td class="m">${esc(f.copies)}</td><td><span class="flag"${f.kind === "unlisted" ? ' style="color:var(--warn)"' : ""}>${f.kind === "unlisted" ? "warn" : "CC"}</span> ${esc(f.name || "unnamed")} <span class="note m">${esc(f.mint.slice(0, 4))}…${esc(f.mint.slice(-4))}</span></td><td class="m hide-sm">${f.liq ? usd(f.liq) : "none left"}</td><td><a class="tag" href="scan.html?mint=${esc(f.mint)}">Scan →</a></td></tr>`).join("")
       : `<tr><td colspan="4" class="note">${j.lookalikesAt ? "None found today." : "First check runs with the next patrol."}</td></tr>`;
   }).catch(() => {
     ["plotIdx", "plotKiq"].forEach((id) => { const e = document.createElement("div"); e.className = "empty"; e.textContent = "Markets run on the Kaelis server. Not available in this preview."; $(id).appendChild(e); });

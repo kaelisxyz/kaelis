@@ -15,7 +15,7 @@
 })(typeof self !== "undefined" ? self : this, function () {
   "use strict";
 
-  const RULES_VERSION = "1.4.0";
+  const RULES_VERSION = "1.5.0";
   // Official mints of tokenized stocks Kaelis knows (xStocks by Backed). A token that uses one of these
   // tickers but is not the official mint is an impersonation: a hard flag, whatever else it looks like.
   // The official ones are read differently (rules 1.4.0): see ISSUER_CHECKS.
@@ -45,6 +45,16 @@
   // are reported apart, as `issuer`, and do not add to the score. The market checks (sell test, liquidity, pool age)
   // still score, and the grade is capped at A: issuer control is a known flag of its own kind. (rules 1.4.0)
   const ISSUER_CHECKS = ["mint", "freeze", "extensions", "holders", "lp"];
+
+  // Companies with no official token on Solana (not listed, or listed with no tokenized version yet). A token that uses
+  // one of these names is not that company's stock, whatever it is: a meme, or a "pre-IPO" wrapper the company does not
+  // recognise. That is a warning, not a hard flag: names and short tickers collide with unrelated tokens ("ANT" is also
+  // AntMiner and The Ants), so the match is on the full company name and only caps the grade at BB. When an official
+  // tokenized version appears, its mint goes into KNOWN_ASSETS and copies become a hard flag like any other. (rules 1.5.0)
+  const UNLISTED = [
+    { re: /\banthropic\b/i, name: "Anthropic", says: "Anthropic says transfers of its shares without board approval are void." },
+    { re: /\bopen\s?ai\b/i, name: "OpenAI", says: "OpenAI has said tokens like these are not OpenAI equity." },
+  ];
 
   // weights add up to 100 (see docs/TECH.md)
   const WEIGHTS = { sell: 25, liquidity: 15, holders: 15, lp: 15, mint: 10, extensions: 10, age: 5, freeze: 5 };
@@ -258,7 +268,11 @@
     const shown = own ? own.baseToken.symbol : d.meta && d.meta.symbol, tick = String(shown || "").toUpperCase();
     const known = KNOWN_ASSETS[tick];
     if (known && known.mint !== d.mint) add("impersonation", "Impersonation", 0, 1, `Uses the ${shown} ticker but is not the official ${known.name} (official mint ${known.mint.slice(0, 4)}…${known.mint.slice(-4)}). Treat it as a copy.`, { hard: true });
-    else if (known) add("impersonation", "Official asset", 0, 0, `The official ${known.name}. Issuer controls (mint, freeze, permanent delegate) are part of a regulated tokenized stock, and still a risk to know.`);
+    // a company with no official token here (see UNLISTED): a warning, never a hard flag
+    const said = [own && own.baseToken.name, own && own.baseToken.symbol, d.meta && d.meta.name, d.meta && d.meta.symbol].filter(Boolean).join(" ");
+    const co = known ? null : UNLISTED.find((u) => u.re.test(said));
+    if (co) add("unlisted", "Not company stock", 0, 1, `Uses the name of ${co.name}, which has no official token on Solana. This is not ${co.name} stock and gives no claim on its shares. ${co.says}`, { warn: true });
+    if (known && known.mint === d.mint) add("impersonation", "Official asset", 0, 0, `The official ${known.name}. Issuer controls (mint, freeze, permanent delegate) are part of a regulated tokenized stock, and still a risk to know.`);
 
     // 8 freeze authority
     const fa = d.mintInfo.freezeAuthority;
@@ -278,7 +292,8 @@
     const band = score >= 70 ? "dangerous" : score >= 40 ? "suspicious" : "low";
     const extra = Array.isArray(r.risks) ? r.risks.map((k) => ({ name: k.name, level: k.level, description: k.description })) : [];
     const unavailable = checks.filter((c) => c.sev == null && c.scope !== "issuer").length;
-    return { score, band, grade: grade(score, hard, unavailable, official), hard, gen: (genome && genome.gen) || 0, checks, unavailable, issuer, rugcheckRisks: extra, rulesVersion: RULES_VERSION };
+    const warned = checks.some((c) => c.warn);
+    return { score, band, grade: grade(score, hard, unavailable, official, warned), hard, warned, gen: (genome && genome.gen) || 0, checks, unavailable, issuer, rugcheckRisks: extra, rulesVersion: RULES_VERSION };
   }
 
   // Kaelis Rating: the score as a letter grade, like a credit rating. It grades risk, it is not buy or sell advice.
@@ -287,17 +302,20 @@
   const GRADE_TEXT = { AAA: "No known red flags", AA: "Very low risk flags", A: "Low risk flags", BBB: "Some flags, still low", BB: "Speculative", B: "Highly speculative", CCC: "High risk", CC: "Very high risk", D: "Rugged (confirmed)" };
   // a check we could not read caps the grade at A: the top grades need complete data.
   // An official tokenized stock is capped at A too: its issuer controls are a known flag (see ISSUER_CHECKS).
-  function grade(score, hard, unavailable, official) {
+  // A warning (a token using the name of a company with no official token) caps it at BB.
+  function grade(score, hard, unavailable, official, warned) {
     if (hard) return "CC";
     let g = "CC";
     for (const [lim, x] of GRADES) if (score < lim) { g = x; break; }
     if ((unavailable || official) && (g === "AAA" || g === "AA")) g = "A";
+    if (warned && ["AAA", "AA", "A", "BBB"].includes(g)) g = "BB";
     return g;
   }
 
   const SAY = {
     sell: "Selling back is blocked or costs most of the money, which is how honeypots work.",
     impersonation: "It copies the ticker of a real tokenized stock but is not the official token.",
+    unlisted: "It uses the name of a company that has no official token on Solana, so it is not that company's stock.",
     liquidity: "There is very little money in the pools, so prices can swing hard and exits can be costly.",
     holders: "A few wallets hold a large share of the supply.",
     lp: "Most pool tokens are not locked, so liquidity can be pulled.",
@@ -374,5 +392,5 @@
     return { wallets: out, clusters, fresh: fresh.length, linkedShare, freshShare, checked, level, lines };
   }
 
-  return { RULES_VERSION, WEIGHTS, KNOWN_ASSETS, ISSUER_CHECKS, GRADE_TEXT, grade, isAddress, gather, evaluate, summary, pulse, compare, linkWallets, usd, pct };
+  return { RULES_VERSION, WEIGHTS, KNOWN_ASSETS, ISSUER_CHECKS, UNLISTED, GRADE_TEXT, grade, isAddress, gather, evaluate, summary, pulse, compare, linkWallets, usd, pct };
 });

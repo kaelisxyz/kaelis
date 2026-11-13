@@ -107,6 +107,22 @@ const pair = (m, price, liq = 50000) => ({ chainId: "solana", baseToken: { addre
     assert.strictEqual(r.hard, true); assert.strictEqual(r.grade, "CC");
     assert(/NVDAx ticker/.test(r.checks.find((c) => c.id === "impersonation").detail));
   });
+  await t("rules 1.5.0: a token using the name of a company with no official token gets a warning, capped at BB", () => {
+    const K = require("../site/js/kaelis-core.js");
+    const tok = (mint, name, symbol) => ({ mint, pairs: [{ chainId: "solana", baseToken: { address: mint, name, symbol }, liquidity: { usd: 3e5 }, priceUsd: "1", pairCreatedAt: Date.now() - 90 * 864e5, txns: { h24: { buys: 50, sells: 48 } } }],
+      mintInfo: { mintAuthority: null, freezeAuthority: null }, jup: { buyRoute: true, sellRoute: true, loss: 0.01 }, rug: { lpLockedPct: 100 }, holders: [], supply: 1 });
+    const pre = K.evaluate(tok("Pren1FvFX6J3E4kXhJuCiAD5aDmGEb7qJRncwA8Lkhw", "Anthropic PreStocks", "ANTHROPIC"));
+    assert.strictEqual(pre.hard, false, "a warning, never a hard flag"); assert.strictEqual(pre.warned, true);
+    assert.strictEqual(pre.grade, "BB", "capped at BB, got " + pre.grade);
+    assert(/not Anthropic stock/.test(pre.checks.find((c) => c.id === "unlisted").detail));
+    assert(K.evaluate(tok("Oai11111111111111111111111111111111111pump", "OpenAI Group PBC", "OAI")).warned, "OpenAI by name");
+    for (const [name, sym] of [["AntMiner", "ANT"], ["The Ants", "Ants"], ["Claude Cat", "CLAUDE"], ["Antsy", "ANTHRO"]]) {
+      const r = K.evaluate(tok("Meme1111111111111111111111111111111111pump", name, sym));
+      assert.strictEqual(r.warned, false, name + " must not be taken for Anthropic"); assert.notStrictEqual(r.grade, "BB");
+    }
+    const { decide } = require("../api/mcp.js");
+    assert.strictEqual(decide({ hardFlag: false, score: 2, unavailableChecks: 0, checks: [{ id: "unlisted", warn: true }] }, null, 69, 40), "warn");
+  });
   await t("agents: a copied stock ticker is blocked, the official one is allowed", () => {
     const { decide } = require("../api/mcp.js");
     assert.strictEqual(decide({ hardFlag: true, score: 85, unavailableChecks: 0 }, null, 69, 40), "block");

@@ -194,8 +194,8 @@
 
 <footer><div class="wrap tag" style="display:flex;justify-content:space-between;flex-wrap:wrap;gap:12px"><span>Kaelis scanner beta · Not financial advice</span><span style="display:flex;gap:16px"><a href="ledger.html">Ledger →</a><a href="docs.html">Docs →</a></span></div></footer>
 
-<script src="js/kaelis-config.js?v=1.4.0"></script>
-<script src="js/kaelis-core.js?v=1.4.0"></script>
+<script src="js/kaelis-config.js?v=1.5.0"></script>
+<script src="js/kaelis-core.js?v=1.5.0"></script>
 <script>
 (function () {
   "use strict";
@@ -251,7 +251,7 @@
     $("checks").innerHTML = r.checks.map((c) => {
       const cls = c.sev == null ? "na" : c.sev >= 0.5 ? "hit" : c.sev > 0 ? "warn" : "ok";
       const icon = { na: "?", hit: "✕", warn: "!", ok: "✓" }[cls];
-      const pts = c.scope === "issuer" ? "issuer" : c.sev == null ? "n/a" : "+" + Math.round(c.weight * c.sev) + " / " + c.weight; // official stocks: issuer controls do not score
+      const pts = c.scope === "issuer" ? "issuer" : c.sev == null ? "n/a" : c.weight === 0 ? (c.hard ? "hard flag" : c.warn ? "warning" : "–") : "+" + Math.round(c.weight * c.sev) + " / " + c.weight; // official stocks: issuer controls do not score
       return `<li class="${cls}"><i>${icon}</i><div><strong>${esc(c.name)}</strong><span class="d">${esc(c.detail)}</span></div><em>${pts}</em></li>`;
     }).join("");
     const rr = r.rugcheckRisks || [];
