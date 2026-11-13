@@ -84,7 +84,7 @@ async function callTool(name, args) {
     const t = deployers.ofMint(mint), dep = t ? deployerBrief(t.deployer) : null;
     if (!t && ledger.has(mint)) deployers.learn(mint).catch(() => {}); // trace it for the next caller; never make an agent wait for it
     const decision = decide(out, dep, max, warn);
-    const reasons = out.checks.filter((c) => c.points && c.points >= c.max / 2).map((c) => `${c.name}: ${c.evidence}`);
+    const reasons = out.checks.filter((c) => c.hard || (c.points && c.points >= c.max / 2)).map((c) => `${c.name}: ${c.evidence}`); // a hard flag is always a reason, even at 0 points (impersonation)
     if (dep && dep.rugged) reasons.push(`Deployer: ${dep.rugged} of ${dep.tested} tested tokens from this wallet rugged.`);
     if (out.unavailableChecks) reasons.push(`${out.unavailableChecks} check(s) could not run; treat the score as incomplete.`);
     if (out.issuer) reasons.push(`Official ${out.issuer.asset}: the issuer keeps legal controls${out.issuer.controls.length ? " (" + out.issuer.controls.map((c) => c.name.toLowerCase()).join(", ") + ")" : ""}. Not scored; you are trusting the issuer.`);
