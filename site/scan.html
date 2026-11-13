@@ -3,7 +3,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Kaelis Scanner</title>
-<meta name="description" content="Paste a Solana token address. Kaelis reads live on-chain and market data, runs fixed rules and shows a risk score with the evidence.">
+<meta name="description" content="Paste a token address from Solana, Ethereum, BNB Chain, Base or Robinhood Chain. Kaelis reads live on-chain and market data, runs fixed rules and shows a risk score with the evidence.">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter+Tight:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500&display=swap">
@@ -42,6 +42,8 @@
   form { display: flex; gap: 8px; flex-wrap: wrap; }
   input[type=text] { flex: 1 1 320px; min-width: 0; font-family: var(--f-mono); font-size: 14px; padding: 12px 14px; border: 1px solid var(--ink); background: var(--paper); color: var(--ink); border-radius: 0; }
   input[type=text]:focus { outline: 2px solid var(--ink); outline-offset: 2px; }
+  select#chain { font-family: var(--f-mono); font-size: 13px; padding: 12px 10px; border: 1px solid var(--ink); background: var(--paper); color: var(--ink); border-radius: 0; }
+  select#chain:focus-visible { outline: 2px solid var(--ink); outline-offset: 2px; }
   .examples { margin-top: 10px; display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
   .examples button { font-family: var(--f-mono); font-size: 11px; padding: 6px 10px; border: 1px dashed var(--ink); border-radius: 999px; background: var(--paper); cursor: pointer; color: var(--ink); }
   .err { color: var(--bad); margin-top: 10px; min-height: 1.5em; }
@@ -121,18 +123,22 @@
 
 <main>
   <div class="wrap">
-    <span class="tag beta">[ Scanner beta · live Solana data ]</span>
+    <span class="tag beta">[ Scanner · Solana · Ethereum · BNB · Base · Robinhood ]</span>
     <h1>Scan a token.</h1>
-    <p class="lead">Paste a Solana token address. Kaelis reads live on-chain and market data, runs fixed rules and shows a risk score with the evidence.</p>
+    <p class="lead">Paste a token address from Solana, Ethereum, BNB Chain, Base or Robinhood Chain. Kaelis reads live on-chain and market data, runs the same fixed rules on every chain and shows a risk score with the evidence.</p>
     <form id="f" autocomplete="off">
       <label for="mint" class="tag" style="position:absolute;left:-9999px">Token mint address</label>
-      <input type="text" id="mint" name="mint" placeholder="Token mint address, e.g. EPjF…Dt1v" spellcheck="false" inputmode="text">
+      <input type="text" id="mint" name="mint" placeholder="Token address: EPjF…Dt1v or 0x…" spellcheck="false" inputmode="text">
+      <label for="chain" class="tag" style="position:absolute;left:-9999px">Chain</label>
+      <select id="chain" aria-label="Chain"><option value="">Auto chain</option><option value="solana">Solana</option><option value="ethereum">Ethereum</option><option value="bsc">BNB Chain</option><option value="base">Base</option><option value="robinhood">Robinhood Chain</option></select>
       <button class="pill" id="go" type="submit">Scan ↗</button>
     </form>
     <div class="examples"><span class="tag" style="color:var(--mute)">Try</span>
       <button type="button" data-mint="EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v">USDC</button>
       <button type="button" data-mint="DezXAZ8z7PnrnRJjz3wXBoRgixCa6xjnB7YaB1pPB263">BONK</button>
       <button type="button" data-mint="JUPyiwrYJFskUPiHa7hkeR8VUtAeFoSYbKedZNsDvCN">JUP</button>
+      <button type="button" data-mint="0x6982508145454ce325ddbe47a25d4ec3d2311933" data-chain="ethereum">PEPE · ETH</button>
+      <button type="button" data-mint="0x020bfc650a365f8bb26819deaabf3e21291018b4" data-chain="robinhood">CASHCAT · Robinhood</button>
     </div>
     <div class="err" id="err" role="alert"></div>
 
@@ -187,15 +193,15 @@
           <tr><td>D</td><td>–</td><td>Rugged, confirmed by the Ledger 7 days later.</td></tr>
         </tbody>
       </table>
-      <p class="note">Data sources: Solana RPC, Jupiter quotes, DexScreener and RugCheck. Quotes are only asked for, nothing is ever traded. No wallet, no sign-in. If the AI explanation is on, it only describes the checks and never changes the score.</p>
+      <p class="note">Data sources: on Solana, Solana RPC, Jupiter quotes, DexScreener and RugCheck; on Ethereum, BNB Chain, Base and Robinhood Chain, GoPlus Security (a simulated buy and sell, and the contract) and DexScreener. Quotes are only asked for, nothing is ever traded. No wallet, no sign-in. If the AI explanation is on, it only describes the checks and never changes the score.</p>
     </section>
   </div>
 </main>
 
 <footer><div class="wrap tag" style="display:flex;justify-content:space-between;flex-wrap:wrap;gap:12px"><span>Kaelis scanner beta · Not financial advice</span><span style="display:flex;gap:16px"><a href="ledger.html">Ledger →</a><a href="docs.html">Docs →</a></span></div></footer>
 
-<script src="js/kaelis-config.js?v=1.5.0"></script>
-<script src="js/kaelis-core.js?v=1.5.0"></script>
+<script src="js/kaelis-config.js?v=1.6.0"></script>
+<script src="js/kaelis-core.js?v=1.6.0"></script>
 <script src="js/kaelis-wallet.js?v=1"></script>
 <script>
 (function () {
@@ -210,24 +216,24 @@
 
   // With a backend configured, the server scans (private RPC) and adds an AI explanation.
   // Without one, or if it fails, the browser scans on its own with public data.
-  async function runScan(mint) {
+  async function runScan(mint, chain) {
     await apiReady;
     if (api) {
       try {
-        const r = await fetch(api + "/api/scan?mint=" + encodeURIComponent(mint));
+        const r = await fetch(api + "/api/scan?mint=" + encodeURIComponent(mint) + (chain ? "&chain=" + encodeURIComponent(chain) : ""));
         const j = await r.json();
         if (r.ok && j.data && j.result) return j;
         if (j && j.userError) throw new Error(j.error);
       } catch (e) { if (e && e.message && !/fetch|network|JSON|Unexpected/i.test(e.message)) throw e; }
     }
-    const data = await K.gather(mint, { rpcUrls: CFG.rpcUrls });
+    const data = await K.gather(mint, { rpcUrls: CFG.rpcUrls, chain: chain || null });
     return { data, result: K.evaluate(data), source: "browser" };
   }
 
   function tokenName(d) {
     const p = bestPair(d);
-    if (p) { const t = p.baseToken.address === d.mint ? p.baseToken : p.quoteToken; return `${t.name} ($${t.symbol})`; }
-    return (d.rug && d.rug.tokenMeta && d.rug.tokenMeta.name) || "Unknown token";
+    if (p) { const t = p.baseToken.address === d.mint || (/^0x/i.test(d.mint) && String(p.baseToken.address).toLowerCase() === d.mint.toLowerCase()) ? p.baseToken : p.quoteToken; return `${t.name} ($${t.symbol})`; }
+    return (d.meta && d.meta.name && `${d.meta.name}${d.meta.symbol ? " ($" + d.meta.symbol + ")" : ""}`) || (d.rug && d.rug.tokenMeta && d.rug.tokenMeta.name) || "Unknown token";
   }
   function bestPair(d) { return (d.pairs || []).slice().sort((a, b) => ((b.liquidity && b.liquidity.usd) || 0) - ((a.liquidity && a.liquidity.usd) || 0))[0]; }
 
@@ -260,7 +266,17 @@
     $("extraList").innerHTML = rr.map((k) => `<li><b class="lv ${esc(k.level || "")}">${esc(k.level || "info")}</b> ${esc(k.name)}${k.description ? ` <span>· ${esc(k.description)}</span>` : ""}</li>`).join("");
     const liq = (d.pairs || []).reduce((t, x) => t + ((x.liquidity && x.liquidity.usd) || 0), 0);
     const j = d.jup || {};
-    const facts = [
+    const evm = d.chain && d.chain !== "solana", C = (K.CHAINS || {})[d.chain || "solana"] || { name: "Solana" }, gp = d.gp || {};
+    const facts = evm ? [
+      ["Chain", C.name],
+      ["Supply", d.supply != null ? Number(d.supply).toLocaleString("en-US", { maximumFractionDigits: 0 }) : "–"],
+      ["Holders", gp.holder_count ? Number(gp.holder_count).toLocaleString("en-US") : "–"],
+      ["Liquidity", d.pairs && d.pairs.length ? K.usd(liq) : "–"],
+      ["Price", p && p.priceUsd ? "$" + (+p.priceUsd).toPrecision(4) : "–"],
+      ["24h volume", p && p.volume ? K.usd(p.volume.h24) : "–"],
+      ["Simulated trade", gp.sell_tax != null && gp.sell_tax !== "" ? `${K.pct(+gp.buy_tax || 0)} buy · ${K.pct(+gp.sell_tax || 0)} sell tax` : "–"],
+      ["Contract", gp.is_open_source === "1" ? "Verified source" : gp.is_open_source === "0" ? "Not verified" : "–"],
+    ] : [
       ["Supply", d.supply != null ? Number(d.supply).toLocaleString("en-US", { maximumFractionDigits: 0 }) : "–"],
       ["Decimals", d.mintInfo.decimals],
       ["Liquidity", d.pairs && d.pairs.length ? K.usd(liq) : "–"],
@@ -270,7 +286,8 @@
       ["Token program", d.program === "TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb" ? "Token-2022" : "SPL Token"],
     ];
     $("facts").innerHTML = facts.map(([k, v]) => `<div><span>${k}</span><b>${esc(v)}</b></div>`).join("");
-    const links = [["Solscan", "https://solscan.io/token/" + d.mint], ["DexScreener", "https://dexscreener.com/solana/" + d.mint], ["RugCheck", "https://rugcheck.xyz/tokens/" + d.mint], ["Jupiter", "https://jup.ag/swap/SOL-" + d.mint]];
+    const links = evm ? [C.explorer && ["Explorer", C.explorer + d.mint], ["DexScreener", "https://dexscreener.com/" + C.dex + "/" + d.mint], ["GoPlus", "https://gopluslabs.io/token-security/" + C.goplus + "/" + d.mint]].filter(Boolean)
+      : [["Solscan", "https://solscan.io/token/" + d.mint], ["DexScreener", "https://dexscreener.com/solana/" + d.mint], ["RugCheck", "https://rugcheck.xyz/tokens/" + d.mint], ["Jupiter", "https://jup.ag/swap/SOL-" + d.mint]];
     $("links").innerHTML = links.map(([t, u]) => `<a class="pill ghost" href="${u}" target="_blank" rel="noopener">${t} ↗</a>`).join("");
     const when = new Date(d.fetchedAt || Date.now());
     $("meta").textContent = `Scanned ${when.toUTCString()}${d.slot ? " · slot " + d.slot : ""} · rules v${r.rulesVersion} · ${res.source === "server" ? "Kaelis server" : "your browser"} · open the links above to check the evidence yourself.`;
@@ -282,6 +299,7 @@
   async function deep(res) {
     const run = ++deepRun, el = $("deep");
     el.className = "deep"; $("deepList").innerHTML = ""; $("deepWallets").innerHTML = "";
+    if (res.data.chain && res.data.chain !== "solana") { $("deepState").textContent = "wallet funding links run on Solana for now"; return; }
     if (!res.data.holders) { $("deepState").textContent = "holder list unavailable"; return; }
     $("deepState").innerHTML = 'tracing funding of top wallets <span class="spin">◐</span>';
     try {
@@ -298,20 +316,24 @@
 
   function setBusy(on) { const go = $("go"); go.disabled = on; go.innerHTML = on ? 'Scanning <span class="spin">◐</span>' : "Scan ↗"; }
 
-  async function scan(mint) {
-    mint = (mint || "").trim();
+  async function scan(mint, chain) {
+    mint = (mint || "").trim(); chain = chain == null ? $("chain").value : chain;
     $("err").textContent = "";
-    if (!K.isAddress(mint)) { $("err").textContent = "That doesn't look like a Solana address. Paste the token's mint address (32 to 44 characters)."; return; }
+    const evmAddr = K.isEvmAddress && K.isEvmAddress(mint);
+    if (!K.isAddress(mint) && !evmAddr) { $("err").textContent = "That doesn't look like a token address. Solana: base58, 32 to 44 characters. Ethereum, BNB Chain, Base, Robinhood Chain: 0x and 40 hex characters."; return; }
+    if (evmAddr && chain === "solana") chain = "";
+    if (!evmAddr && chain && chain !== "solana") chain = "solana";
     if (!(await window.KaelisWallet.require())) { $("err").textContent = "Connect a wallet to run a scan. The Ledger and every past call stay open without one."; return; }
     stopWatch();
     setBusy(true);
     try {
-      const res = await runScan(mint);
+      const res = await runScan(mint, chain);
       current = res; lastPulse = K.pulse(res.data);
+      if (res.data.chain) $("chain").value = res.data.chain === "solana" && !chain ? "" : res.data.chain;
       render(res);
       deep(res);
       $("alerts").innerHTML = "";
-      try { history.replaceState(null, "", "?mint=" + mint); } catch (e) {}
+      try { history.replaceState(null, "", "?mint=" + res.data.mint + (res.data.chain && res.data.chain !== "solana" ? "&chain=" + res.data.chain : "")); } catch (e) {}
       $("out").scrollIntoView({ behavior: "smooth", block: "start" });
     } catch (e) {
       $("err").textContent = e.message || "Scan failed. Try again.";
@@ -323,7 +345,7 @@
   async function tick() {
     if (!current) return;
     try {
-      const res = await runScan(current.data.mint);
+      const res = await runScan(current.data.mint, current.data.chain);
       const now = K.pulse(res.data), alerts = K.compare(lastPulse, now);
       const moved = res.result.score - current.result.score;
       if (Math.abs(moved) >= 10) alerts.push(`Risk score moved from ${current.result.score} to ${res.result.score}.`);
@@ -345,10 +367,10 @@
   });
 
   $("f").addEventListener("submit", (e) => { e.preventDefault(); scan($("mint").value); });
-  document.querySelectorAll(".examples button").forEach((b) => b.addEventListener("click", () => { $("mint").value = b.dataset.mint; scan(b.dataset.mint); }));
+  document.querySelectorAll(".examples button").forEach((b) => b.addEventListener("click", () => { $("mint").value = b.dataset.mint; $("chain").value = b.dataset.chain || ""; scan(b.dataset.mint, b.dataset.chain || ""); }));
   window.KaelisWallet.mountChip($("walletChip"));
-  const q = new URLSearchParams(location.search).get("mint");
-  if (q) { $("mint").value = q; scan(q); }
+  const qs = new URLSearchParams(location.search), q = qs.get("mint"), qc = qs.get("chain") || "";
+  if (q) { $("mint").value = q; $("chain").value = qc; scan(q, qc); }
 })();
 </script>
 </html>

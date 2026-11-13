@@ -17,13 +17,14 @@ module.exports = async (req, res) => {
     let address = (q.get("address") || "").trim();
     const mint = (q.get("mint") || "").trim();
     if (mint) {
-      if (!isAddr(mint)) return send(res, 400, { error: "That is not a Solana mint address." });
+      if (!isAddr(mint)) return send(res, 400, { error: "That is not a token address." });
       let t = deployers.ofMint(mint);
-      if (!t && ledger.has(mint)) t = await deployers.learn(mint); // a tested token whose deployer was not traced yet
+      if (!t && ledger.has(mint) && !/^0x/i.test(mint)) t = await deployers.learn(mint); // a tested token whose deployer was not traced yet
       if (!t || !t.deployer) return send(res, 404, { error: ledger.has(mint) ? "The deployer of this token could not be identified yet." : "Kaelis has not tested this token. Test it first, then ask again.", mint });
       address = t.deployer;
     }
     if (!isAddr(address)) return send(res, 400, { error: "Pass ?address=<wallet> or ?mint=<token>." });
+    if (/^0x/i.test(address)) address = address.toLowerCase();
     const p = deployers.profile(address, ledger.all(), filings.view(100000).filings);
     if (mint) { const t = deployers.ofMint(mint); p.asked = { mint, via: t.via, platform: t.platform || null }; }
     send(res, 200, p, 30);

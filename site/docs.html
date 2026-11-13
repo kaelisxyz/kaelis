@@ -169,7 +169,7 @@
   <section class="hero">
     <div class="wrap">
       <span class="tag label">[ Kaelis docs ]</span>
-      <h1>The trust layer for Solana.</h1>
+      <h1>The trust layer for onchain tokens.</h1>
       <p class="lead">Kaelis rates the wallets that launch tokens and gives AI agents a safety check to call before they buy. Every rating is a public call, sealed on a ledger and checked against what happened.</p>
       <div class="status tag"><b style="background:#2f8f5b"></b>Live: agent safety check (MCP), Ledger, Filings, daily anchor on Solana, Proof-of-Build. Collecting: deployer reputation. Not live: paid API, $KAEL. Not financial advice.</div>
       <nav class="toc" aria-label="Contents">
@@ -196,7 +196,7 @@
       <span class="tag">How it works</span>
       <h3>Data, rating, proof, API.</h3>
       <div class="flow">
-        <div><span class="tag">1 · Data</span><b>Test and trace</b><p>Kaelis tests new Solana tokens around the clock: a sell test, liquidity, holders, LP lock, authorities, extensions, pool age. For each one it records who launched it and who first funded that wallet.</p></div>
+        <div><span class="tag">1 · Data</span><b>Test and trace</b><p>Kaelis tests new tokens on Solana, Ethereum, BNB Chain, Base and Robinhood Chain around the clock: a sell test, liquidity, holders, LP lock, authorities, extensions, pool age. For each one it records who launched it and who first funded that wallet.</p></div>
         <div><span class="tag">2 · Rating</span><b>Token, deployer, cluster</b><p>Each token gets a score and a grade from fixed, open rules. Each deployer gets a risk figure from how its tested tokens ended. Deployers funded by the same source are grouped as a cluster.</p></div>
         <div><span class="tag">3 · Proof</span><b>Sealed and checked</b><p>Every call goes into a hash chain. The chain head is written to Solana once a day. Seven days later Kaelis checks the outcome and <a href="ledger.html#accuracy">publishes its hits and its misses</a>.</p></div>
         <div><span class="tag">4 · API</span><b>Read by machines</b><p>Agents and apps read all of it: a pre-trade decision, a deployer record, the insider filings feed. Free while in beta.</p></div>
@@ -226,7 +226,7 @@
       <h3>One call before the trade.</h3>
       <p class="lead" style="max-width:58ch">Kaelis is an MCP server. A trading bot or an AI agent (Claude, Cursor, Eliza, Solana Agent Kit) calls <code>check_before_buy</code> right before a swap and gets a decision it can act on.</p>
       <div class="flow three">
-        <div><span class="tag">Tool</span><b>check_before_buy</b><p><code>mint</code>, optional <code>max_score</code> (69) and <code>warn_score</code> (40). Returns <code>decision</code>, score, grade, reasons, the deployer's record and proof.</p></div>
+        <div><span class="tag">Tool</span><b>check_before_buy</b><p><code>mint</code> (a Solana mint or a 0x contract), optional <code>chain</code> (solana, ethereum, bsc, base, robinhood; a 0x address is matched to the chain with its deepest pools), <code>max_score</code> (69) and <code>warn_score</code> (40). Returns <code>decision</code>, score, grade, reasons, the deployer's record and proof.</p></div>
         <div><span class="tag">Tool</span><b>deployer_reputation</b><p><code>address</code> or <code>mint</code>. Returns the wallet's tested tokens and outcomes, its risk, its funder and its cluster.</p></div>
         <div><span class="tag">Tool</span><b>scan_token</b><p><code>mint</code>. The full result behind the decision: every check with its points and evidence.</p></div>
       </div>
@@ -328,7 +328,7 @@
       <h3>Every generation smarter. Every upgrade proven.</h3>
       <p class="lead" style="max-width:58ch">Kaelis runs a loop by itself. Its rules are a genome, and a new generation is adopted only when it beats the current one on calls it never trained on.</p>
       <div class="flow">
-        <div><span class="tag">01 · Patrol</span><b>Scan on its own</b><p>Every 30 minutes Kaelis scans new Solana tokens listed on DexScreener. No one has to ask.</p></div>
+        <div><span class="tag">01 · Patrol</span><b>Scan on its own</b><p>Every 30 minutes Kaelis scans new tokens listed on DexScreener on Solana, Ethereum, BNB Chain, Base and Robinhood Chain, taking turns between Solana and the EVM chains. No one has to ask.</p></div>
         <div><span class="tag">02 · Call</span><b>Seal a prediction</b><p>Each scan becomes a hash-chained call on the Ledger, with every check value sealed in.</p></div>
         <div><span class="tag">03 · Check</span><b>See what happened</b><p>Seven days later Kaelis reads the pools again and marks the call rugged or held.</p></div>
         <div><span class="tag">04 · Evolve</span><b>Breed a better rule set</b><p>Once a day: 600 mutants are tried on 70% of tokens, the best one is judged on the other 30%. It wins only if it is measurably better calibrated.</p></div>

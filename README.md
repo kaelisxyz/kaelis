@@ -1,6 +1,6 @@
 # Kaelis
 
-> The trust layer for Solana: verifiable ratings for the wallets that launch tokens, and a pre-trade safety check for AI agents. Proof, not vibes.
+> The trust layer for onchain tokens: verifiable ratings for the wallets that launch tokens, and a pre-trade safety check for AI agents, on Solana, Ethereum, BNB Chain, Base and Robinhood Chain. Proof, not vibes.
 
 Kaelis tests new Solana tokens around the clock, records who launched each one and who funded that wallet, and seals every call in a hash-chained ledger that is written to Solana once a day and graded 7 days later, misses included. Agents and apps read it through an MCP server and a small REST API. Live at https://kaelis.si.
 

@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Kaelis</title>
-<meta name="description" content="Kaelis ($KAEL) is a market intelligence on Solana that patrols new tokens, seals every call on a public ledger and evolves its own rules in public. Step into Forge City to see it work.">
+<meta name="description" content="Kaelis is the trust layer for onchain tokens: ratings for the wallets that launch tokens and a pre-trade safety check for AI agents, on Solana, Ethereum, BNB Chain, Base and Robinhood Chain. Every call is sealed on a public ledger and graded after 7 days.">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' fill='%23f2f0ea'/%3E%3Ctext x='16' y='23' font-family='Arial' font-weight='700' font-size='20' text-anchor='middle' fill='%230b0b0c'%3EK%3C/text%3E%3C/svg%3E">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -128,6 +128,8 @@
   .pad button:active { background: var(--ink); color: var(--paper, #efeee9); }
   body.inside .hint { color: #4a5058; } /* dark ink on the white lab */
   .hero .sub { margin: -4px 0 0; font-size: 14px; line-height: 1.35; color: #4a4d52; max-width: 30ch; }
+  .hero .chains { margin: -8px 0 0; font: 500 10px var(--f-mono); letter-spacing: .03em; text-transform: uppercase; color: #3d4044; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .hero .chains i { font-style: normal; color: #a3a6aa; }
   .hint { position: fixed; left: 50%; transform: translateX(-50%); bottom: 96px; z-index: 4; color: var(--mute); pointer-events: none; text-align: center; }
 
   /* inside a tower: info + actions */
@@ -191,8 +193,9 @@
 
 <section class="hero" aria-label="Kaelis">
   <a class="mark" href="index.html" id="backStory"><b aria-label="KAELIS"><i>K</i><i>A</i><i>E</i><i>L</i><i>I</i><i>S</i></b></a>
-  <h1>The trust layer for Solana.</h1>
+  <h1>The trust layer for onchain tokens.</h1>
   <p class="sub">Ratings for the wallets behind tokens. A safety check for AI agents.</p>
+  <p class="chains" aria-label="Chains Kaelis reads">Solana <i>·</i> Ethereum <i>·</i> BNB <i>·</i> Base <i>·</i> Robinhood</p>
   <a class="live" href="ledger.html" id="live" hidden><b id="lvCalls">–</b> specimens on record <i>·</i> IQ <b id="lvIq">–</b></a>
   <div class="ca" aria-label="$KAEL contract address"><b>CA</b><span class="pending" data-ca>Not launched · track record first</span><button type="button" data-ca-copy aria-disabled="true">Copy</button></div>
   <div class="ctas">
@@ -221,8 +224,8 @@
   <p style="margin:0"><a class="pill" href="scan.html">Open the scanner</a> <a class="pill" href="tower.html">Holder tower</a></p>
 </div>
 
-<script src="js/kaelis-config.js?v=1.5.0"></script>
-<script src="js/kaelis-core.js?v=1.5.0"></script>
+<script src="js/kaelis-config.js?v=1.6.0"></script>
+<script src="js/kaelis-core.js?v=1.6.0"></script>
 <script src="js/kaelis-wallet.js?v=1"></script>
 <script type="importmap">
 { "imports": {
@@ -294,17 +297,19 @@ async function checkHealth() {
 }
 function tokenSymbol(data, mint) {
   const p = (data && data.pairs && data.pairs[0]) || null;
-  const t = p ? (p.baseToken && p.baseToken.address === mint ? p.baseToken : p.quoteToken) : null;
+  const t = p ? (p.baseToken && (p.baseToken.address === mint || (/^0x/i.test(mint) && String(p.baseToken.address).toLowerCase() === mint.toLowerCase())) ? p.baseToken : p.quoteToken) : null;
   return (t && t.symbol) || mint.slice(0, 4) + "…";
 }
 async function scanMint(mint) {
   mint = String(mint || "").trim();
-  if (!K || !K.isAddress(mint)) throw new Error("That doesn't look like a Solana token address (32 to 44 characters).");
+  const evm = K && K.isEvmAddress && K.isEvmAddress(mint);
+  if (!K || (!K.isAddress(mint) && !evm)) throw new Error("That doesn't look like a token address (Solana base58, or 0x on Ethereum, BNB Chain, Base and Robinhood Chain).");
   if (state.server) {
     try {
       const r = await fetch("api/scan?mint=" + encodeURIComponent(mint));
+      if (!r.ok && evm) { const j = await r.json().catch(() => null); throw new Error((j && j.error) || "That token could not be read."); }
       if (r.ok) { const j = await r.json(); if (j.result) return { mint, data: j.data, result: j.result, source: "Kaelis server", explain: j.explain }; }
-    } catch (e) { /* fall back to the browser */ }
+    } catch (e) { if (evm) throw e; /* fall back to the browser */ }
   }
   const data = await K.gather(mint, { rpcUrls: CFG.rpcUrls });
   return { mint, data, result: K.evaluate(data), source: "your browser" };
@@ -1035,7 +1040,7 @@ function drawScreens(id) {
       const r = ls.result; ga.font = `700 64px ${FONT}`; ga.fillStyle = riskColor(r.score); ga.textBaseline = "top"; ga.fillText(r.score + "/100", 18, 54);
       ga.font = `700 20px ${FONT}`; ga.fillText(bandText(r.band).toUpperCase() + "  ·  $" + ls.symbol, 20, 128);
       textLines(ga, r.checks.slice(0, 6).map((c) => [(c.sev == null ? "n/a " : (c.sev > 0.5 ? "!!  " : c.sev > 0 ? "!   " : "ok  ")) + c.name, c.sev == null ? "#8d87ad" : c.sev > 0.5 ? "#ff4d6a" : c.sev > 0 ? "#ffc24a" : "#59e7ca"]), 20, 168, 16, 25);
-    } else textLines(ga, [["Awaiting a specimen.", t.color], "Give Kaelis a Solana token", "address and it runs eight tests.", "", ["Real chain data, sealed on the record.", "#9aa1ad"]], 18, 58);
+    } else textLines(ga, [["Awaiting a specimen.", t.color], "Give Kaelis a token address", "on any of five chains: eight tests.", "", ["Real chain data, sealed on the record.", "#9aa1ad"]], 18, 58);
     screenFrame(gb, W(B), H(B), "Price · last 24h", "#8a6a45");
     if (ls && ls.data && ls.data.pairs && ls.data.pairs[0]) {
       const p = ls.data.pairs[0], ch = (p.priceChange && p.priceChange.h24) || 0;
@@ -1142,7 +1147,7 @@ function panelHTML(id) {
     h += `<div>${tag("Live data", t.color)} ${tag(state.server ? "Kaelis server" : "In your browser", "#9aa1ad")}</div>
       <label class="sr" for="mint">Token address</label>
       <div class="row"><input id="mint" placeholder="Token mint address" spellcheck="false" autocomplete="off" value="${ls ? esc(ls.mint) : ""}"><button class="act" id="go">Test it</button></div>
-      <div id="res">${ls ? scanSummary(ls) : `<p class="fine">Any Solana token address. Try USDC: EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v</p>`}</div>
+      <div id="res">${ls ? scanSummary(ls) : `<p class="fine">Any token address on Solana, Ethereum, BNB Chain, Base and Robinhood Chain. Try USDC on Solana: EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v</p>`}</div>
       <p class="fine">Kaelis reports risk. It never predicts price or promises profit.</p>`;
   } else if (id === "holders") {
     h += CFG.kaelMint
@@ -1235,7 +1240,7 @@ async function action(id) {
     await loadBuilders(); openPanel(id); drawScreens(id); refreshLabels(); robotCheer();
   } else if (id === "markets") {
     const inp = $("gMint"), out = $("gRes"), go = $("go"), mint = inp ? inp.value.trim() : "";
-    if (!/^[1-9A-HJ-NP-Za-km-z]{32,44}$/.test(mint)) { out.innerHTML = `<p style="color:var(--danger)">That is not a Solana token address.</p>`; return; }
+    if (!/^[1-9A-HJ-NP-Za-km-z]{32,44}$/.test(mint) && !/^0x[0-9a-fA-F]{40}$/.test(mint)) { out.innerHTML = `<p style="color:var(--danger)">That is not a token address (Solana, or 0x on Ethereum, BNB Chain, Base, Robinhood Chain).</p>`; return; }
     go.disabled = true; out.innerHTML = "<p>The Gate is checking…</p>";
     try { // the same call an agent makes
       const r = await fetch("mcp", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ jsonrpc: "2.0", id: 1, method: "tools/call", params: { name: "check_before_buy", arguments: { mint } } }) });
@@ -1640,6 +1645,7 @@ function setScene(s) {
   const pr = s === city ? BASE_PR : 1; renderer.setPixelRatio(pr); composer.setPixelRatio(pr); resize();
   document.body.classList.toggle("inside", s !== city); document.body.classList.toggle("in-hall", s === hall);
   $("exitBtn").hidden = s === city; $("exitBtn").textContent = s === room ? "← Corridor" : "← City";
+  $("walletChip").hidden = small && s === city;
   $("hint").textContent = s === city ? "Tap the tower to step inside · drag to look around" : s === hall ? HALL_HINT : "Drag to look around";
   for (const id of ROOMS) dockEls[id].classList.toggle("on", s === room && current === id);
 }
@@ -1709,6 +1715,7 @@ async function exitTower() {
 $("exitBtn").addEventListener("click", exitTower);
 $("ctaScan").addEventListener("click", enterLab); $("pClose").addEventListener("click", exitTower);
 window.KaelisWallet.mountChip($("walletChip"));
+$("walletChip").hidden = small && scene === city; // on a phone the card already has "Connect & enter"
 const ctaText = () => { $("ctaScan").textContent = window.KaelisWallet.address ? "Enter" : "Connect & enter"; };
 ctaText(); window.KaelisWallet.onChange(ctaText);
 addEventListener("keydown", (e) => { if (e.key === "Escape") exitTower(); });

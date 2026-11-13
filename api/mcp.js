@@ -1,18 +1,19 @@
 // POST /mcp : Kaelis as an MCP server (Streamable HTTP, stateless, JSON responses).
 // The agent safety layer: a pre-trade check (allow / warn / block) and deployer reputation for AI agents
 // and trading bots (Claude, Cursor, Eliza, Solana Agent Kit). Same rules and score as the website.
-const { K, limited } = require("../lib/server.js");
+const { K, limited, tokenAddress } = require("../lib/server.js");
 const { scan, brief } = require("../lib/scan.js");
 const { ledger, filings, deployers } = require("../lib/ledger-instance.js");
 
 const PROTOCOL = "2025-06-18";
-const MINT = { type: "string", description: "The token's mint address (base58, 32 to 44 characters)." };
+const MINT = { type: "string", description: "The token's address: a Solana mint (base58, 32 to 44 characters) or an EVM contract (0x, 40 hex characters)." };
+const CHAIN = { type: "string", enum: ["solana", "ethereum", "bsc", "base", "robinhood"], description: "The chain. Optional: base58 means Solana; for a 0x address Kaelis picks the chain where the token has its deepest pools." };
 const TOOLS = [
   {
     name: "check_before_buy",
     title: "Pre-trade safety check: allow, warn or block",
-    description: "Call this before an agent or bot buys a Solana token. Runs Kaelis' fixed checks (sell test via Jupiter quotes, liquidity, top holders, LP lock, mint and freeze authority, Token-2022 extensions, pool age) and returns decision = 'block' (a hard flag such as a failed sell test, or a score above max_score), 'warn' (score at or above warn_score, a check that could not run, or a deployer with confirmed rugs) or 'allow'. Also returns the score, the reasons, the deployer's record if Kaelis knows it, and proof: the hash of Kaelis' sealed Ledger call for this token and links to the on-chain evidence. A decision is a risk estimate from public data, not financial advice.",
-    inputSchema: { type: "object", properties: { mint: MINT,
+    description: "Call this before an agent or bot buys a token on Solana, Ethereum, BNB Chain, Base and Robinhood Chain. Runs Kaelis' fixed checks (a sell test: Jupiter quotes on Solana, a simulated buy and sell on the EVM chains; liquidity, top holders, LP lock, mint and freeze or pause powers, token extensions or contract controls, pool age) and returns decision = 'block' (a hard flag such as a failed sell test, or a score above max_score), 'warn' (score at or above warn_score, a check that could not run, or a deployer with confirmed rugs) or 'allow'. Also returns the score, the reasons, the deployer's record if Kaelis knows it, and proof: the hash of Kaelis' sealed Ledger call for this token and links to the on-chain evidence. A decision is a risk estimate from public data, not financial advice.",
+    inputSchema: { type: "object", properties: { mint: MINT, chain: CHAIN,
       max_score: { type: "integer", minimum: 0, maximum: 100, description: "Block above this score. Default 69 (the 'dangerous' band is blocked)." },
       warn_score: { type: "integer", minimum: 0, maximum: 100, description: "Warn at or above this score. Default 40." } }, required: ["mint"], additionalProperties: false },
     annotations: { readOnlyHint: true, openWorldHint: true },
@@ -26,9 +27,9 @@ const TOOLS = [
   },
   {
     name: "scan_token",
-    title: "Full check results for a Solana token",
+    title: "Full check results for a token",
     description: "The full result behind check_before_buy: every check with its points and evidence, the grade, wallet-funding findings for the top holders, and a plain-language summary. Use it when you need the detail, not just a decision.",
-    inputSchema: { type: "object", properties: { mint: MINT }, required: ["mint"], additionalProperties: false },
+    inputSchema: { type: "object", properties: { mint: MINT, chain: CHAIN }, required: ["mint"], additionalProperties: false },
     annotations: { readOnlyHint: true, openWorldHint: true },
   },
 ];
@@ -74,22 +75,23 @@ async function callTool(name, args) {
     const p = deployers.profile(address, ledger.all(), filings.view(100000).filings);
     return text(p);
   }
-  const mint = String(args.mint || "").trim();
-  if (!K.isAddress(mint)) return oops("That doesn't look like a Solana mint address (base58, 32 to 44 characters).");
-  let out;
-  try { out = brief(await scan(mint)); }
+  const ta = tokenAddress(args.mint, args.chain);
+  if (ta.error) return oops(ta.error);
+  let mint = ta.mint, out;
+  try { const full = await scan(mint, { chain: ta.chain === "solana" ? null : ta.chain }); out = brief(full); mint = out.mint;
+    if (out.chain !== "solana" && full.data.creator) deployers.note(mint, full.data.creator, "goplus", out.chain); }
   catch (e) { return oops("Scan failed: " + (e && e.message || "unknown error")); }
   if (name === "check_before_buy") {
     const max = Number.isInteger(args.max_score) ? args.max_score : 69, warn = Number.isInteger(args.warn_score) ? args.warn_score : 40;
     const t = deployers.ofMint(mint), dep = t ? deployerBrief(t.deployer) : null;
-    if (!t && ledger.has(mint)) deployers.learn(mint).catch(() => {}); // trace it for the next caller; never make an agent wait for it
+    if (!t && ledger.has(mint) && out.chain === "solana") deployers.learn(mint).catch(() => {}); // trace it for the next caller; never make an agent wait for it
     const decision = decide(out, dep, max, warn);
     const reasons = out.checks.filter((c) => c.hard || c.warn || (c.points && c.points >= c.max / 2)).map((c) => `${c.name}: ${c.evidence}`); // a hard flag is always a reason, even at 0 points (impersonation)
     if (dep && dep.rugged) reasons.push(`Deployer: ${dep.rugged} of ${dep.tested} tested tokens from this wallet rugged.`);
     if (out.unavailableChecks) reasons.push(`${out.unavailableChecks} check(s) could not run; treat the score as incomplete.`);
     if (out.issuer) reasons.push(`Official ${out.issuer.asset}: the issuer keeps legal controls${out.issuer.controls.length ? " (" + out.issuer.controls.map((c) => c.name.toLowerCase()).join(", ") + ")" : ""}. Not scored; you are trusting the issuer.`);
     const c = ledger.all().filter((x) => x.mint === mint).pop();
-    const res = { decision, allow: decision !== "block", score: out.score, grade: out.grade, band: out.band, maxScore: max, warnScore: warn, hardFlag: out.hardFlag, reasons, issuer: out.issuer || null,
+    const res = { decision, allow: decision !== "block", score: out.score, grade: out.grade, band: out.band, maxScore: max, warnScore: warn, hardFlag: out.hardFlag, reasons, chain: out.chain, issuer: out.issuer || null,
       deployer: dep, proof: c ? { ledgerCall: c.n, hash: c.hash, openedAt: c.openedAt, anchoredTx: c.anchored || null, ledger: "https://kaelis.si/ledger.html" } : null,
       summary: out.summary, rulesVersion: out.rulesVersion, slot: out.slot, links: out.links, disclaimer: out.disclaimer };
     return text(res);
@@ -102,7 +104,7 @@ async function handle(msg) {
   const isNote = msg.id === undefined;
   switch (msg.method) {
     case "initialize":
-      return ok(msg.id, { protocolVersion: (msg.params && msg.params.protocolVersion) || PROTOCOL, capabilities: { tools: { listChanged: false } }, serverInfo: { name: "kaelis", title: "Kaelis token scanner", version: K.RULES_VERSION }, instructions: "Call check_before_buy before buying an unknown Solana token, or scan_token for the full evidence. Scores: 0-39 low, 40-69 suspicious, 70-100 dangerous. A low score is not a promise of safety." });
+      return ok(msg.id, { protocolVersion: (msg.params && msg.params.protocolVersion) || PROTOCOL, capabilities: { tools: { listChanged: false } }, serverInfo: { name: "kaelis", title: "Kaelis: the trust layer for onchain tokens", version: K.RULES_VERSION }, instructions: "Call check_before_buy before buying an unknown Solana token, or scan_token for the full evidence. Scores: 0-39 low, 40-69 suspicious, 70-100 dangerous. A low score is not a promise of safety." });
     case "ping": return ok(msg.id, {});
     case "tools/list": return ok(msg.id, { tools: TOOLS });
     case "tools/call": {

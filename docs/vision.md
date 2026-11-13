@@ -80,3 +80,11 @@ Moat: the track record. Code can be copied overnight, but a copy starts with zer
 - The tools open only with a connected Solana wallet: entering the tower and its rooms (the Assay Room scanner, the Gate check), `scan.html` and the deployer lookup. `site/js/kaelis-wallet.js` does it with the Wallet Standard (plus the older injected providers), no library.
 - Connecting reads the public address only. No signature, no transaction, nothing sent to the server: the address stays in the browser's localStorage. On a phone with no wallet in the browser, the dialog opens the page inside Phantom or Solflare.
 - Left open on purpose: the Ledger, Filings, Markets, Docs (the public record must be checkable by anyone) and the API / MCP (agents have no wallet to connect).
+
+## Chains (rules 1.6.0, 2026-11-13)
+- Kaelis reads Solana, Ethereum, BNB Chain, Base and Robinhood Chain. The EVM chains use the same eight checks and weights as Solana, read from GoPlus Security (a simulated buy and sell, the contract) and DexScreener: sell test (honeypot, cannot sell all, sell tax), liquidity, top holders, LP locked or burned, mint function, contract controls (unverified source, hidden owner, take-back ownership, self-destruct, proxy, tax switch, external calls), pool age, pause or blacklist. A creator who made a honeypot before is a warning.
+- A 0x address with no chain is matched to the chain with its deepest DexScreener pools. Ledger calls on EVM chains carry `chain`, which is sealed in the hash; Solana hashes are unchanged. The 7-day check reads the pools on the call's chain.
+- Deployers on EVM chains come from GoPlus (`creator_address`). Funder tracing and clusters stay Solana-only until an explorer API key (Etherscan v2 covers the EVM chains) is set.
+- Patrol takes turns between Solana and the EVM chains. Filings (insider sales) and the wallet-funding deep scan stay Solana-only.
+- The home and docs headline is "The trust layer for onchain tokens." The videos and X captions made before this still say Solana.
+

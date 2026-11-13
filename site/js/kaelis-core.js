@@ -1,7 +1,8 @@
 /*
  * SPDX-License-Identifier: MIT  (see LICENSE next to this file; the licence covers this file only)
  *
- * Kaelis Core: data gathering + rules engine for the token scanner.
+ * Kaelis Core: data gathering + rules engine for the token scanner (Solana, and since rules 1.6.0 Ethereum, BNB Chain,
+ * Base and Robinhood Chain).
  * Pure JavaScript with fetch, so the same file runs in the browser (window.KaelisCore)
  * and in Node 18+ (require), which lets the website and the API share one rule set.
  *
@@ -15,7 +16,7 @@
 })(typeof self !== "undefined" ? self : this, function () {
   "use strict";
 
-  const RULES_VERSION = "1.5.0";
+  const RULES_VERSION = "1.6.0";
   // Official mints of tokenized stocks Kaelis knows (xStocks by Backed). A token that uses one of these
   // tickers but is not the official mint is an impersonation: a hard flag, whatever else it looks like.
   // The official ones are read differently (rules 1.4.0): see ISSUER_CHECKS.
@@ -126,8 +127,150 @@
     return { buyRoute: true, sellRoute: null, unsure: true, error: last && (last.status ? "HTTP " + last.status : "network") };
   }
 
+
+  // ---- EVM chains (rules 1.6.0): Ethereum, BNB Chain, Base, Robinhood Chain.
+  // The same eight checks with the same weights as on Solana, read the EVM way: the sell test and the contract reading
+  // come from GoPlus Security (it simulates a buy and a sell and reads the contract), pools and prices from DexScreener.
+  // Same weights means a score means the same thing on every chain, and the Ledger grades every chain the same way.
+  const CHAINS = {
+    solana: { name: "Solana", dex: "solana" },
+    ethereum: { name: "Ethereum", dex: "ethereum", goplus: "1", explorer: "https://etherscan.io/token/" },
+    bsc: { name: "BNB Chain", dex: "bsc", goplus: "56", explorer: "https://bscscan.com/token/" },
+    base: { name: "Base", dex: "base", goplus: "8453", explorer: "https://basescan.org/token/" },
+    robinhood: { name: "Robinhood Chain", dex: "robinhood", goplus: "4663", explorer: null },
+  };
+  const EVM_CHAINS = Object.keys(CHAINS).filter((k) => CHAINS[k].goplus);
+  const EVM = /^0x[0-9a-fA-F]{40}$/;
+  const BURN = /^0x(0{40}|0{36}dead)$/i;
+  function isEvmAddress(s) { return EVM.test(String(s || "").trim()); }
+
+  // which EVM chain a 0x token trades on: the one with the deepest pools on DexScreener (null if none)
+  async function detectChain(addr, opts) {
+    const c = makeClient(opts), j = await c.json("https://api.dexscreener.com/latest/dex/tokens/" + String(addr).trim());
+    const liq = {};
+    for (const p of (j && j.pairs) || []) { const k = EVM_CHAINS.find((x) => CHAINS[x].dex === p.chainId); if (k) liq[k] = (liq[k] || 0) + ((p.liquidity && p.liquidity.usd) || 0); }
+    const best = Object.keys(liq).sort((a, b) => liq[b] - liq[a])[0];
+    return best || null;
+  }
+
+  async function gatherEvm(addr, chain, c) {
+    const C = CHAINS[chain];
+    const [gp, dex] = await Promise.allSettled([
+      c.json(`https://api.gopluslabs.io/api/v1/token_security/${C.goplus}?contract_addresses=${addr}`),
+      c.json("https://api.dexscreener.com/latest/dex/tokens/" + addr),
+    ]);
+    const res = gp.status === "fulfilled" && gp.value && gp.value.result;
+    const g = res ? (res[addr] || Object.values(res)[0] || null) : null;
+    const ok = g && Object.keys(g).length ? g : null;
+    const pairs = dex.status === "fulfilled" ? ((dex.value && dex.value.pairs) || []).filter((p) => p.chainId === C.dex) : null;
+    if (!ok && !(pairs && pairs.length)) throw new Error(`No token found at this address on ${C.name}. Check the address and the chain.`);
+    const on = (k) => ok && ok[k] === "1";
+    const owner = ok && ok.owner_address && !BURN.test(ok.owner_address) ? ok.owner_address : null;
+    const supply = ok && ok.total_supply != null ? +ok.total_supply : null;
+    const pools = new Set((pairs || []).map((p) => String(p.pairAddress || "").toLowerCase()));
+    return {
+      chain, mint: addr, program: "evm:" + chain, fetchedAt: new Date().toISOString(), slot: null, jup: null, rug: null, gp: ok, pairs, supply,
+      meta: ok ? { symbol: ok.token_symbol || null, name: ok.token_name || null } : null,
+      // the same shape the Solana pages read: who can still mint, who can still freeze (pause or blacklist)
+      mintInfo: { decimals: null, mintAuthority: on("is_mintable") && owner ? owner : null, freezeAuthority: (on("transfer_pausable") || on("is_blacklisted")) && owner ? owner : null },
+      holders: ok && Array.isArray(ok.holders) ? ok.holders.map((h) => ({ owner: h.address, account: h.address, amount: supply ? (+h.percent || 0) * supply : 0, share: +h.percent || 0,
+        pool: pools.has(String(h.address).toLowerCase()) || BURN.test(h.address) || h.is_locked == 1 || (h.is_contract == 1 && !!h.tag), tag: h.tag || null })) : null,
+      creator: ok && ok.creator_address ? ok.creator_address : null,
+    };
+  }
+
+  function evaluateEvm(d, genome) {
+    const W = (genome && genome.weights) || WEIGHTS, checks = [];
+    const FLOOR = (genome && genome.hardFloor) || 85;
+    const add = (id, name, weight, sev, detail, extra) => checks.push(Object.assign({ id, name, weight, sev, detail }, extra || {}));
+    const g = d.gp, pairs = d.pairs, on = (k) => !!g && g[k] === "1", C = CHAINS[d.chain] || { name: d.chain };
+    const owner = g && g.owner_address && !BURN.test(g.owner_address) ? g.owner_address : null;
+    const sh = (a) => a ? a.slice(0, 6) + "…" + a.slice(-4) : "";
+    const none = (id, name, w, why) => add(id, name, w, null, why);
+
+    // 1 sell test: GoPlus simulates a buy and a sell
+    if (!g) none("sell", "Sell test", W.sell, "The contract check (GoPlus) did not answer, so selling can't be tested right now.");
+    else if (on("is_honeypot")) add("sell", "Sell test", W.sell, 1, "A simulated sell fails. This is how a honeypot behaves (GoPlus).", { hard: true });
+    else if (on("cannot_sell_all")) add("sell", "Sell test", W.sell, 1, "The contract stops holders from selling all of their tokens (GoPlus).", { hard: true });
+    else if (g.sell_tax == null || g.sell_tax === "") none("sell", "Sell test", W.sell, "The sell could not be simulated, so the sell tax is unknown.");
+    else { const st = Math.max(0, +g.sell_tax || 0), bt = Math.max(0, +g.buy_tax || 0);
+      add("sell", "Sell test", W.sell, clamp((st - 0.1) / 0.4, 0, 1), `Simulated trade: ${pct(bt)} buy tax, ${pct(st)} sell tax (GoPlus).`, { hard: st >= 0.5 }); }
+
+    // 2 liquidity
+    if (pairs && pairs.length) {
+      const liq = pairs.reduce((t, p) => t + ((p.liquidity && p.liquidity.usd) || 0), 0);
+      const sev = liq <= 0 ? 1 : clamp(1 - (Math.log10(liq) - Math.log10(5e3)) / (Math.log10(2.5e5) - Math.log10(5e3)), 0, 1);
+      add("liquidity", "Liquidity depth", W.liquidity, sev, `${usd(liq)} in ${pairs.length} pool${pairs.length > 1 ? "s" : ""} on ${C.name}.`, { value: liq });
+    } else none("liquidity", "Liquidity depth", W.liquidity, `No trading pool found on ${C.name}.`);
+
+    // 3 top holders (pools, burned and locked tokens and labelled contracts left out)
+    if (d.holders && d.holders.length) {
+      const ws = d.holders.filter((h) => !h.pool).slice(0, 10), share = ws.reduce((t, h) => t + h.share, 0);
+      add("holders", "Top 10 holders", W.holders, clamp((share - 0.3) / 0.5, 0, 1), `The 10 largest wallets hold ${pct(share)} of supply (pools, burned and locked tokens left out${g && g.holder_count ? "; " + Number(g.holder_count).toLocaleString("en-US") + " holders" : ""}).`, { value: share });
+    } else none("holders", "Top 10 holders", W.holders, "Holder list unavailable right now.");
+
+    // 4 LP locked or burned
+    const lps = g && Array.isArray(g.lp_holders) ? g.lp_holders : [];
+    if (lps.length) {
+      const locked = Math.min(1, lps.reduce((t, h) => t + (h.is_locked == 1 || BURN.test(h.address) ? (+h.percent || 0) : 0), 0));
+      add("lp", "LP locked or burned", W.lp, clamp(1 - locked, 0, 1), `${pct(locked)} of the pool tokens are locked or burned (GoPlus).`, { value: locked * 100 });
+    } else none("lp", "LP locked or burned", W.lp, g ? "No LP tokens to read: the pools hold positions (Uniswap v3/v4 style), not LP tokens." : "The contract check (GoPlus) did not answer.");
+
+    // 5 mint function
+    if (!g) none("mint", "Mint function", W.mint, "The contract check (GoPlus) did not answer.");
+    else add("mint", "Mint function", W.mint, on("is_mintable") ? (owner ? 1 : 0.4) : 0,
+      on("is_mintable") ? (owner ? `The contract can create new tokens and has an owner (${sh(owner)}).` : "The contract has a mint function, but ownership is renounced.") : "No mint function. The supply is fixed.");
+
+    // 6 contract controls (the EVM counterpart of Token-2022 extensions)
+    if (!g) none("extensions", "Contract controls", W.extensions, "The contract check (GoPlus) did not answer.");
+    else {
+      const f = []; let sev = 0; const hit = (k, s, text) => { if (on(k)) { sev = Math.max(sev, s); f.push(text); } };
+      if (g.is_open_source === "0") { sev = 1; f.push("source code that is not verified"); }
+      hit("hidden_owner", 1, "a hidden owner"); hit("can_take_back_ownership", 1, "ownership that can be taken back"); hit("selfdestruct", 1, "a self-destruct switch");
+      hit("is_proxy", 0.7, "an upgradeable proxy (the code can be swapped)");
+      if (owner) { hit("slippage_modifiable", 0.7, "a tax the owner can change"); hit("personal_slippage_modifiable", 0.7, "a tax set per wallet"); hit("external_call", 0.4, "calls out to other contracts"); }
+      add("extensions", "Contract controls", W.extensions, sev, f.length ? "The contract has " + f.join(", ") + " (GoPlus)." : "Verified source, no hidden owner, no proxy, no tax switch (GoPlus).");
+    }
+
+    // 7 pool age
+    if (pairs && pairs.length) {
+      const created = Math.min.apply(null, pairs.map((p) => p.pairCreatedAt || Infinity));
+      if (isFinite(created)) { const days = (Date.now() - created) / 864e5;
+        add("age", "Pool age", W.age, clamp(1 - (days - 1) / 29, 0, 1), `Oldest pool is ${days < 1 ? Math.max(1, Math.round(days * 24)) + " hours" : Math.floor(days) + " days"} old.`, { value: days }); }
+      else none("age", "Pool age", W.age, "Pool creation time unknown.");
+    } else none("age", "Pool age", W.age, "No trading pool found.");
+
+    // the creator's record, as GoPlus sees it (a warning, not a score: Kaelis keeps its own deployer record)
+    if (on("honeypot_with_same_creator")) add("creator", "Creator's record", 0, 1, `The wallet that created this token (${sh(g.creator_address)}) created a honeypot before (GoPlus).`, { warn: true });
+    // a company with no official token (see UNLISTED): a warning, never a hard flag
+    const said = [d.meta && d.meta.name, d.meta && d.meta.symbol].concat((pairs || []).filter((p) => p.baseToken && String(p.baseToken.address).toLowerCase() === d.mint).slice(0, 1).map((p) => p.baseToken.name)).filter(Boolean).join(" ");
+    const co = UNLISTED.find((u) => u.re.test(said));
+    if (co) add("unlisted", "Not company stock", 0, 1, `Uses the name of ${co.name}, which has no official token. This is not ${co.name} stock and gives no claim on its shares. ${co.says}`, { warn: true });
+
+    // 8 pause or blacklist (the EVM counterpart of freeze authority)
+    if (!g) none("freeze", "Pause or blacklist", W.freeze, "The contract check (GoPlus) did not answer.");
+    else { const p = on("transfer_pausable"), b = on("is_blacklisted"), what = [p && "pause all transfers", b && "blacklist wallets"].filter(Boolean).join(" and ");
+      add("freeze", "Pause or blacklist", W.freeze, (p || b) && owner ? 1 : 0, what ? (owner ? `The owner can ${what}.` : `The contract can ${what}, but ownership is renounced.`) : "No pause switch and no blacklist."); }
+
+    let score = checks.reduce((t, c) => t + (c.sev == null ? 0 : c.weight * c.sev), 0);
+    const hard = checks.some((c) => c.hard);
+    if (hard) score = Math.max(FLOOR, score);
+    score = Math.round(Math.min(100, score));
+    const band = score >= 70 ? "dangerous" : score >= 40 ? "suspicious" : "low";
+    const unavailable = checks.filter((c) => c.sev == null).length, warned = checks.some((c) => c.warn);
+    return { score, band, grade: grade(score, hard, unavailable, false, warned), hard, warned, gen: (genome && genome.gen) || 0, checks, unavailable, issuer: null, rugcheckRisks: [], chain: d.chain, rulesVersion: RULES_VERSION };
+  }
+
+  // opts.chain: "solana" (default for base58 addresses) or an EVM chain; a 0x address with no chain is looked up
   async function gather(mint, opts) {
     mint = String(mint || "").trim();
+    const want = opts && opts.chain;
+    if (isEvmAddress(mint)) {
+      const chain = want && want !== "solana" ? want : await detectChain(mint, opts).catch(() => null);
+      if (!chain || !CHAINS[chain] || !CHAINS[chain].goplus) throw new Error("This 0x address has no trading pool on Ethereum, BNB Chain, Base or Robinhood Chain. Pick the chain, or check the address.");
+      return gatherEvm(mint.toLowerCase(), chain, makeClient(opts));
+    }
+    if (want && want !== "solana") throw new Error(`That is a Solana address, not a ${CHAINS[want] ? CHAINS[want].name : want} one.`);
     if (!isAddress(mint)) throw new Error("That doesn't look like a Solana address. Paste the token's mint address (32 to 44 characters).");
     const c = makeClient(opts);
     const [acc, supply, largest, dex, rug, jup, tok] = await Promise.allSettled([
@@ -196,6 +339,7 @@
 
   // genome (optional): the evolved rule set from the server, { gen, weights, hardFloor }. Gen 0 = WEIGHTS + 85.
   function evaluate(d, genome) {
+    if (d.chain && d.chain !== "solana") return evaluateEvm(d, genome);
     const W = (genome && genome.weights) || WEIGHTS, checks = [];
     const FLOOR = (genome && genome.hardFloor) || 85;
     const add = (id, name, weight, sev, detail, extra) => checks.push(Object.assign({ id, name, weight, sev, detail }, extra || {}));
@@ -315,7 +459,8 @@
   const SAY = {
     sell: "Selling back is blocked or costs most of the money, which is how honeypots work.",
     impersonation: "It copies the ticker of a real tokenized stock but is not the official token.",
-    unlisted: "It uses the name of a company that has no official token on Solana, so it is not that company's stock.",
+    unlisted: "It uses the name of a company that has no official token, so it is not that company's stock.",
+    creator: "The wallet that launched it launched a honeypot before.",
     liquidity: "There is very little money in the pools, so prices can swing hard and exits can be costly.",
     holders: "A few wallets hold a large share of the supply.",
     lp: "Most pool tokens are not locked, so liquidity can be pulled.",
@@ -392,5 +537,5 @@
     return { wallets: out, clusters, fresh: fresh.length, linkedShare, freshShare, checked, level, lines };
   }
 
-  return { RULES_VERSION, WEIGHTS, KNOWN_ASSETS, ISSUER_CHECKS, UNLISTED, GRADE_TEXT, grade, isAddress, gather, evaluate, summary, pulse, compare, linkWallets, usd, pct };
+  return { RULES_VERSION, WEIGHTS, KNOWN_ASSETS, ISSUER_CHECKS, UNLISTED, CHAINS, EVM_CHAINS, isEvmAddress, detectChain, GRADE_TEXT, grade, isAddress, gather, evaluate, summary, pulse, compare, linkWallets, usd, pct };
 });
