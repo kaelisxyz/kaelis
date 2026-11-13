@@ -339,12 +339,12 @@
 
   <section id="markets">
     <div class="wrap">
-      <span class="tag">Markets · stocks + memes</span>
-      <h3>Memes, rated like the S&amp;P.</h3>
-      <p class="lead" style="max-width:58ch">Kaelis rates tokenized stocks on Solana (xStocks: SPYx, QQQx, NVDAx, TSLAx, AAPLx) with the same rules it uses on memecoins, and tracks its best-rated memecoins next to the S&amp;P 500.</p>
+      <span class="tag">Markets · tokenized stocks</span>
+      <h3>Real stocks. Fake tickers.</h3>
+      <p class="lead" style="max-width:58ch">Kaelis tells official tokenized stocks on Solana (xStocks: SPYx, QQQx, NVDAx, TSLAx, AAPLx) from the tokens that copy their tickers, and tracks its best-rated memecoins next to the S&amp;P 500.</p>
       <div class="flow">
-        <div><span class="tag">01 · Stocks</span><b>Same rules</b><p>Patrol scans each official xStock once a week. Issuer controls (mint, freeze, permanent delegate) show up as risk: that is how a regulated tokenized stock works.</p></div>
-        <div><span class="tag">02 · Fakes</span><b>Copied tickers</b><p>A token that uses a stock's ticker but is not the official mint gets a hard flag (CC). Kaelis searches for them once a day.</p></div>
+        <div><span class="tag">01 · Stocks</span><b>Same rules</b><p>Patrol seals one call per official xStock each week and reads it again daily. The issuer's controls (mint, freeze, permanent delegate) are listed apart and do not add to the score; the grade stops at A. Stock calls stay out of the accuracy numbers.</p></div>
+        <div><span class="tag">02 · Fakes</span><b>Copied tickers</b><p>A token that uses a stock's ticker but is not the official mint gets a hard flag (CC), even after its pool is gone, and check_before_buy answers block. Kaelis searches for them once a day.</p></div>
         <div><span class="tag">03 · K-20</span><b>Memes vs S&amp;P</b><p>The 20 best-rated memecoins Kaelis has called, equal weight, rebalanced weekly, tracked every 30 minutes next to SPYx. Both start at 100.</p></div>
         <div><span class="tag">04 · KIQ</span><b>Kaelis's own ticker</b><p>The Kaelis IQ charted over time. It moves as calls are checked and jumps when a smarter generation is adopted.</p></div>
       </div>

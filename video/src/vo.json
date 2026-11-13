@@ -1,0 +1,86 @@
+{
+ "intro": {
+  "i1": {
+   "at": 0.3,
+   "spoken": 1.868,
+   "text": "Every scanner checks the token."
+  },
+  "i2": {
+   "at": 2.3,
+   "spoken": 1.683,
+   "text": "No one checks who launched it."
+  },
+  "i3": {
+   "at": 4.2,
+   "spoken": 0.994,
+   "text": "Kaelis does."
+  },
+  "i4": {
+   "at": 6.1,
+   "spoken": 1.781,
+   "text": "The trust layer for Solana."
+  }
+ },
+ "live": {
+  "l1": {
+   "at": 0.35,
+   "spoken": 1.268,
+   "text": "Kaelis is live."
+  },
+  "l2": {
+   "at": 4.2,
+   "spoken": 2.956,
+   "text": "Every token that comes through here gets tested."
+  },
+  "l3": {
+   "at": 8.2,
+   "spoken": 2.458,
+   "text": "Every call, sealed on a public ledger."
+  },
+  "l4": {
+   "at": 11.7,
+   "spoken": 1.966,
+   "text": "Seven days later, it's graded."
+  },
+  "l5": {
+   "at": 13.8,
+   "spoken": 2.21,
+   "text": "Hits and misses, published by name."
+  },
+  "l6": {
+   "at": 16.2,
+   "spoken": 2.18,
+   "text": "Behind every token is a wallet."
+  },
+  "l7": {
+   "at": 18.6,
+   "spoken": 1.854,
+   "text": "We keep a record on those too."
+  },
+  "l8": {
+   "at": 20.9,
+   "spoken": 3.017,
+   "text": "And before an AI agent buys, one call."
+  },
+  "v1": {
+   "at": 24.55,
+   "spoken": 0.778,
+   "text": "Allow."
+  },
+  "v2": {
+   "at": 25.05,
+   "spoken": 0.67,
+   "text": "Warn."
+  },
+  "v3": {
+   "at": 25.55,
+   "spoken": 0.682,
+   "text": "Block."
+  },
+  "l10": {
+   "at": 26.8,
+   "spoken": 1.679,
+   "text": "Kaelis. Proof, not vibes."
+  }
+ }
+}

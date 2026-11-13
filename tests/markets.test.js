@@ -82,5 +82,54 @@ const pair = (m, price, liq = 50000) => ({ chainId: "solana", baseToken: { addre
     const real = K.evaluate(base(K.KNOWN_ASSETS.NVDAX.mint));
     assert.strictEqual(real.hard, false); assert(real.checks.some((c) => c.id === "impersonation" && c.sev === 0));
   });
+  await t("official stock (rules 1.4.0): issuer controls are listed apart and do not score; the grade stops at A", () => {
+    const K = require("../site/js/kaelis-core.js");
+    // what the live xStocks look like: issuer keeps mint and freeze, Token-2022 with a permanent delegate, LP not locked, no holder list
+    const d = (m) => ({ mint: m, program: "TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb",
+      pairs: [{ chainId: "solana", baseToken: { address: m, symbol: "NVDAx" }, liquidity: { usd: 2e6 }, priceUsd: "180", pairCreatedAt: Date.now() - 200 * 864e5, txns: { h24: { buys: 400, sells: 380 } } }],
+      mintInfo: { mintAuthority: "Issuer1111111111111111111111111111111111111", freezeAuthority: "Issuer1111111111111111111111111111111111111", extensions: [{ extension: "permanentDelegate", state: { delegate: "Issuer1111111111111111111111111111111111111" } }] },
+      jup: { buyRoute: true, sellRoute: true, loss: 0.01 }, rug: { lpLockedPct: 2 } });
+    const real = K.evaluate(d(K.KNOWN_ASSETS.NVDAX.mint));
+    assert.strictEqual(real.hard, false);
+    assert.strictEqual(real.grade, "A", "capped at A, got " + real.grade + " (score " + real.score + ")");
+    assert(real.score < 10, "market checks only, got " + real.score);
+    assert.strictEqual(real.unavailable, 0, "the missing holder list is an issuer check, not a gap");
+    assert.deepStrictEqual(real.issuer.controls.map((c) => c.id).sort(), ["extensions", "freeze", "mint"]);
+    for (const id of K.ISSUER_CHECKS) assert.strictEqual(real.checks.find((c) => c.id === id).weight, 0, id + " must not score");
+    assert(/official NVIDIA xStock/.test(K.summary({}, real)));
+    // the same token on a copied mint: everything scores again, plus the hard flag
+    const fake = K.evaluate(d("Fake1111111111111111111111111111111111pump"));
+    assert.strictEqual(fake.grade, "CC"); assert.strictEqual(fake.issuer, null); assert(fake.score >= 85);
+  });
+  await t("a copy with no pool left is still caught, by the ticker in the token list", () => {
+    const K = require("../site/js/kaelis-core.js");
+    const r = K.evaluate({ mint: "Dn8CGUZr61mBJK1qqhvM7RKL6CvwXnABHrJuiDRspump", pairs: [], meta: { symbol: "NVDAx", name: "NVIDIA xStock" }, mintInfo: { mintAuthority: null, freezeAuthority: null }, jup: null, rug: null });
+    assert.strictEqual(r.hard, true); assert.strictEqual(r.grade, "CC");
+    assert(/NVDAx ticker/.test(r.checks.find((c) => c.id === "impersonation").detail));
+  });
+  await t("agents: a copied stock ticker is blocked, the official one is allowed", () => {
+    const { decide } = require("../api/mcp.js");
+    assert.strictEqual(decide({ hardFlag: true, score: 85, unavailableChecks: 0 }, null, 69, 40), "block");
+    assert.strictEqual(decide({ hardFlag: false, score: 3, unavailableChecks: 0, issuer: { asset: "NVIDIA xStock", controls: [] } }, null, 69, 40), "allow");
+  });
+  await t("a daily reading sits next to the sealed call and is renewed when the rules change", () => {
+    let tm = Date.parse("2026-11-13T00:00:00Z"), d = { series: [], lookalikes: [] };
+    const M = makeMarkets({ db: { load: () => d, save: () => {} }, now: () => tm });
+    assert.strictEqual(M.readingDue(SPY, "1.4.0"), true);
+    M.setReading(SPY, { grade: "A", score: 0, hardFlag: false, rulesVersion: "1.4.0", issuer: { controls: [{ id: "mint" }, { id: "freeze" }] } });
+    assert.strictEqual(M.readingDue(SPY, "1.4.0"), false);
+    assert.strictEqual(M.readingDue(SPY, "1.5.0"), true, "new rules, new reading");
+    tm += 864e5; assert.strictEqual(M.readingDue(SPY, "1.4.0"), true, "once a day");
+    const v = M.view([{ mint: SPY, grade: "BB", score: 40, p: 0.24, rulesVersion: "1.3.0", openedAt: "2026-11-11T08:47:46Z", resolveAt: "2026-11-18T08:47:46Z", hash: "h" }]).stocks[0];
+    assert.strictEqual(v.now.grade, "A"); assert.deepStrictEqual(v.now.issuer, ["mint", "freeze"]);
+    assert.strictEqual(v.call.grade, "BB"); assert.strictEqual(v.call.rulesVersion, "1.3.0");
+  });
+  await t("ledger: stocks are counted apart from the accuracy numbers", () => {
+    const { stats } = require("../lib/ledger.js");
+    const r = (asset, p, rugged) => ({ asset, p, rugged, resolvedAt: "2026-11-18T00:00:00Z" });
+    const s = stats([r("token", 0.9, 1), r("token", 0.1, 1), r("stock", 0.24, 0), r("stock", 0.24, 0), { asset: "stock", p: 0.2 }]);
+    assert.strictEqual(s.calls, 2); assert.strictEqual(s.resolved, 2); assert.strictEqual(s.accuracy, 50); assert.strictEqual(s.rugsMissed, 1);
+    assert.deepStrictEqual([s.stocks.calls, s.stocks.open, s.stocks.resolved, s.stocks.held], [3, 1, 2, 2]);
+  });
   console.log(`\n${pass} markets tests passed`);
 })();

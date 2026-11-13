@@ -87,8 +87,9 @@ async function callTool(name, args) {
     const reasons = out.checks.filter((c) => c.points && c.points >= c.max / 2).map((c) => `${c.name}: ${c.evidence}`);
     if (dep && dep.rugged) reasons.push(`Deployer: ${dep.rugged} of ${dep.tested} tested tokens from this wallet rugged.`);
     if (out.unavailableChecks) reasons.push(`${out.unavailableChecks} check(s) could not run; treat the score as incomplete.`);
+    if (out.issuer) reasons.push(`Official ${out.issuer.asset}: the issuer keeps legal controls${out.issuer.controls.length ? " (" + out.issuer.controls.map((c) => c.name.toLowerCase()).join(", ") + ")" : ""}. Not scored; you are trusting the issuer.`);
     const c = ledger.all().filter((x) => x.mint === mint).pop();
-    const res = { decision, allow: decision !== "block", score: out.score, grade: out.grade, band: out.band, maxScore: max, warnScore: warn, hardFlag: out.hardFlag, reasons,
+    const res = { decision, allow: decision !== "block", score: out.score, grade: out.grade, band: out.band, maxScore: max, warnScore: warn, hardFlag: out.hardFlag, reasons, issuer: out.issuer || null,
       deployer: dep, proof: c ? { ledgerCall: c.n, hash: c.hash, openedAt: c.openedAt, anchoredTx: c.anchored || null, ledger: "https://kaelis.si/ledger.html" } : null,
       summary: out.summary, rulesVersion: out.rulesVersion, slot: out.slot, links: out.links, disclaimer: out.disclaimer };
     return text(res);

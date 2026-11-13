@@ -15,9 +15,10 @@
 })(typeof self !== "undefined" ? self : this, function () {
   "use strict";
 
-  const RULES_VERSION = "1.3.0";
+  const RULES_VERSION = "1.4.0";
   // Official mints of tokenized stocks Kaelis knows (xStocks by Backed). A token that uses one of these
   // tickers but is not the official mint is an impersonation: a hard flag, whatever else it looks like.
+  // The official ones are read differently (rules 1.4.0): see ISSUER_CHECKS.
   const KNOWN_ASSETS = {
     SPYX: { mint: "XsoCS1TfEyfFhfvj8EtZ528L3CaKBDBRqRapnBbDF2W", name: "S&P 500 xStock" },
     QQQX: { mint: "Xs8S1uUs1zvS2p7iwtsG3b6fkhpvmwz4GYU3gWAmWHZ", name: "Nasdaq 100 xStock" },
@@ -36,6 +37,14 @@
     "39azUYFWPz3VHgKCf3VChUwbpURdCHRxjWVowf5jUJjg", // pump.fun AMM global
   ]);
   const B58 = /^[1-9A-HJ-NP-Za-km-z]{32,44}$/;
+
+  // An official tokenized stock is a claim on a share held by a regulated issuer. What the rug checks measure
+  // there is the issuer's legal control and its custody, not a deployer who can run: mint and freeze authority,
+  // Token-2022 extensions (a permanent delegate, for court orders), holder concentration (the custody wallets)
+  // and LP lock (pools run by market makers; pulling one does not touch the backing). For those tokens these checks
+  // are reported apart, as `issuer`, and do not add to the score. The market checks (sell test, liquidity, pool age)
+  // still score, and the grade is capped at A: issuer control is a known flag of its own kind. (rules 1.4.0)
+  const ISSUER_CHECKS = ["mint", "freeze", "extensions", "holders", "lp"];
 
   // weights add up to 100 (see docs/TECH.md)
   const WEIGHTS = { sell: 25, liquidity: 15, holders: 15, lp: 15, mint: 10, extensions: 10, age: 5, freeze: 5 };
@@ -111,13 +120,15 @@
     mint = String(mint || "").trim();
     if (!isAddress(mint)) throw new Error("That doesn't look like a Solana address. Paste the token's mint address (32 to 44 characters).");
     const c = makeClient(opts);
-    const [acc, supply, largest, dex, rug, jup] = await Promise.allSettled([
+    const [acc, supply, largest, dex, rug, jup, tok] = await Promise.allSettled([
       c.rpc("getAccountInfo", [mint, { encoding: "jsonParsed" }]),
       c.rpc("getTokenSupply", [mint]),
       c.rpc("getTokenLargestAccounts", [mint]),
       c.json("https://api.dexscreener.com/latest/dex/tokens/" + mint),
       c.json("https://api.rugcheck.xyz/v1/tokens/" + mint + "/report/summary"),
       sellTest(c, mint),
+      // name and ticker from Jupiter's token list: known even when a token has no pool left (rules 1.4.0)
+      c.json("https://lite-api.jup.ag/tokens/v2/search?query=" + mint),
     ]);
     if (acc.status === "rejected") throw new Error("Could not reach the Solana network. Try again in a moment.");
     const info = acc.value && acc.value.value;
@@ -131,6 +142,8 @@
     d.pairs = dex.status === "fulfilled" ? ((dex.value && dex.value.pairs) || []).filter((p) => p.chainId === "solana") : null;
     d.rug = rug.status === "fulfilled" ? rug.value : null;
     d.jup = jup.status === "fulfilled" ? jup.value : null;
+    const meta = tok.status === "fulfilled" && Array.isArray(tok.value) ? tok.value.find((x) => x && x.id === mint) : null;
+    d.meta = meta ? { symbol: meta.symbol || null, name: meta.name || null } : null;
     if (d.largest && d.largest.length) {
       try {
         const top = d.largest.slice(0, 20);
@@ -241,14 +254,22 @@
 
     // impersonation: a known stock ticker on a mint that is not the official one (weight 0, hard flag)
     const own = (pairs || []).filter((p) => p && p.baseToken && p.baseToken.address === d.mint).sort((a, b) => ((b.liquidity && b.liquidity.usd) || 0) - ((a.liquidity && a.liquidity.usd) || 0))[0];
-    const tick = own ? String(own.baseToken.symbol || "").toUpperCase() : "";
+    // the ticker from the deepest pool, or from the token list when no pool is left (a copy whose pool was pulled is still a copy)
+    const shown = own ? own.baseToken.symbol : d.meta && d.meta.symbol, tick = String(shown || "").toUpperCase();
     const known = KNOWN_ASSETS[tick];
-    if (known && known.mint !== d.mint) add("impersonation", "Impersonation", 0, 1, `Uses the ${own.baseToken.symbol} ticker but is not the official ${known.name} (official mint ${known.mint.slice(0, 4)}…${known.mint.slice(-4)}). Treat it as a copy.`, { hard: true });
+    if (known && known.mint !== d.mint) add("impersonation", "Impersonation", 0, 1, `Uses the ${shown} ticker but is not the official ${known.name} (official mint ${known.mint.slice(0, 4)}…${known.mint.slice(-4)}). Treat it as a copy.`, { hard: true });
     else if (known) add("impersonation", "Official asset", 0, 0, `The official ${known.name}. Issuer controls (mint, freeze, permanent delegate) are part of a regulated tokenized stock, and still a risk to know.`);
 
     // 8 freeze authority
     const fa = d.mintInfo.freezeAuthority;
     add("freeze", "Freeze authority", W.freeze, fa ? 1 : 0, fa ? "Set. The authority can freeze holders' tokens." : "Revoked. No one can freeze your tokens.");
+
+    // official tokenized stock: issuer controls are reported apart and do not score (see ISSUER_CHECKS)
+    const official = !!(known && known.mint === d.mint);
+    if (official) for (const c of checks) if (ISSUER_CHECKS.includes(c.id)) { c.scope = "issuer"; c.weight = 0; }
+    // the controls an issuer holds (LP lock and holder concentration stop scoring too, but they are not controls)
+    const issuer = official ? { asset: known.name, controls: checks.filter((c) => ["mint", "freeze", "extensions"].includes(c.id) && c.sev > 0).map((c) => ({ id: c.id, name: c.name, detail: c.detail })),
+      note: "Issued by a regulated issuer that keeps legal controls over the token. You are trusting the issuer, not the code. These controls are shown apart and do not add to the score." } : null;
 
     let score = checks.reduce((t, c) => t + (c.sev == null ? 0 : c.weight * c.sev), 0);
     const hard = checks.some((c) => c.hard);
@@ -256,20 +277,21 @@
     score = Math.round(Math.min(100, score));
     const band = score >= 70 ? "dangerous" : score >= 40 ? "suspicious" : "low";
     const extra = Array.isArray(r.risks) ? r.risks.map((k) => ({ name: k.name, level: k.level, description: k.description })) : [];
-    const unavailable = checks.filter((c) => c.sev == null).length;
-    return { score, band, grade: grade(score, hard, unavailable), hard, gen: (genome && genome.gen) || 0, checks, unavailable: checks.filter((c) => c.sev == null).length, rugcheckRisks: extra, rulesVersion: RULES_VERSION };
+    const unavailable = checks.filter((c) => c.sev == null && c.scope !== "issuer").length;
+    return { score, band, grade: grade(score, hard, unavailable, official), hard, gen: (genome && genome.gen) || 0, checks, unavailable, issuer, rugcheckRisks: extra, rulesVersion: RULES_VERSION };
   }
 
   // Kaelis Rating: the score as a letter grade, like a credit rating. It grades risk, it is not buy or sell advice.
   // D is never given by a scan: it is only set when the Ledger confirms a rug after the fact.
   const GRADES = [[10, "AAA"], [20, "AA"], [30, "A"], [40, "BBB"], [55, "BB"], [70, "B"], [85, "CCC"], [101, "CC"]];
   const GRADE_TEXT = { AAA: "No known red flags", AA: "Very low risk flags", A: "Low risk flags", BBB: "Some flags, still low", BB: "Speculative", B: "Highly speculative", CCC: "High risk", CC: "Very high risk", D: "Rugged (confirmed)" };
-  // a check we could not read caps the grade at A: the top grades need complete data
-  function grade(score, hard, unavailable) {
+  // a check we could not read caps the grade at A: the top grades need complete data.
+  // An official tokenized stock is capped at A too: its issuer controls are a known flag (see ISSUER_CHECKS).
+  function grade(score, hard, unavailable, official) {
     if (hard) return "CC";
     let g = "CC";
     for (const [lim, x] of GRADES) if (score < lim) { g = x; break; }
-    if (unavailable && (g === "AAA" || g === "AA")) g = "A";
+    if ((unavailable || official) && (g === "AAA" || g === "AA")) g = "A";
     return g;
   }
 
@@ -285,8 +307,9 @@
     freeze: "Someone can still freeze holders' tokens.",
   };
   function summary(d, r) {
-    const hits = r.checks.filter((c) => c.sev != null && c.sev >= 0.5).sort((a, b) => b.weight * b.sev - a.weight * a.sev);
+    const hits = r.checks.filter((c) => c.sev != null && c.sev >= 0.5 && c.scope !== "issuer").sort((a, b) => b.weight * b.sev - a.weight * a.sev);
     const parts = hits.map((c) => SAY[c.id]).filter(Boolean);
+    if (r.issuer) parts.unshift(`This is the official ${r.issuer.asset}. Its issuer keeps legal controls${r.issuer.controls.length ? " (" + r.issuer.controls.map((c) => c.name.toLowerCase()).join(", ") + ")" : ""}; they are listed apart and do not add to the score.`);
     if (!parts.length) parts.push("None of our checks found a known red flag.");
     parts.push(r.band === "low" ? "That is not a promise of safety." : r.band === "suspicious" ? "Read the evidence before you do anything." : "Treat this as high risk.");
     if (r.unavailable) parts.push(`${r.unavailable} check${r.unavailable > 1 ? "s were" : " was"} unavailable, so the score may be lower than the real risk.`);
@@ -351,5 +374,5 @@
     return { wallets: out, clusters, fresh: fresh.length, linkedShare, freshShare, checked, level, lines };
   }
 
-  return { RULES_VERSION, WEIGHTS, KNOWN_ASSETS, GRADE_TEXT, grade, isAddress, gather, evaluate, summary, pulse, compare, linkWallets, usd, pct };
+  return { RULES_VERSION, WEIGHTS, KNOWN_ASSETS, ISSUER_CHECKS, GRADE_TEXT, grade, isAddress, gather, evaluate, summary, pulse, compare, linkWallets, usd, pct };
 });

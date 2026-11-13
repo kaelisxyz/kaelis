@@ -13,3 +13,6 @@
 | Style studies (not shipped, not in git) | `tools/3d/work/` | Poly Haven textures and furniture | CC0 |
 | Clean corridor | `site/models/hall.glb`, `site/media/hall_shell.webp` | Made for Kaelis in Blender, light baked by `tools/3d/bake_hall.py` | Project-owned |
 | Staff characters (four) | `site/models/staff-*.glb` | Made for Kaelis, `tools/3d/suit_staff.py` (Blender cloth solver) | Project-owned |
+| K camera shots for the videos (not in git) | `video/public/kshots/` | Made for Kaelis, `tools/3d/video_k.py` (Blender Cycles) | Project-owned |
+| Video narration | `video/public/audio/*.wav` (not in git) | Kokoro-82M text-to-speech, voice `am_michael`, run locally by `video/audio/make_vo.mjs` | Apache-2.0 model; output is ours |
+| Video score and sound effects | `video/public/audio/*.wav` (not in git) | Synthesised in code, `video/audio/make_mix.mjs` and `dsp.mjs`. No samples or loops | Project-owned |

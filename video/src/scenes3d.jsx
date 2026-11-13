@@ -106,10 +106,11 @@ export const Staff = ({ who = "assayer", at = [0.1, 0, -0.02], face = [3.6, 3.5]
   );
 };
 
-// ---- the specimen shelf: one sealed tube per call. `resolved` 0..1 turns them from "open" to their outcome.
-const TUBE = { open: new THREE.Color("#c9d2d6"), held: new THREE.Color("#59e7ca"), watch: new THREE.Color("#ffc24a"), rug: new THREE.Color("#ff4d6a") };
+// ---- the specimen shelf: one sealed tube per call. `sealed` 0..1 runs a wave along the wall that seals them one by one;
+// `resolved` 0..1 turns them from "open" to their outcome.
+const TUBE = { raw: new THREE.Color("#4f585e"), flash: new THREE.Color("#8dffe6"), open: new THREE.Color("#c9d2d6"), held: new THREE.Color("#59e7ca"), watch: new THREE.Color("#ffc24a"), rug: new THREE.Color("#ff4d6a") };
 function rand(seed) { let s = seed >>> 0; return () => ((s = (s * 1664525 + 1013904223) >>> 0) / 4294967296); }
-export const Shelf = ({ resolved = 1, t = 0 }) => {
+export const Shelf = ({ resolved = 1, sealed = 1, t = 0 }) => {
   const ref = useRef();
   const plan = useMemo(() => { const r = rand(17); return Array.from({ length: 320 }, () => { const x = r(); return { kind: x < 0.7 ? "held" : x < 0.87 ? "watch" : "rug", when: r() }; }); }, []);
   useLayoutEffect(() => {
@@ -118,7 +119,11 @@ export const Shelf = ({ resolved = 1, t = 0 }) => {
       const row = Math.floor(i / 64);
       m.makeTranslation(-4.75 + (i % 64) * 0.15, 3.42 - row * 0.56, -3.2); im.setMatrixAt(i, m);
       const p = plan[i], on = resolved >= p.when;
-      c.copy(on ? TUBE[p.kind] : TUBE.open); if (on && p.kind === "rug") c.multiplyScalar(0.75 + 0.25 * Math.abs(Math.sin(t * 5 + i)));
+      const s0 = ((i % 64) / 64) * 0.88 + row * 0.02, done = sealed >= 1 ? 1 : (sealed - s0) / 0.06;
+      if (on) { c.copy(TUBE[p.kind]); if (p.kind === "rug") c.multiplyScalar(0.75 + 0.25 * Math.abs(Math.sin(t * 5 + i))); }
+      else if (done <= 0) c.copy(TUBE.raw);
+      else if (done < 1) c.copy(TUBE.flash).multiplyScalar(1.5 - done * 0.5);
+      else c.copy(TUBE.open);
       im.setColorAt(i, c);
     }
     im.instanceMatrix.needsUpdate = true; im.instanceColor.needsUpdate = true;
@@ -169,15 +174,21 @@ export const Bench = () => {
 };
 
 // ---- the Gate's wall display: one word, large
-const DEC = { allow: "#59e7ca", warn: "#ffc24a", block: "#ff4d6a" };
+const DEC = { allow: "#59e7ca", warn: "#ffc24a", block: "#ff4d6a", call: "#59e7ca" };
 export const GateBoard = ({ decision = "allow" }) => {
   const tex = useMemo(() => {
     const cv = document.createElement("canvas"); cv.width = 1400; cv.height = 800; const g = cv.getContext("2d");
     g.fillStyle = "#0b0d10"; g.fillRect(0, 0, 1400, 800); g.textBaseline = "top";
     g.fillStyle = "#8b9096"; g.font = `500 26px ${MONO}, monospace`; g.fillText("THE GATE  ·  PRE-TRADE CHECK FOR AGENTS", 44, 36);
-    g.fillStyle = DEC[decision]; g.font = `700 300px ${MONO}, monospace`; g.fillText(decision.toUpperCase(), 34, 150);
-    g.fillStyle = "#e9e5df"; g.font = `500 40px ${MONO}, monospace`;
-    g.fillText({ allow: "no known red flag", warn: "middling score, failed check, risky deployer", block: "a hard flag, or a score above the limit" }[decision], 44, 520);
+    if (decision === "call") { // the question, before the answer
+      g.fillStyle = "#e9e5df"; g.font = `700 128px ${MONO}, monospace`; g.fillText("check_before_buy", 40, 190);
+      g.fillStyle = DEC.call; g.font = `700 128px ${MONO}, monospace`; g.fillText("( mint )", 40, 340);
+      g.fillStyle = "#e9e5df"; g.font = `500 40px ${MONO}, monospace`; g.fillText("one call, before the trade", 44, 540);
+    } else {
+      g.fillStyle = DEC[decision]; g.font = `700 300px ${MONO}, monospace`; g.fillText(decision.toUpperCase(), 34, 150);
+      g.fillStyle = "#e9e5df"; g.font = `500 40px ${MONO}, monospace`;
+      g.fillText({ allow: "no known red flag", warn: "middling score, failed check, risky deployer", block: "a hard flag, or a score above the limit" }[decision], 44, 520);
+    }
     g.fillStyle = "#8b9096"; g.font = `500 24px ${MONO}, monospace`; g.fillText("check_before_buy  ·  reasons  ·  deployer record  ·  ledger hash", 44, 700);
     const t = new THREE.CanvasTexture(cv); t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = 8; return t;
   }, [decision]);

@@ -1,0 +1,53 @@
+{
+ "i1": {
+  "text": "Every scanner checks the token."
+ },
+ "i2": {
+  "text": "No one checks who launched it."
+ },
+ "i3": {
+  "text": "Kaelis does.",
+  "say": "Kayliss, does."
+ },
+ "i4": {
+  "text": "The trust layer for Solana."
+ },
+ "l1": {
+  "text": "Kaelis is live.",
+  "say": "Kayliss is live."
+ },
+ "l2": {
+  "text": "Every token that comes through here gets tested."
+ },
+ "l3": {
+  "text": "Every call, sealed on a public ledger."
+ },
+ "l4": {
+  "text": "Seven days later, it's graded."
+ },
+ "l5": {
+  "text": "Hits and misses, published by name."
+ },
+ "l6": {
+  "text": "Behind every token is a wallet."
+ },
+ "l7": {
+  "text": "We keep a record on those too."
+ },
+ "l8": {
+  "text": "And before an AI agent buys, one call."
+ },
+ "v1": {
+  "text": "Allow."
+ },
+ "v2": {
+  "text": "Warn."
+ },
+ "v3": {
+  "text": "Block."
+ },
+ "l10": {
+  "text": "Kaelis. Proof, not vibes.",
+  "say": "Kayliss. Proof, not vibes."
+ }
+}

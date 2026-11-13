@@ -126,6 +126,7 @@
         <div><span>False alarms</span><b id="aFalse">–</b></div>
       </div>
       <p class="note" style="margin-top:14px">A call counts as "rug" when its rug chance is 50% or more. <b>Rugs missed</b>: Kaelis said under 50% and the token rugged. <b>False alarms</b>: Kaelis said 50% or more and the token held.</p>
+      <p class="note" id="stockNote"></p>
       <h2 style="font-size:22px;margin-top:30px">Calls Kaelis got wrong.</h2>
       <table class="tbl">
         <thead><tr><th>#</th><th>Token</th><th>Grade</th><th>Rug chance</th><th>What happened</th><th class="hide-sm">Hash</th></tr></thead>
@@ -181,7 +182,7 @@
 <footer>
   <div class="wrap tag">
     <span>Kaelis Ledger · Not financial advice</span>
-    <a href="docs.html">Docs →</a>
+    <span style="display:flex;gap:16px"><a href="markets.html">Markets →</a><a href="docs.html">Docs →</a></span>
   </div>
 </footer>
 
@@ -208,6 +209,7 @@
         : `On Solana: first anchor soon · wallet <a href="https://solscan.io/account/${esc(a.address)}" target="_blank" rel="noopener">${esc(a.address.slice(0, 4))}…${esc(a.address.slice(-4))} ↗</a>`;
     }).catch(() => {});
     $("rule").textContent = j.rule;
+    if (s.stocks && s.stocks.calls) $("stockNote").innerHTML = `Not counted here: ${s.stocks.calls} call${s.stocks.calls === 1 ? "" : "s"} on official tokenized stocks${s.stocks.resolved ? ` (${s.stocks.held} held, ${s.stocks.rugged} rugged)` : ""}. A 7-day rug test says little about a share held by a regulated issuer, so they are reported apart. <a href="markets.html">Markets →</a>`;
     // accuracy: the numbers, and every wrong call by name
     $("aHit").textContent = s.accuracy == null ? "–" : s.accuracy + "%"; $("aCaught").textContent = s.resolved ? s.rugsCaught : "–";
     $("aMissed").textContent = s.resolved ? s.rugsMissed : "–"; $("aFalse").textContent = s.resolved ? s.falseAlarms : "–";

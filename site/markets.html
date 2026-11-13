@@ -3,13 +3,13 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Kaelis Markets</title>
-<meta name="description" content="Memecoins measured with Wall Street's yardstick: Kaelis rates tokenized stocks on Solana with the same rules, tracks its best-rated memecoins (K-20) next to the S&P 500, and flags tokens that copy a stock's ticker.">
+<meta name="description" content="Tokenized stocks are on Solana, and so are the copies. Kaelis tells the official token from the fake, rates both with its open rules, and keeps the issuer's controls in plain view.">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' fill='%23f2f0ea'/%3E%3Ctext x='16' y='23' font-family='Arial' font-weight='700' font-size='20' text-anchor='middle' fill='%230b0b0c'%3EK%3C/text%3E%3C/svg%3E">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter+Tight:wght@400;500;600&family=JetBrains+Mono:wght@400;500;700&display=swap">
 <style>
-  /* Markets: K-20 vs S&P 500, tokenized stocks rated by Kaelis, KIQ, ticker look-alikes. Paper look like the Ledger. */
+  /* Markets: tokenized stocks and their copies first, then K-20 vs S&P 500 and KIQ. Paper look like the Ledger. */
   :root {
     --paper: #ffffff; --sheet: #fbfaf7; --ink: #0b0b0c; --ink2: #3a3a3a; --mute: #6b6b6b; --rule: #d6d6d6; --grid: rgba(0,0,0,.06); --tint: #f4f4f1;
     --ok: #2f8f5b; --warn: #9a6a00; --bad: #c4452c;
@@ -30,10 +30,13 @@
   header .wrap { display: flex; align-items: center; justify-content: space-between; gap: 12px; height: 60px; }
   .logo { display: flex; align-items: baseline; gap: 10px; text-decoration: none; font-weight: 600; letter-spacing: .14em; font-size: 15px; }
   .mark { display: flex; } .mark i { font-style: normal; } .mark i:nth-child(even) { color: var(--paper); -webkit-text-stroke: 1px var(--ink); paint-order: stroke fill; }
-  nav { display: flex; gap: 8px; }
-  .pill { display: inline-flex; align-items: center; border: 1px solid var(--ink); border-radius: 999px; padding: 8px 14px; text-decoration: none; background: var(--ink); color: var(--paper); font-size: 15px; }
+
+  .pill { display: inline-flex; align-items: center; border: 1px solid var(--ink); border-radius: 999px; padding: 8px 14px; text-decoration: none; background: var(--ink); color: var(--paper); }
   .pill.ghost { background: var(--paper); color: var(--ink); }
-  @media (max-width: 640px) { nav .ghost { display: none; } }
+  /* phones: the header links scroll sideways instead of widening the page, and tables fit (as on the Ledger) */
+  header .wrap > span { min-width: 0; overflow-x: auto; scrollbar-width: none; } header .wrap > span::-webkit-scrollbar { display: none; }
+  header .pill { white-space: nowrap; flex: none; } header .logo { flex: none; }
+  @media (max-width: 700px) { .tbl th, .tbl td { padding: 9px 5px; } .tbl { font-size: 13.5px; } header .pill { padding: 7px 11px; font-size: 14px; } .tbl .hide-sm { display: none; } }
   section { padding: 56px 0; border-bottom: 1px solid var(--rule); }
   .label { display: inline-block; background: var(--ink); color: var(--paper); padding: 6px 10px; }
   h1 { font-size: clamp(44px, 8vw, 112px); line-height: .92; letter-spacing: -.035em; font-weight: 500; margin: 18px 0 20px; }
@@ -70,6 +73,8 @@
   .chips a b { margin-left: 6px; }
   .two { display: grid; grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr); gap: 24px; align-items: start; }
   @media (max-width: 900px) { .two { grid-template-columns: 1fr; } .plot { height: 260px; } }
+  .ctl { font-family: var(--f-mono); font-size: 11.5px; color: var(--ink2); }
+  .was { display: block; font-family: var(--f-mono); font-size: 11px; color: var(--mute); margin-top: 2px; }
   .flag { display: inline-block; font-family: var(--f-mono); font-size: 10px; letter-spacing: .1em; text-transform: uppercase; color: var(--bad); border: 1px solid currentColor; padding: 2px 6px; }
   footer { padding: 32px 0 56px; }
   footer .wrap { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 12px; }
@@ -78,7 +83,7 @@
 <header>
   <div class="wrap">
     <a class="logo" href="index.html"><b class="mark" aria-label="KAELIS"><i>K</i><i>A</i><i>E</i><i>L</i><i>I</i><i>S</i></b><span class="tag" style="color:var(--mute)">Markets</span></a>
-    <nav><a class="pill ghost" href="filings.html">Filings</a><a class="pill ghost" href="ledger.html">Ledger</a><a class="pill ghost" href="evolution.html">Evolution</a><a class="pill" href="index.html">Forge City</a></nav>
+    <span style="display:flex;gap:8px"><a class="pill ghost" href="deployer.html">Deployers</a><a class="pill ghost" href="ledger.html">Ledger</a><a class="pill" href="scan.html">Scan a token</a></span>
   </div>
 </header>
 
@@ -86,16 +91,34 @@
   <section>
     <div class="wrap">
       <span class="tag label">[ Kaelis Markets · live ]</span>
-      <h1>Memes, rated like the S&amp;P.</h1>
-      <p class="lead">Kaelis rates tokenized stocks on Solana with the same rules it uses on memecoins, tracks its best-rated memecoins as one index next to the S&amp;P 500, and calls out tokens that copy a stock's ticker.</p>
-      <p class="note">A benchmark, never an investable product. Nothing here is financial advice.</p>
+      <h1>Real stocks. Fake tickers.</h1>
+      <p class="lead">Tokenized stocks are on Solana, and so are the copies. Kaelis tells the official token from the fake, rates both with its open rules, and keeps the issuer's controls in plain view.</p>
+      <p class="note">Ratings are risk estimates, never buy or sell advice.</p>
+    </div>
+  </section>
+
+  <section>
+    <div class="wrap two">
+      <div>
+        <span class="tag">Official tokenized stocks</span>
+        <h2>The real ones.</h2>
+        <table class="tbl"><thead><tr><th>Ticker</th><th class="hide-sm">Stock</th><th>Kaelis</th><th>Issuer controls</th><th></th></tr></thead><tbody id="stocks"><tr><td colspan="5" class="note">Loading…</td></tr></tbody></table>
+        <p class="note">An official tokenized stock is a claim on a share held by a regulated issuer, so the issuer keeps legal controls: it can mint, freeze and move tokens. Kaelis lists those controls apart instead of counting them as a rug signal. You are trusting the issuer, not the code. The grade covers the market checks (selling back, liquidity, pool age) and stops at A.</p>
+        <p class="note" id="sealedNote"></p>
+      </div>
+      <div>
+        <span class="tag">Look-alikes</span>
+        <h2>The copies.</h2>
+        <table class="tbl"><thead><tr><th>Copies</th><th>Token</th><th class="hide-sm">Pool</th><th></th></tr></thead><tbody id="fakes"><tr><td colspan="4" class="note">Loading…</td></tr></tbody></table>
+        <p class="note">Tokens that use a stock's ticker on a mint that is not the official one. Each gets a hard flag (CC), and an AI agent that asks Kaelis before buying one gets <b>block</b>. Searched once a day.</p>
+      </div>
     </div>
   </section>
 
   <section>
     <div class="wrap">
       <span class="tag">K-20 vs S&amp;P 500</span>
-      <h2>Kaelis's best-rated memes against Wall Street.</h2>
+      <h2>The best-rated memecoins, next to the S&amp;P.</h2>
       <div class="chart">
         <div class="head"><b>Indexed to 100 at the first point</b>
           <div class="legend" aria-hidden="true">
@@ -106,25 +129,8 @@
         <div class="plot" id="plotIdx"><div class="tip" id="tipIdx"></div></div>
         <details class="table"><summary>Show as table</summary><div class="scroll"><table class="tbl" id="tblIdx"><thead><tr><th>Time (UTC)</th><th>K-20</th><th>S&amp;P 500</th><th>SPYx price</th></tr></thead><tbody></tbody></table></div></details>
       </div>
-      <p class="note" id="basketNote">K-20: the 20 best-rated memecoins Kaelis has called (AAA to BBB, a pool of at least $20k, not rugged), equal weight, rebalanced every week. A token whose pool disappears counts as -100%.</p>
+      <p class="note" id="basketNote">K-20: the 20 best-rated memecoins Kaelis has called (AAA to BBB, a pool of at least $20k, not rugged), equal weight, rebalanced every week. A token whose pool disappears counts as -100%. A benchmark, never an investable product.</p>
       <div class="chips" id="basket"></div>
-    </div>
-  </section>
-
-  <section>
-    <div class="wrap two">
-      <div>
-        <span class="tag">Tokenized stocks</span>
-        <h2>Same rules, real stocks.</h2>
-        <table class="tbl"><thead><tr><th>Ticker</th><th>Stock</th><th>Kaelis</th><th>Score</th><th></th></tr></thead><tbody id="stocks"><tr><td colspan="5" class="note">Loading…</td></tr></tbody></table>
-        <p class="note">Official xStocks score higher on authority checks because the issuer keeps legal controls: it can mint, freeze and move tokens (a permanent delegate). That is by design for a regulated tokenized stock, and still a risk worth knowing.</p>
-      </div>
-      <div>
-        <span class="tag">Look-alikes</span>
-        <h2>Fake tickers, flagged.</h2>
-        <table class="tbl"><thead><tr><th>Copies</th><th>Token</th><th>Pool</th><th></th></tr></thead><tbody id="fakes"><tr><td colspan="4" class="note">Loading…</td></tr></tbody></table>
-        <p class="note">Tokens that use a stock's ticker but are not the official mint. Kaelis gives every one of them a hard flag (CC). Checked once a day.</p>
-      </div>
     </div>
   </section>
 
@@ -221,10 +227,17 @@
     $("kiqNow").textContent = last ? `Generation G${last.gen || 0}${last.iq != null ? " · KIQ " + last.iq : " · KIQ soon"}` : "";
     $("tblIdx").querySelector("tbody").innerHTML = j.series.slice().reverse().map((p) => `<tr><td class="m">${fmtT(p.t)}</td><td class="m">${p.k20 ?? "–"}</td><td class="m">${p.spy ?? "–"}</td><td class="m">${p.spyUsd ? "$" + p.spyUsd : "–"}</td></tr>`).join("") || `<tr><td colspan="4" class="note">No points yet.</td></tr>`;
     if (j.basket) { $("basket").innerHTML = j.basket.members.map((m) => `<a href="scan.html?mint=${esc(m.mint)}">$${esc((m.symbol || m.mint.slice(0, 4)).slice(0, 12))}<b class="g ${cls(m.grade)}">${esc(m.grade)}</b></a>`).join(""); $("basketNote").insertAdjacentHTML("beforeend", ` This week (${esc(j.basket.week)}):`); }
-    $("stocks").innerHTML = j.stocks.map((s) => { const c = s.call; return `<tr><td class="m"><b>${esc(s.sym)}</b></td><td>${esc(s.name)}</td>
-      <td>${c ? `<span class="g ${cls(c.grade)}">${esc(c.grade)}</span>` : '<span class="note">next patrol</span>'}</td><td class="m">${c ? c.score : "–"}</td>
+    // today's reading under the current rules; the sealed Ledger call is shown under it when it was made with older rules
+    const CTL = { mint: "mint", freeze: "freeze", extensions: "delegate" };
+    const old = j.stocks.filter((s) => s.call && s.now && s.call.rulesVersion !== s.now.rulesVersion);
+    $("stocks").innerHTML = j.stocks.map((s) => { const n = s.now, c = s.call, g = n ? n.grade : c ? c.grade : null;
+      const was = n && c && c.rulesVersion !== n.rulesVersion ? `<span class="was">sealed call #${c.n}: ${esc(c.grade)}</span>` : "";
+      return `<tr><td class="m"><b>${esc(s.sym)}</b></td><td class="hide-sm">${esc(s.name)}</td>
+      <td>${g ? `<span class="g ${cls(g)}">${esc(g)}</span>${was}` : '<span class="note">next patrol</span>'}</td>
+      <td class="ctl">${n && n.issuer ? (n.issuer.length ? n.issuer.map((k) => CTL[k] || k).join(" · ") : "none") : "–"}</td>
       <td><a class="tag" href="scan.html?mint=${esc(s.mint)}">Scan →</a></td></tr>`; }).join("");
-    $("fakes").innerHTML = j.lookalikes.length ? j.lookalikes.slice(0, 30).map((f) => `<tr><td class="m">${esc(f.copies)}</td><td><span class="flag">CC</span> ${esc(f.name || "unnamed")} <span class="note m">${esc(f.mint.slice(0, 4))}…${esc(f.mint.slice(-4))}</span></td><td class="m">${usd(f.liq)}</td><td><a class="tag" href="scan.html?mint=${esc(f.mint)}">Scan →</a></td></tr>`).join("")
+    $("sealedNote").textContent = old.length ? `The calls sealed on the Ledger on ${old[0].call.openedAt.slice(0, 10)} were made under rules ${old[0].call.rulesVersion}, before issuer controls were read apart, so they show a lower grade. Sealed calls are never edited; the next ones, from ${old[0].call.resolveAt.slice(0, 10)}, use the current rules. Stock calls are kept out of the Ledger's accuracy numbers.` : "Stock calls are kept out of the Ledger's accuracy numbers.";
+    $("fakes").innerHTML = j.lookalikes.length ? j.lookalikes.slice(0, 30).map((f) => `<tr><td class="m">${esc(f.copies)}</td><td><span class="flag">CC</span> ${esc(f.name || "unnamed")} <span class="note m">${esc(f.mint.slice(0, 4))}…${esc(f.mint.slice(-4))}</span></td><td class="m hide-sm">${f.liq ? usd(f.liq) : "none left"}</td><td><a class="tag" href="scan.html?mint=${esc(f.mint)}">Scan →</a></td></tr>`).join("")
       : `<tr><td colspan="4" class="note">${j.lookalikesAt ? "None found today." : "First check runs with the next patrol."}</td></tr>`;
   }).catch(() => {
     ["plotIdx", "plotKiq"].forEach((id) => { const e = document.createElement("div"); e.className = "empty"; e.textContent = "Markets run on the Kaelis server. Not available in this preview."; $(id).appendChild(e); });

@@ -29,3 +29,7 @@ tools/3d/work/
 video/node_modules/
 video/out/
 video/public/
+video/audio/work/
+
+# finished videos are large: they stay on disk, not in git
+asset/video/*.mp4
