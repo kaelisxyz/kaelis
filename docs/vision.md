@@ -75,3 +75,8 @@ Moat: the track record. Code can be copied overnight, but a copy starts with zer
 ## Filings (live, 2026-11-11)
 - SEC-style disclosures. When Kaelis makes a call (Patrol or a user scan) it records the 10 largest non-pool wallets as insiders. Each Patrol round re-reads their token accounts plus the mint (one getMultipleAccounts per token) and files: K-4 insider sale (>= 20% of the bag and >= 0.5% of supply), K-8 liquidity pulled (pools down >= 50% from >= $1k), K-3 mint/freeze authority back on. Hash-chained; tracking ends after 7 days. Spare Patrol slots backfill insiders for open calls made before the Helius key.
 - Code: `lib/filings.js`, `/api/filings`, `site/filings.html`, Watch tower shows the feed when the visitor has no scan of their own. Tests in `tests/filings.test.js`. Needs HELIUS_RPC_URL (set in .env on 2026-11-11).
+
+## Wallet gate (2026-11-13)
+- The tools open only with a connected Solana wallet: entering the tower and its rooms (the Assay Room scanner, the Gate check), `scan.html` and the deployer lookup. `site/js/kaelis-wallet.js` does it with the Wallet Standard (plus the older injected providers), no library.
+- Connecting reads the public address only. No signature, no transaction, nothing sent to the server: the address stays in the browser's localStorage. On a phone with no wallet in the browser, the dialog opens the page inside Phantom or Solflare.
+- Left open on purpose: the Ledger, Filings, Markets, Docs (the public record must be checkable by anyone) and the API / MCP (agents have no wallet to connect).

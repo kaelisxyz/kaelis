@@ -185,6 +185,7 @@
   <span aria-hidden="true"></span>
   <nav class="links" aria-label="Tower">
     <button class="pill" id="exitBtn" hidden>← Back to city</button>
+    <span id="walletChip"></span>
   </nav>
 </header>
 
@@ -222,6 +223,7 @@
 
 <script src="js/kaelis-config.js?v=1.5.0"></script>
 <script src="js/kaelis-core.js?v=1.5.0"></script>
+<script src="js/kaelis-wallet.js?v=1"></script>
 <script type="importmap">
 { "imports": {
   "three": "https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.js",
@@ -1642,7 +1644,9 @@ function setScene(s) {
   for (const id of ROOMS) dockEls[id].classList.toggle("on", s === room && current === id);
 }
 async function enterLab() {
-  if (busy || scene !== city) return; busy = true;
+  if (busy || scene !== city) return;
+  if (!(await window.KaelisWallet.require()) || busy) return;
+  busy = true;
   savedCity = { pos: camera.position.clone(), target: controls.target.clone() };
   controls.enabled = false; controls.autoRotate = false;
   const p0 = camera.position.clone(), q0 = controls.target.clone(), fov0 = camera.fov;
@@ -1659,7 +1663,9 @@ async function enterLab() {
   if (first) enterRoom("scanner"); // first visit: straight through the first door
 }
 async function enterRoom(id) {
-  if (busy || !byId[id]) return; busy = true;
+  if (busy || !byId[id]) return;
+  if (!(await window.KaelisWallet.require()) || busy) return;
+  busy = true;
   if (scene === city) { savedCity = { pos: camera.position.clone(), target: controls.target.clone() }; controls.enabled = false; controls.autoRotate = false; }
   const walked = scene === hall && !reduce;
   if (scene === hall) {
@@ -1702,6 +1708,9 @@ async function exitTower() {
 }
 $("exitBtn").addEventListener("click", exitTower);
 $("ctaScan").addEventListener("click", enterLab); $("pClose").addEventListener("click", exitTower);
+window.KaelisWallet.mountChip($("walletChip"));
+const ctaText = () => { $("ctaScan").textContent = window.KaelisWallet.address ? "Enter" : "Connect & enter"; };
+ctaText(); window.KaelisWallet.onChange(ctaText);
 addEventListener("keydown", (e) => { if (e.key === "Escape") exitTower(); });
 function themeRoom() { // every room is lit by the tank and by lamplight
   roomParts.screenLight.color.set("#ffffff"); roomParts.screenLight.intensity = 0.4;

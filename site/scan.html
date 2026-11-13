@@ -115,7 +115,7 @@
 <header>
   <div class="wrap">
     <a class="logo" href="index.html"><b class="mark" aria-label="KAELIS"><i>K</i><i>A</i><i>E</i><i>L</i><i>I</i><i>S</i></b><span class="tag" style="color:var(--mute)">Scanner</span></a>
-    <a class="pill" href="index.html">Back to site</a>
+    <span style="display:flex;gap:8px"><span id="walletChip"></span><a class="pill" href="index.html">Back to site</a></span>
   </div>
 </header>
 
@@ -196,6 +196,7 @@
 
 <script src="js/kaelis-config.js?v=1.5.0"></script>
 <script src="js/kaelis-core.js?v=1.5.0"></script>
+<script src="js/kaelis-wallet.js?v=1"></script>
 <script>
 (function () {
   "use strict";
@@ -301,6 +302,7 @@
     mint = (mint || "").trim();
     $("err").textContent = "";
     if (!K.isAddress(mint)) { $("err").textContent = "That doesn't look like a Solana address. Paste the token's mint address (32 to 44 characters)."; return; }
+    if (!(await window.KaelisWallet.require())) { $("err").textContent = "Connect a wallet to run a scan. The Ledger and every past call stay open without one."; return; }
     stopWatch();
     setBusy(true);
     try {
@@ -344,6 +346,7 @@
 
   $("f").addEventListener("submit", (e) => { e.preventDefault(); scan($("mint").value); });
   document.querySelectorAll(".examples button").forEach((b) => b.addEventListener("click", () => { $("mint").value = b.dataset.mint; scan(b.dataset.mint); }));
+  window.KaelisWallet.mountChip($("walletChip"));
   const q = new URLSearchParams(location.search).get("mint");
   if (q) { $("mint").value = q; scan(q); }
 })();
